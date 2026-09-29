@@ -4,6 +4,21 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.4.0] — 2026-09-29
+### Added
+- **The 2nd brain sorts itself into projects — always.** Every project is the centre of its own cluster; the
+  memories, notes, creations, missions, people and actions that belong to it gather around it, joined by lines in the
+  project's colour. Sorting runs automatically every time the brain refreshes, so new things drop into the right
+  cluster as they arrive.
+  - Linking uses the project's names (Nova, TrueHome, Juniper, Avaya…) and meaning (local embeddings).
+    Projects nest: every "Nova upgrade: …" roadmap item sits under the Nova project.
+  - Click a project: its whole cluster lights up, the rest dims, and its panel lists **Everything in this project**
+    by category.
+  - Any item's panel has a **Project** picker: move it to another project, to none, or back to automatic.
+    Your choices are saved permanently.
+  - **Layout** switch: **Projects** (clusters), **Categories** (tidy sectors) or **Web** (free-flowing).
+    Projects is the default; your choice is remembered (Settings → Appearance → Brain layout).
+
 ## [2.3.0] — 2026-09-29
 ### Added
 - **Everything starts with run.bat**:

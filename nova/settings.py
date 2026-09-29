@@ -189,6 +189,9 @@ SCHEMA = [
         {"path": "dashboard.theme.stars", "label": "Star density", "type": "number", "min": 0, "max": 12000, "step": 500, "default": 4500},
         {"path": "dashboard.theme.orbit_speed", "label": "Cinematic orbit speed", "type": "number", "min": 0, "max": 5, "step": 0.1, "default": 1.0},
         {"path": "dashboard.theme.labels", "label": "Show category labels", "type": "bool", "default": True},
+        {"path": "dashboard.theme.layout", "label": "Brain layout", "type": "select", "default": "projects",
+         "options": ["projects", "categories", "web"],
+         "help": "projects = everything clustered around the project it belongs to; categories = tidy sectors; web = free-flowing"},
     ]},
 ]
 PRESETS = {

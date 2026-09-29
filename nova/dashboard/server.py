@@ -180,7 +180,89 @@ class Dashboard:
             label, color = HUBS[k]
             nodes.append({"id": f"hub:{k}", "label": label, "kind": "hub", "hubKind": k, "val": 14, "color": color})
             links.append({"source": "core", "target": f"hub:{k}", "type": "core"})
+
+        # projects: each project is the centre of a cluster of everything that belongs to it
+        org = self.organized()
+        ids = {n["id"] for n in nodes}
+        by_id = {n["id"]: n for n in nodes}
+        for pid in org["projects"]:
+            if pid in by_id:
+                by_id[pid].update(isProject=True, short=org["short"].get(pid, ""), pcolor=org["color"].get(pid),
+                                  parent=org["parents"].get(pid, ""), val=max(by_id[pid]["val"], 9))
+        for child, parent in org["parents"].items():
+            if child in ids and parent in ids:
+                by_id[child]["project"] = parent             # a sub-project sits with its parent, not the category
+                links.append({"source": parent, "target": child, "type": "subproject", "color": org["color"].get(parent)})
+        for item, pid in org["item_project"].items():
+            if item in ids and pid in ids and item != pid:
+                by_id[item]["project"] = pid
+                links.append({"source": pid, "target": item, "type": "project", "color": org["color"].get(pid)})
         return {"nodes": nodes, "links": links}
+
+    # ── projects: what belongs together ───────────────────
+    def organized(self, force: bool = False) -> dict:
+        """Which project each item belongs to (cached a few seconds — the graph and panels both ask)."""
+        import time as _time
+
+        from .organize import organize, palette
+        cache = getattr(self, "_org_cache", None)
+        if cache and not force and _time.time() - cache[0] < 4:
+            return cache[1]
+        s = context.store
+        with s.lock:
+            s.db.execute("CREATE TABLE IF NOT EXISTS links(item TEXT PRIMARY KEY, project TEXT)")
+            projs = s.db.execute("SELECT id,text,created,source,embedding FROM memories WHERE superseded_by IS NULL "
+                                 "AND kind='project' ORDER BY id").fetchall()
+            mems = s.db.execute("SELECT id,text,embedding FROM memories WHERE superseded_by IS NULL AND kind!='project' "
+                                "ORDER BY id DESC LIMIT 900").fetchall()
+            arts = s.db.execute("SELECT id,title,detail,location,embedding FROM artifacts WHERE kind!='note' "
+                                "ORDER BY id DESC LIMIT 700").fetchall()
+            notes = s.db.execute("SELECT path, GROUP_CONCAT(text, ' ') t, (SELECT embedding FROM chunks c2 WHERE "
+                                 "c2.path=chunks.path AND c2.idx=0) e FROM chunks GROUP BY path LIMIT 500").fetchall()
+            turns = s.db.execute("SELECT id,title FROM activity WHERE kind='user' AND turn=id "
+                                 "AND session NOT LIKE 'mission:%' ORDER BY id DESC LIMIT 40").fetchall()
+            manual = {r["item"]: r["project"] for r in s.db.execute("SELECT * FROM links")}
+            try:
+                mis = s.db.execute("SELECT id,title,goal FROM missions WHERE status!='deleted'").fetchall()
+            except Exception:
+                mis = []
+        vec = lambda b: np.frombuffer(b, dtype=np.float32) if b else None    # noqa: E731
+        projects = [{"id": f"memory:{p['id']}", "text": p["text"], "vec": vec(p["embedding"]), "created": p["created"],
+                     "source": p["source"]} for p in projs]
+        items = [{"id": f"memory:{m['id']}", "text": m["text"], "vec": vec(m["embedding"])} for m in mems]
+        items += [{"id": f"artifact:{a['id']}", "text": f"{a['title']} {a['detail'] or ''} {Path(a['location']).name}",
+                   "vec": vec(a["embedding"])} for a in arts]
+        items += [{"id": f"note:{n['path']}", "text": f"{Path(n['path']).stem} {(n['t'] or '')[:3000]}", "vec": vec(n["e"])}
+                  for n in notes]
+        items += [{"id": f"mission:{m['id']}", "text": f"{m['title']} {m['goal']}", "vec": None} for m in mis]
+        items += [{"id": f"turn:{t['id']}", "text": t["title"], "vec": None} for t in turns]
+        res = organize(projects, items, manual, owner=self.cfg.assistant.owner)
+        roots = [p["id"] for p in projects if p["id"] not in res["parents"]]
+        colors = dict(zip(roots, palette(len(roots))))
+        for pid in [p["id"] for p in projects]:
+            top = pid
+            for _ in range(5):
+                top = res["parents"].get(top, top) if top in res["parents"] else top
+            colors[pid] = colors.get(top, colors.get(pid, "#ffd166"))
+        res["color"] = colors
+        res["projects"] = [p["id"] for p in projects]
+        self._org_cache = (_time.time(), res)
+        return res
+
+    def set_link(self, item: str, project: str | None) -> dict:
+        """You decide: link an item to a project ("memory:12"), to none (""), or back to automatic (None)."""
+        s = context.store
+        with s.lock:
+            s.db.execute("CREATE TABLE IF NOT EXISTS links(item TEXT PRIMARY KEY, project TEXT)")
+            if project is None:
+                s.db.execute("DELETE FROM links WHERE item=?", (item,))
+            else:
+                s.db.execute("INSERT OR REPLACE INTO links(item, project) VALUES(?,?)", (item, project))
+            s.db.commit()
+        s.log("track", "dashboard", "Linked to a project" if project else "Unlinked from its project" if project == ""
+              else "Project link set back to automatic", item, item, turn=0)
+        org = self.organized(force=True)
+        return {"project": org["item_project"].get(item, ""), "why": org["why"].get(item, "")}
 
     def stats(self) -> dict:
         s = context.store
@@ -213,6 +295,26 @@ class Dashboard:
         out = self._item(nid)
         if "error" in out:
             return out
+        org = self.organized()
+        if nid in org["projects"]:
+            linked = {}
+            members = [i for i, p in org["item_project"].items() if p == nid]
+            members += [c for c, p in org["parents"].items() if p == nid]
+            for m in members:
+                kind = m.split(":")[0]
+                label = {"memory": "Memories", "note": "Notes", "artifact": "Creations", "mission": "Missions",
+                         "turn": "Actions"}.get(kind, kind)
+                if m in org["projects"]:
+                    label = "Sub-projects"
+                linked.setdefault(label, []).append({"id": m, "title": self.title_of(m) or m,
+                                                     "why": org["why"].get(m, "sub-project")})
+            out["linked"] = linked
+            out["parent_project"] = org["parents"].get(nid, "")
+        else:
+            pid = org["item_project"].get(nid, "")
+            out["project"] = {"id": pid, "title": org["short"].get(pid, "") if pid else "",
+                              "why": org["why"].get(nid, ""), "color": org["color"].get(pid)}
+        out["projects"] = [{"id": p, "title": org["short"].get(p, "")} for p in org["projects"] if p != nid]
         if not nid.startswith("turn:"):
             out["tracking"] = context.store.get_tracking(nid)
             out["timeline"] = self.timeline(nid, out)
@@ -807,6 +909,14 @@ class Dashboard:
                         on = body.get("on")
                         msg = engine().start() if on else engine().stop()
                         return self._json({"message": msg, **engine().status()})
+                    if self.path == "/api/link":
+                        nid = str(body.get("id", ""))
+                        if not re.fullmatch(r"(memory|artifact|turn|mission):\d+|note:.+", nid):
+                            return self._json({"error": "unknown item"}, 400)
+                        proj = body.get("project")
+                        if proj not in (None, "") and not re.fullmatch(r"memory:\d+", str(proj)):
+                            return self._json({"error": "unknown project"}, 400)
+                        return self._json(dash.set_link(nid, proj))
                     if self.path == "/api/remote":
                         from .. import remote
                         if not self.headers.get("Host", "").lower().startswith(("localhost", "127.0.0.1")):

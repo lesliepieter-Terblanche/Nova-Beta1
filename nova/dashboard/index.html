@@ -153,6 +153,20 @@
     background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); cursor: pointer;
     text-shadow: 0 0 12px var(--c); white-space: nowrap; pointer-events: auto; transform: translateY(-50%); }
   .hub-label:hover { background: rgba(20,24,50,.8); }
+  .proj-label { font: 600 11.5px var(--display); color: #fff; padding: 3px 9px; border-radius: 8px; cursor: pointer;
+    background: rgba(6,8,20,.6); border: 1px solid color-mix(in srgb, var(--c) 70%, transparent); white-space: nowrap;
+    pointer-events: auto; transform: translateY(-50%); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 35%, transparent); }
+  .proj-label:hover { background: rgba(20,24,50,.85); }
+  .proj-label.sub { font-size: 10.5px; opacity: .85; }
+  body.dimmed .proj-label.off, body.dimmed .hub-label.off { opacity: .15; }
+  .no-labels .proj-label.sub { display: none; }
+  body.far .proj-label.sub { display: none; }
+  body[data-layout="categories"] .proj-label, body[data-layout="web"] .proj-label.sub { display: none; }
+  body[data-layout="projects"] .hub-label { opacity: .55; font-size: 11px; }
+  .projsel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12.5px; }
+  .projsel select { background: rgba(0,0,0,.3); color: var(--text); border: 1px solid var(--line); border-radius: 9px;
+    padding: 6px 8px; font: 12.5px var(--body); max-width: 100%; }
+  .projsel .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--pc, var(--muted)); box-shadow: 0 0 8px var(--pc, transparent); }
   .core-label { font: 600 13px var(--display); letter-spacing: .5em; color: #dcdcff; text-shadow: 0 0 14px #8b7bff; pointer-events: none; }
   .feed ul { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px); mask-image: linear-gradient(to bottom, transparent 0, #000 22px); }
   .tooltip { position: fixed; pointer-events: none; z-index: 8; padding: 8px 12px; border-radius: 10px; font-size: 12.5px;
@@ -355,6 +369,12 @@
     <kbd>/</kbd>
   </label>
   <div class="results" id="results"></div>
+  <h3>Layout</h3>
+  <div class="views" id="layouts">
+    <button id="l-projects" title="Everything clustered around the project it belongs to">Projects</button>
+    <button id="l-categories" title="Tidy sectors per category">Categories</button>
+    <button id="l-web" title="Free-flowing web of connections">Web</button>
+  </div>
   <h3>View</h3>
   <div class="views">
     <button id="v-orbit" class="on">Cinematic</button>
@@ -441,10 +461,10 @@ const Graph = ForceGraph3D({ controlType: "orbit", extraRenderers: [labelRendere
   .nodeVal((n) => n.val)
   .nodeLabel(() => "")
   .nodeVisibility((n) => n.kind === "core" || !hidden.has(n.kind === "hub" ? n.hubKind : n.kind))
-  .linkVisibility((l) => visible(l.source) && visible(l.target))
-  .linkColor((l) => l.type === "semantic" ? "rgba(110,190,255,0.35)" : l.type === "wiki" ? "rgba(190,160,255,0.6)"
-                    : l.type === "core" ? "rgba(200,205,255,0.28)" : "rgba(150,160,255,0.10)")
-  .linkWidth((l) => l.type === "core" ? 0.6 : l.type === "semantic" ? 0.25 : 0)
+  .linkVisibility((l) => visible(l.source) && visible(l.target) && linkShown(l))
+  .linkColor(linkColorOf)
+  .linkWidth((l) => l.type === "core" ? 0.6 : l.type === "subproject" ? 0.9 : l.type === "project" ? (layout === "projects" ? 0.45 : 0.25)
+                  : l.type === "semantic" ? 0.25 : 0)
   .linkOpacity(0.4)
   .linkDirectionalParticles((l) => (isHot(l.source) || isHot(l.target) || l.type === "core") ? 2 : 0)
   .linkDirectionalParticleWidth((l) => l.type === "core" ? 1.6 : 1.2)
@@ -457,9 +477,101 @@ const Graph = ForceGraph3D({ controlType: "orbit", extraRenderers: [labelRendere
   .warmupTicks(40)
   .cooldownTime(8000);
 
-Graph.d3Force("charge").strength((n) => n.kind === "core" ? -420 : n.kind === "hub" ? -220 : -26);
-Graph.d3Force("link").distance((l) => l.type === "core" ? 120 : l.type === "hub" ? 34 + Math.random() * 30 : 60)
-                     .strength((l) => l.type === "semantic" ? 0.05 : l.type === "wiki" ? 0.2 : 0.7);
+// ── layouts: Projects (clusters) · Categories (sectors) · Web (free) ──
+let layout = "projects", focusSet = null;
+const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 1000) / 1000; };
+const nodeOf = (x) => (typeof x === "object" ? x : nodeById.get(x));
+function linkShown(l) {
+  const t = nodeOf(l.target);
+  if (layout === "projects" && l.type === "hub" && t?.project) return false;      // it hangs off its project instead
+  if (layout === "categories" && l.type === "project") return false;
+  if (layout !== "web" && l.type === "semantic") return false;
+  return true;
+}
+function rgba(hex, a) { const c = new THREE.Color(hex || "#8b7bff"); return `rgba(${c.r * 255 | 0},${c.g * 255 | 0},${c.b * 255 | 0},${a})`; }
+function linkColorOf(l) {
+  const s = nodeOf(l.source), t = nodeOf(l.target);
+  if (focusSet && !(focusSet.has(s?.id) && focusSet.has(t?.id))) return "rgba(120,130,200,0.03)";
+  if (l.type === "project" || l.type === "subproject") return rgba(l.color, l.type === "subproject" ? 0.55 : 0.32);
+  return l.type === "semantic" ? "rgba(110,190,255,0.35)" : l.type === "wiki" ? "rgba(190,160,255,0.6)"
+    : l.type === "core" ? "rgba(200,205,255,0.28)" : "rgba(150,160,255,0.10)";
+}
+function linkStrength(l) {
+  const t = nodeOf(l.target), ty = l.type;
+  if (layout === "projects") return ty === "project" ? 0.9 : ty === "subproject" ? 0.6 : ty === "hub" ? (t?.project ? 0 : 0.8)
+    : ty === "core" ? 0 : 0.02;
+  if (layout === "categories") return ty === "hub" ? 0.9 : ty === "core" ? 0 : ty === "subproject" ? 0.03 : 0.01;
+  return ty === "semantic" ? 0.05 : ty === "wiki" ? 0.2 : ty === "project" ? 0.15 : ty === "subproject" ? 0.3 : 0.7;
+}
+function linkDistance(l) {
+  const k = hash(typeof l.target === "object" ? l.target.id : l.target);
+  if (layout === "projects") return l.type === "project" ? 20 + k * 34 : l.type === "subproject" ? 70 + k * 30 : l.type === "hub" ? 34 + k * 36 : 90;
+  if (layout === "categories") return l.type === "hub" ? 26 + k * 46 : 80;
+  return l.type === "core" ? 120 : l.type === "hub" ? 34 + k * 30 : l.type === "project" ? 50 : 60;
+}
+function chargeOf(n) {
+  if (layout === "web") return n.kind === "core" ? -420 : n.kind === "hub" ? -220 : n.isProject ? -60 : -26;
+  if (layout === "projects") return n.isProject ? -90 : n.kind === "hub" ? -40 : -16;
+  return n.kind === "hub" ? -60 : -18;
+}
+function pinRing(nodes, r, wave = 36) {
+  nodes.forEach((n, i) => {
+    const a = (i / Math.max(1, nodes.length)) * Math.PI * 2 + 0.3;
+    n.fx = r * Math.cos(a); n.fz = r * Math.sin(a); n.fy = Math.sin(a * 2) * wave;
+  });
+}
+function pinSphere(nodes, r) {
+  const N = nodes.length, g = Math.PI * (3 - Math.sqrt(5));
+  nodes.forEach((n, i) => {
+    const y = N === 1 ? 0 : 1 - (i / (N - 1)) * 2, rad = Math.sqrt(1 - y * y), th = g * i;
+    n.fx = r * Math.cos(th) * rad; n.fy = r * y * 0.55; n.fz = r * Math.sin(th) * rad;
+  });
+}
+function applyLayout(mode, { save = false, reheat = true } = {}) {
+  layout = mode || "projects";
+  document.body.dataset.layout = layout;
+  ["projects", "categories", "web"].forEach((m) => $("l-" + m).classList.toggle("on", m === layout));
+  for (const n of data.nodes) { delete n.fx; delete n.fy; delete n.fz; }
+  const core = nodeById.get("core"); if (core) { core.fx = 0; core.fy = 0; core.fz = 0; }
+  const hubs = data.nodes.filter((n) => n.kind === "hub").sort((a, b) => a.hubKind.localeCompare(b.hubKind));
+  const roots = data.nodes.filter((n) => n.isProject && !(n.parent && nodeById.has(n.parent)))
+                          .sort((a, b) => (a.short || a.label).localeCompare(b.short || b.label));
+  if (layout === "categories") pinSphere(hubs, 220 + hubs.length * 6);
+  if (layout === "projects") { pinRing(roots, Math.min(380, 150 + roots.length * 26), 60); pinSphere(hubs, 470); }
+  Graph.d3Force("link").distance(linkDistance).strength(linkStrength);
+  Graph.d3Force("charge").strength(chargeOf);
+  refreshLinks();
+  if (reheat) Graph.d3ReheatSimulation();
+  if (save) api("/api/settings", { values: { "dashboard.theme.layout": layout } }).catch(() => {});
+}
+function refreshLinks() { Graph.linkVisibility(Graph.linkVisibility()).linkColor(Graph.linkColor()).linkWidth(Graph.linkWidth()); }
+["projects", "categories", "web"].forEach((m) => { $("l-" + m).onclick = () => { applyLayout(m, { save: true }); setTimeout(() => Graph.zoomToFit(1400, 80), 1600); }; });
+
+// light up one project's whole cluster
+function clusterOf(pid) {
+  const ids = new Set([pid]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const n of data.nodes) {
+      if (!ids.has(n.id) && ((n.project && ids.has(n.project)) || (n.isProject && n.parent && ids.has(n.parent)))) { ids.add(n.id); grew = true; }
+    }
+  }
+  return ids;
+}
+function setFocus(ids) {
+  focusSet = ids;
+  document.body.classList.toggle("dimmed", !!ids);
+  for (const n of data.nodes) {
+    const o = n.__threeObj; if (!o) continue;
+    const on = !ids || ids.has(n.id) || n.kind === "core";
+    o.traverse((c) => {
+      if (c.material) { c.material.transparent = true; c.userData.base ??= c.material.opacity; c.material.opacity = c.userData.base * (on ? 1 : 0.12); }
+      if (c.element) c.element.classList.toggle("off", !on);
+    });
+  }
+  refreshLinks();
+}
 
 // cinematic bloom
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.45, 0.18);
@@ -536,6 +648,22 @@ function makeNode(n) {
     group.userData = { label: lab };
     return group;
   }
+  if (n.isProject) {
+    const pc = new THREE.Color(n.pcolor || colorOf(n));
+    const r = n.parent ? 3.2 : 4.4;
+    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 28), new THREE.MeshBasicMaterial({ color: pc }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 2.1, 0.22, 8, 64), new THREE.MeshBasicMaterial({ color: pc, transparent: true, opacity: 0.7 }));
+    ring.rotation.x = Math.PI / 2.2;
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: pc, transparent: true, opacity: n.hot ? 0.6 : 0.35, depthWrite: false }));
+    halo.scale.set(r * 7, r * 7, 1);
+    const lab = htmlLabel(n.short || n.label.slice(0, 32), "proj-label" + (n.parent ? " sub" : ""), r + 7);
+    lab.element.style.setProperty("--c", n.pcolor || colorOf(n));
+    lab.element.title = n.label;
+    lab.element.onclick = () => select(n);
+    group.add(halo, s, ring, lab);
+    group.userData = { label: lab, ring };
+    return group;
+  }
   const r = Math.cbrt(n.val || 4) * 1.35;
   const s = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 18), new THREE.MeshBasicMaterial({ color }));
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: n.hot ? 0.65 : 0.28, depthWrite: false }));
@@ -600,9 +728,14 @@ function animate() {
   for (const n of data.nodes) {
     const u = n.__threeObj?.userData;
     if (u?.label) u.label.visible = n.__threeObj.visible;
+    if (u?.ring) u.ring.rotation.z += 0.004;
     if (u?.hot) { const k = 1 + Math.sin(t * 3 + (n.x || 0)) * 0.25; u.halo.scale.set(u.base * 6.5 * k, u.base * 6.5 * k, 1); }
   }
   stars.rotation.y += 0.00008; dust.rotation.y -= 0.0002;
+  if (!(Math.floor(t * 4) % 2)) {                      // hide small project labels when zoomed far out
+    const d = Graph.camera().position.length();
+    document.body.classList.toggle("far", d > 560 && !focusSet);
+  }
   if (orbit && performance.now() - userBusy > 3500 && !selected) {
     angle += 0.0012 * orbitSpeed;
     const cam = Graph.camera(), r = Math.hypot(cam.position.x, cam.position.z) || 420;
@@ -627,6 +760,7 @@ async function applyTheme() {
   bloom.strength = Number(t.bloom);
   orbitSpeed = Number(t.orbit_speed);
   document.body.classList.toggle("no-labels", !t.labels);
+  if (t.layout && t.layout !== layout) applyLayout(t.layout);
   const want = Math.round(Number(t.stars));
   if (stars.geometry.attributes.position.count !== want) {
     scene.remove(stars); stars.geometry.dispose();
@@ -646,6 +780,8 @@ async function loadGraph() {
   data = g;
   nodeById.clear(); g.nodes.forEach((n) => nodeById.set(n.id, n));
   Graph.graphData(g);
+  applyLayout(layout, { reheat: false });
+  if (focusSet && selected?.isProject) setFocus(clusterOf(selected.id));
   buildChips();
   $("empty").classList.toggle("show", g.nodes.length <= 1);
 }
@@ -815,6 +951,21 @@ async function renderItem(v) {
   panelHead(color, labelFor(it.type), it.title, when + extra);
   $("p-open").parentElement.style.display = "";
   let h = trackBox(id, it.tracking || {});
+  if (it.linked) {
+    const total = Object.values(it.linked).reduce((a, b) => a + b.length, 0);
+    h += `<h4>Everything in this project (${total})</h4>` + (total ? Object.entries(it.linked).map(([grp, rows]) =>
+      `<div class="muted" style="margin:10px 0 4px">${esc(grp)} · ${rows.length}</div><div class="related">${rows.map((r) =>
+        `<button data-id="${esc(r.id)}" style="--c:${nodeById.get(r.id)?.color || color}" title="${esc(r.why)}"><i></i><span>${esc(r.title)}</span></button>`).join("")}</div>`).join("")
+      : `<div class="muted">Nothing linked yet — it fills up as you talk about ${esc(it.title.split(" ").slice(0, 3).join(" "))}. You can also link items to it from their own panel.</div>`);
+  } else if (it.projects) {
+    const cur = it.project?.id || "";
+    h += `<div class="projsel" style="--pc:${cur ? it.project.color : "transparent"}"><span class="dot"></span><b>Project</b>
+      <select id="projsel" data-id="${esc(id)}">
+        <option value="__auto">${cur ? "Automatic: " + esc(it.project.title) : "Automatic (none found)"}</option>
+        <option value="">No project</option>
+        ${it.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}
+      </select>${cur && it.project.why ? `<span class="muted">(${esc(it.project.why)})</span>` : ""}</div>`;
+  }
   if (it.type === "action") h += turnBody(it);
   else if (it.type === "mission") h += missionBody(it);
   else {
@@ -839,6 +990,17 @@ async function renderItem(v) {
     return `<button data-id="${esc(r.id)}" style="--c:${rn?.color || "#8f97bf"}"><i></i><span>${esc(r.title)}</span></button>`; }).join("")}</div>`;
   $("p-body").innerHTML = h;
   bindTrack(id);
+  const ps = $("projsel");
+  if (ps) {
+    if (it.project?.why === "you linked it") ps.value = it.project.id;
+    else if (it.project?.why === "you removed it") ps.value = "";
+    ps.onchange = async () => {
+      const v = ps.value;
+      await api("/api/link", { id, project: v === "__auto" ? null : v });
+      flash(v === "__auto" ? "Back to automatic sorting." : v ? "Linked to the project." : "Removed from its project.");
+      await loadGraph(); renderView();
+    };
+  }
   $("p-open").disabled = !it.openable;
   $("p-open").onclick = async () => { const r = await api("/api/open", { id }); flash(r.message); };
   $("p-focus").disabled = !n;
@@ -964,12 +1126,15 @@ async function select(n) {
   if (n.kind === "core") { closePanel(); flyTo(n, 260); return; }
   if (n.kind === "hub") return openTopic(n.hubKind);
   tip.style.display = "none";
+  setFocus(n.isProject ? clusterOf(n.id) : null);
+  if (n.isProject) { selected = n; flyTo(n, 230); openView({ type: "item", id: n.id, n }); return; }
   openItem(n.id);
 }
 let refreshT;
 function refreshSoon() { clearTimeout(refreshT); refreshT = setTimeout(() => { if ($("panel").classList.contains("open") && !document.activeElement.closest?.("#panel textarea, #panel input")) renderView(); loadGraph(); loadStats(); }, 700); }
 function closePanel() {
   $("panel").classList.remove("open"); selected = null; view = null; navStack.length = 0;
+  if (focusSet) setFocus(null);
   const c = Graph.camera().position; angle = Math.atan2(c.x, c.z);
 }
 $("close").onclick = closePanel;

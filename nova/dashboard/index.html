@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova · Second Brain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #03040a;
+    --glass: rgba(14, 18, 36, 0.58);
+    --glass-strong: rgba(12, 15, 30, 0.86);
+    --line: rgba(160, 175, 255, 0.14);
+    --line-strong: rgba(170, 185, 255, 0.28);
+    --text: #e9ecff;
+    --muted: #8f97bf;
+    --accent: #8b7bff;
+    --accent-2: #4cc9f0;
+    --ok: #52ffa8;
+    --radius: 18px;
+    --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--body); overflow: hidden; }
+  #graph { position: fixed; inset: 0; }
+  #graph canvas { display: block; }
+
+  /* cinematic framing */
+  .vignette { position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.55) 100%); }
+  .grain { position: fixed; inset: -50%; pointer-events: none; opacity: .06; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grain 1.2s steps(6) infinite; }
+  @keyframes grain { 0%{transform:translate(0,0)} 50%{transform:translate(-3%,2%)} 100%{transform:translate(2%,-3%)} }
+
+  .glass { background: var(--glass); border: 1px solid var(--line); border-radius: var(--radius);
+    backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05); }
+
+  /* top bar */
+  header { position: fixed; top: 18px; left: 18px; right: 18px; display: flex; gap: 14px; align-items: flex-start;
+    justify-content: space-between; pointer-events: none; z-index: 5; }
+  header > * { pointer-events: auto; }
+  .brand { display: flex; align-items: center; gap: 14px; padding: 12px 18px 12px 14px; }
+  .orb { width: 34px; height: 34px; border-radius: 50%; position: relative; flex: none;
+    background: radial-gradient(circle at 35% 30%, #fff, var(--orb, #8b7bff) 45%, #1a1440 100%);
+    box-shadow: 0 0 22px var(--orb, #8b7bff); transition: background .6s, box-shadow .6s; }
+  .orb::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid var(--orb, #8b7bff);
+    opacity: .5; animation: ring 2.4s ease-out infinite; }
+  @keyframes ring { from { transform: scale(.8); opacity: .7 } to { transform: scale(1.6); opacity: 0 } }
+  .brand h1 { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: .02em; margin: 0; }
+  .brand .status { font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: 2px; }
+  .brand .status b { color: var(--orb, #8b7bff); font-weight: 600; }
+
+  .stats { display: flex; gap: 6px; padding: 8px; }
+  .stat { padding: 8px 14px; min-width: 88px; border-radius: 12px; }
+  .stat .n { font-family: var(--display); font-size: 22px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: 6px; }
+
+  /* left rail */
+  .rail { position: fixed; left: 18px; top: 100px; width: 250px; padding: 14px; z-index: 4;
+    max-height: calc(100vh - 210px); overflow: auto; }
+  .search { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: 12px; background: rgba(0,0,0,.25); }
+  .search input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); font: 14px var(--body); }
+  .search kbd { font: 11px var(--body); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+  .rail h3 { font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px 4px 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; font-size: 12.5px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--text); cursor: pointer; user-select: none;
+    transition: all .2s; }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+  .chip small { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chip.off { opacity: .35; }
+  .chip:hover { border-color: var(--line-strong); }
+  .results { margin-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .results button, .related button { text-align: left; background: none; border: 0; color: var(--text); padding: 7px 8px;
+    border-radius: 9px; cursor: pointer; font: 13px var(--body); display: flex; gap: 8px; align-items: center; width: 100%; }
+  .results button:hover, .related button:hover { background: rgba(255,255,255,.06); }
+  .results button i, .related button i { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--c); }
+  .results button span, .related button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .views { display: flex; gap: 6px; }
+  .views button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.03);
+    color: var(--text); font: 12px var(--body); cursor: pointer; }
+  .views button.on { border-color: var(--accent); background: rgba(139,123,255,.16); }
+
+  /* detail panel */
+  .panel { position: fixed; top: 100px; right: 18px; bottom: 110px; width: min(430px, calc(100vw - 36px)); z-index: 6;
+    display: flex; flex-direction: column; transform: translateX(120%); transition: transform .5s cubic-bezier(.2,.8,.2,1);
+    background: var(--glass-strong); }
+  .panel.open { transform: none; }
+  .panel .head { padding: 18px 18px 12px; border-bottom: 1px solid var(--line); }
+  .panel .type { display: inline-flex; align-items: center; gap: 7px; font: 600 11px var(--body); letter-spacing: .12em;
+    text-transform: uppercase; color: var(--c); }
+  .panel .type i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 12px var(--c); }
+  .panel h2 { font: 600 20px/1.3 var(--display); margin: 10px 0 6px; word-break: break-word; }
+  .panel .when { color: var(--muted); font-size: 12.5px; }
+  .panel .close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--line);
+    background: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+  .panel .scroll { overflow: auto; padding: 16px 18px; flex: 1; }
+  .panel .preview img, .panel .preview video, .panel .gallery img { width: 100%; border-radius: 12px; display: block; border: 1px solid var(--line); }
+  .panel .preview iframe { width: 100%; height: 280px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .panel .preview audio { width: 100%; }
+  .panel .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .panel pre { white-space: pre-wrap; word-break: break-word; font: 13.5px/1.6 var(--body); color: #d6dbf5; margin: 14px 0 0; }
+  .panel dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 12.5px; margin: 16px 0 0; }
+  .panel dt { color: var(--muted); } .panel dd { margin: 0; word-break: break-all; }
+  .panel h4 { font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 20px 0 6px; }
+  .panel .actions { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
+  .btn { flex: 1; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.04);
+    color: var(--text); font: 600 13px var(--body); cursor: pointer; transition: all .2s; }
+  .btn.primary { background: linear-gradient(135deg, #8b7bff, #4cc9f0); border: 0; color: #070914; }
+  .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+
+  /* feed */
+  .feed { position: fixed; right: 18px; bottom: 110px; width: 360px; max-height: 38vh; z-index: 4; padding: 12px 6px 8px 14px;
+    display: flex; flex-direction: column; transition: opacity .3s; }
+  .panel.open ~ .feed { opacity: 0; pointer-events: none; }
+  .feed h3 { font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+  .feed h3 .live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .25 } }
+  .feed ul { list-style: none; margin: 0; padding: 0 8px 0 0; overflow: auto; display: flex; flex-direction: column-reverse; }
+  .feed li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+    font-size: 12.5px; animation: in .5s ease; cursor: default; }
+  .feed li.link { cursor: pointer; }
+  .feed li.link:hover .t { color: #fff; text-decoration: underline; text-decoration-color: var(--line-strong); }
+  .feed .ts { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .feed .t { color: #cfd5f5; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .feed .k { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--c, var(--muted)); margin-right: 6px; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px) } }
+
+  /* command bar */
+  .ask { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(720px, calc(100vw - 36px)); z-index: 5;
+    display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 18px; border-radius: 999px; }
+  .ask input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); font: 15px var(--body); padding: 10px 0; }
+  .ask input::placeholder { color: var(--muted); }
+  .ask .toggle { font: 12px var(--body); color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .ask button.send { border: 0; border-radius: 999px; padding: 11px 20px; font: 600 13px var(--body); cursor: pointer;
+    background: linear-gradient(135deg, #8b7bff, #4cc9f0); color: #070914; }
+  .reply { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(720px, calc(100vw - 36px)); z-index: 5;
+    padding: 14px 18px; font-size: 14.5px; line-height: 1.55; display: none; max-height: 30vh; overflow: auto; }
+  .reply.show { display: block; animation: in .4s ease; }
+
+  .hub-label { font: 600 12.5px var(--display); letter-spacing: .06em; color: #fff; padding: 4px 10px; border-radius: 999px;
+    background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); cursor: pointer;
+    text-shadow: 0 0 12px var(--c); white-space: nowrap; pointer-events: auto; transform: translateY(-50%); }
+  .hub-label:hover { background: rgba(20,24,50,.8); }
+  .core-label { font: 600 13px var(--display); letter-spacing: .5em; color: #dcdcff; text-shadow: 0 0 14px #8b7bff; pointer-events: none; }
+  .feed ul { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px); mask-image: linear-gradient(to bottom, transparent 0, #000 22px); }
+  .tooltip { position: fixed; pointer-events: none; z-index: 8; padding: 8px 12px; border-radius: 10px; font-size: 12.5px;
+    max-width: 320px; background: rgba(8,10,22,.92); border: 1px solid var(--line-strong); display: none; }
+  .tooltip b { display: block; font: 600 10px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--c); margin-bottom: 4px; }
+
+  .empty { position: fixed; left: 50%; top: 64%; transform: translateX(-50%); text-align: center; color: var(--muted);
+    font-size: 14px; z-index: 3; display: none; pointer-events: none; }
+  .empty.show { display: block; }
+  .empty strong { display: block; color: var(--text); font: 500 18px var(--display); margin-bottom: 6px; }
+
+  .intro { position: fixed; inset: 0; background: #000; z-index: 20; display: grid; place-items: center; transition: opacity 1.6s ease; }
+  .intro span { font: 500 13px var(--display); letter-spacing: .6em; color: #c9ceff; text-transform: uppercase; animation: in 1.2s ease; }
+  .intro.gone { opacity: 0; pointer-events: none; }
+
+  @media (max-width: 900px) {
+    .rail, .feed { display: none; }
+    .stats .stat:nth-child(n+3) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div class="vignette"></div>
+<div class="grain"></div>
+
+<header>
+  <div class="brand glass">
+    <div class="orb" id="orb"></div>
+    <div>
+      <h1 id="title">Nova · Second Brain</h1>
+      <div class="status">Status · <b id="status">connecting</b></div>
+    </div>
+  </div>
+  <div class="stats glass">
+    <div class="stat"><div class="n" id="s-mem">0</div><div class="l">Memories</div></div>
+    <div class="stat"><div class="n" id="s-notes">0</div><div class="l">Notes</div></div>
+    <div class="stat"><div class="n" id="s-art">0</div><div class="l">Creations</div></div>
+    <div class="stat"><div class="n" id="s-act">0</div><div class="l">Actions</div></div>
+  </div>
+</header>
+
+<aside class="rail glass">
+  <label class="search">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" placeholder="Search the brain…" autocomplete="off">
+    <kbd>/</kbd>
+  </label>
+  <div class="results" id="results"></div>
+  <h3>View</h3>
+  <div class="views">
+    <button id="v-orbit" class="on">Cinematic</button>
+    <button id="v-free">Free</button>
+    <button id="v-fit">Fit all</button>
+  </div>
+  <h3>Layers</h3>
+  <div class="chips" id="chips"></div>
+</aside>
+
+<section class="panel glass" id="panel">
+  <button class="close" id="close" aria-label="Close">✕</button>
+  <div class="head">
+    <div class="type" id="p-type"><i></i><span></span></div>
+    <h2 id="p-title"></h2>
+    <div class="when" id="p-when"></div>
+  </div>
+  <div class="scroll" id="p-body"></div>
+  <div class="actions">
+    <button class="btn" id="p-focus">Focus</button>
+    <button class="btn primary" id="p-open">Open on PC</button>
+  </div>
+</section>
+
+<section class="feed glass" id="feed">
+  <h3><span class="live"></span>Live activity</h3>
+  <ul id="feed-list"></ul>
+</section>
+
+<div class="reply glass" id="reply"></div>
+<form class="ask glass" id="ask">
+  <input id="ask-in" placeholder="Ask Nova or tell it something to remember…" autocomplete="off">
+  <label class="toggle"><input type="checkbox" id="speak"> speak</label>
+  <button class="send" type="submit">Send</button>
+</form>
+
+<div class="tooltip" id="tip"></div>
+<div class="empty" id="empty"><strong>The brain is waiting</strong>Talk to Nova — every memory, note and creation will appear here as a star.</div>
+<div class="intro" id="intro"><span>Nova</span></div>
+
+<script type="module">
+import { ForceGraph3D, THREE, UnrealBloomPass, CSS2DRenderer, CSS2DObject } from "./vendor/nova-vendor.js";
+
+const STATUS_COLORS = { idle: "#8b7bff", listening: "#4cc9f0", thinking: "#ffd166", speaking: "#ff5fa2" };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const api = (p, body) => fetch(p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}).then((r) => r.json());
+
+let data = { nodes: [], links: [] };
+let hidden = new Set();
+let selected = null;
+let orbit = true;
+let status = "idle";
+let coreObj = null;
+const nodeById = new Map();
+
+// ── graph ─────────────────────────────────────────────
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.style.pointerEvents = "none";
+const Graph = ForceGraph3D({ controlType: "orbit", extraRenderers: [labelRenderer] })($("graph"))
+  .backgroundColor("#03040a")
+  .showNavInfo(false)
+  .nodeRelSize(3.2)
+  .nodeVal((n) => n.val)
+  .nodeLabel(() => "")
+  .nodeVisibility((n) => n.kind === "core" || !hidden.has(n.kind === "hub" ? n.hubKind : n.kind))
+  .linkVisibility((l) => visible(l.source) && visible(l.target))
+  .linkColor((l) => l.type === "semantic" ? "rgba(110,190,255,0.35)" : l.type === "wiki" ? "rgba(190,160,255,0.6)"
+                    : l.type === "core" ? "rgba(200,205,255,0.28)" : "rgba(150,160,255,0.10)")
+  .linkWidth((l) => l.type === "core" ? 0.6 : l.type === "semantic" ? 0.25 : 0)
+  .linkOpacity(0.4)
+  .linkDirectionalParticles((l) => (isHot(l.source) || isHot(l.target) || l.type === "core") ? 2 : 0)
+  .linkDirectionalParticleWidth((l) => l.type === "core" ? 1.6 : 1.2)
+  .linkDirectionalParticleSpeed(0.006)
+  .linkDirectionalParticleColor((l) => colorOf(typeof l.target === "object" ? l.target : nodeById.get(l.target)))
+  .nodeThreeObject(makeNode)
+  .onNodeHover(onHover)
+  .onNodeClick((n) => select(n))
+  .onBackgroundClick(() => closePanel())
+  .warmupTicks(40)
+  .cooldownTime(8000);
+
+Graph.d3Force("charge").strength((n) => n.kind === "core" ? -420 : n.kind === "hub" ? -220 : -26);
+Graph.d3Force("link").distance((l) => l.type === "core" ? 120 : l.type === "hub" ? 34 + Math.random() * 30 : 60)
+                     .strength((l) => l.type === "semantic" ? 0.05 : l.type === "wiki" ? 0.2 : 0.7);
+
+// cinematic bloom
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.45, 0.18);
+Graph.postProcessingComposer().addPass(bloom);
+
+// starfield + nebula dust
+const scene = Graph.scene();
+scene.fog = new THREE.FogExp2(0x03040a, 0.0011);
+const glowTex = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const g = c.getContext("2d"), grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, "rgba(255,255,255,1)"); grd.addColorStop(0.25, "rgba(255,255,255,.55)"); grd.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+})();
+function starfield(count, radius, size, color, opacity) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const r = radius * (0.5 + Math.random() * 0.5), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+    pos[i * 3] = r * Math.sin(p) * Math.cos(t); pos[i * 3 + 1] = r * Math.sin(p) * Math.sin(t); pos[i * 3 + 2] = r * Math.cos(p);
+  }
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const m = new THREE.PointsMaterial({ color, size, map: glowTex, transparent: true, opacity, depthWrite: false, sizeAttenuation: true, fog: false, blending: THREE.AdditiveBlending });
+  const pts = new THREE.Points(g, m);
+  scene.add(pts);
+  return pts;
+}
+const stars = starfield(4500, 2600, 7, 0xc8d0ff, 0.9);
+const dust = starfield(1200, 700, 9, 0x7a6cff, 0.35);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+
+
+function htmlLabel(text, cls, dy) {
+  const el = document.createElement("div"); el.className = cls; el.textContent = text;
+  const obj = new CSS2DObject(el); obj.position.set(0, dy, 0); return obj;
+}
+function colorOf(n) { return n?.color || "#8b7bff"; }
+function visible(n) {
+  if (typeof n !== "object") n = nodeById.get(n);
+  return n && (n.kind === "core" || !hidden.has(n.kind === "hub" ? n.hubKind : n.kind));
+}
+function isHot(n) { if (typeof n !== "object") n = nodeById.get(n); return !!(n && n.hot); }
+
+function makeNode(n) {
+  const group = new THREE.Group();
+  const color = new THREE.Color(colorOf(n));
+  if (n.kind === "core") {
+    const inner = new THREE.Mesh(new THREE.SphereGeometry(7, 48, 48), new THREE.MeshBasicMaterial({ color: 0xd9d4ff }));
+    const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(15, 1),
+      new THREE.MeshBasicMaterial({ color: 0x8b7bff, wireframe: true, transparent: true, opacity: 0.45 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(23, 0.3, 12, 140),
+      new THREE.MeshBasicMaterial({ color: 0x8b7bff, transparent: true, opacity: 0.6 }));
+    ring.rotation.x = Math.PI / 2.4;
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(30, 0.18, 8, 140),
+      new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: 0.35 }));
+    ring2.rotation.x = Math.PI / 1.7; ring2.rotation.y = 0.5;
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0x8b7bff, transparent: true, opacity: 0.45, depthWrite: false }));
+    halo.scale.set(60, 60, 1);
+    group.add(halo, inner, shell, ring, ring2);
+    group.add(htmlLabel(n.label.toUpperCase(), "core-label", 40));
+    coreObj = { group, shell, ring, ring2, halo, inner };
+    return group;
+  }
+  if (n.kind === "hub") {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(3.4, 32, 32), new THREE.MeshBasicMaterial({ color }));
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.4, depthWrite: false }));
+    halo.scale.set(24, 24, 1);
+    const lab = htmlLabel(n.label, "hub-label", 9);
+    lab.element.style.setProperty("--c", n.color);
+    lab.element.onclick = () => select(n);
+    group.add(halo, s, lab);
+    group.userData = { label: lab };
+    return group;
+  }
+  const r = Math.cbrt(n.val || 4) * 1.35;
+  const s = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 18), new THREE.MeshBasicMaterial({ color }));
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: n.hot ? 0.8 : 0.28, depthWrite: false }));
+  halo.scale.set(r * (n.hot ? 9 : 4.5), r * (n.hot ? 9 : 4.5), 1);
+  group.add(halo, s);
+  group.userData = { halo, hot: n.hot, base: r };
+  return group;
+}
+
+// ── tooltip ───────────────────────────────────────────
+const tip = $("tip");
+let mouse = { x: 0, y: 0 };
+addEventListener("mousemove", (e) => { mouse = { x: e.clientX, y: e.clientY }; if (tip.style.display === "block") placeTip(); });
+function placeTip() { tip.style.left = Math.min(mouse.x + 16, innerWidth - 340) + "px"; tip.style.top = (mouse.y + 16) + "px"; }
+function onHover(n) {
+  $("graph").style.cursor = n ? "pointer" : "grab";
+  if (!n || n.kind === "core") { tip.style.display = "none"; return; }
+  tip.style.setProperty("--c", n.color);
+  tip.innerHTML = `<b>${esc(n.kind === "hub" ? "Category" : labelFor(n.kind))}</b>${esc(n.label)}`;
+  tip.style.display = "block"; placeTip();
+}
+
+const LABELS = { person: "Person", project: "Project", preference: "Preference", fact: "Fact", goal: "Goal",
+  decision: "Decision", routine: "Routine", event: "Event", note: "Note", file: "File", site: "Website", video: "Video",
+  ad: "Ad", image: "Image", email: "Email", doc: "Google Doc", scrape: "Web research", audio: "Audio" };
+const labelFor = (k) => LABELS[k] || k;
+
+// ── camera ────────────────────────────────────────────
+let angle = 0, userBusy = 0;
+const controls = Graph.controls();
+controls.addEventListener("start", () => {
+  userBusy = performance.now();
+  const c = Graph.camera().position; angle = Math.atan2(c.x, c.z);   // resume orbit from where the user left it
+});
+function flyTo(n, dist = 90) {
+  if (n.x === undefined) return;
+  const len = Math.hypot(n.x, n.y, n.z) || 1;
+  const ratio = 1 + dist / len;
+  Graph.cameraPosition({ x: n.x * ratio, y: n.y * ratio + 8, z: n.z * ratio }, n, 1800);
+  userBusy = performance.now() + 4000;
+}
+
+// animation loop: core breathing, hot pulses, slow cinematic orbit
+const t0 = performance.now();
+function animate() {
+  const t = (performance.now() - t0) / 1000;
+  if (coreObj) {
+    const c = new THREE.Color(STATUS_COLORS[status] || STATUS_COLORS.idle);
+    const speed = status === "thinking" ? 2.2 : status === "listening" ? 1.4 : status === "speaking" ? 3.2 : 0.6;
+    coreObj.shell.rotation.y += 0.004 * speed; coreObj.shell.rotation.x += 0.002 * speed;
+    coreObj.ring.rotation.z += 0.003 * speed;
+    const pulse = 1 + Math.sin(t * speed * 2) * (status === "idle" ? 0.04 : 0.12);
+    coreObj.inner.scale.setScalar(pulse); coreObj.halo.scale.setScalar(60 * pulse); coreObj.ring2.rotation.z -= 0.002 * speed;
+    coreObj.shell.material.color.lerp(c, 0.05); coreObj.ring.material.color.lerp(c, 0.05); coreObj.halo.material.color.lerp(c, 0.05); coreObj.ring2.material.color.lerp(c, 0.02);
+  }
+  for (const n of data.nodes) {
+    const u = n.__threeObj?.userData;
+    if (u?.label) u.label.visible = n.__threeObj.visible;
+    if (u?.hot) { const k = 1 + Math.sin(t * 3 + (n.x || 0)) * 0.25; u.halo.scale.set(u.base * 9 * k, u.base * 9 * k, 1); }
+  }
+  stars.rotation.y += 0.00008; dust.rotation.y -= 0.0002;
+  if (orbit && performance.now() - userBusy > 3500 && !selected) {
+    angle += 0.0012;
+    const cam = Graph.camera(), r = Math.hypot(cam.position.x, cam.position.z) || 420;
+    const target = Math.max(420, Math.min(r, 1000));
+    const y = cam.position.y + (60 + Math.sin(t * 0.07) * 80 - cam.position.y) * 0.004;
+    Graph.cameraPosition({ x: target * Math.sin(angle), y, z: target * Math.cos(angle) }, { x: 0, y: 0, z: 0 });
+  }
+  requestAnimationFrame(animate);
+}
+
+// ── data ──────────────────────────────────────────────
+async function loadGraph() {
+  const g = await api("/api/graph");
+  const old = new Map(data.nodes.map((n) => [n.id, n]));
+  g.nodes.forEach((n) => { const o = old.get(n.id); if (o) Object.assign(n, { x: o.x, y: o.y, z: o.z, vx: o.vx, vy: o.vy, vz: o.vz }); });
+  data = g;
+  nodeById.clear(); g.nodes.forEach((n) => nodeById.set(n.id, n));
+  Graph.graphData(g);
+  buildChips();
+  $("empty").classList.toggle("show", g.nodes.length <= 1);
+}
+
+function buildChips() {
+  const counts = {};
+  const colors = {};
+  for (const n of data.nodes) if (n.kind === "hub") colors[n.hubKind] = n.color;
+  for (const n of data.nodes) if (!["core", "hub"].includes(n.kind)) counts[n.kind] = (counts[n.kind] || 0) + 1;
+  $("chips").innerHTML = Object.keys(colors).sort((a, b) => (counts[b] || 0) - (counts[a] || 0)).map((k) =>
+    `<span class="chip ${hidden.has(k) ? "off" : ""}" data-k="${k}" style="--c:${colors[k]}"><i></i>${esc(labelFor(k))}<small>${counts[k] || 0}</small></span>`).join("");
+}
+$("chips").addEventListener("click", (e) => {
+  const c = e.target.closest(".chip"); if (!c) return;
+  const k = c.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+  c.classList.toggle("off");
+  Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility());
+});
+
+async function loadStats() {
+  const s = await api("/api/stats");
+  $("title").textContent = `${s.name} · Second Brain`;
+  countTo($("s-mem"), s.memories); countTo($("s-notes"), s.notes); countTo($("s-art"), s.artifacts); countTo($("s-act"), s.actions);
+  setStatus(s.status);
+}
+function countTo(el, v) {
+  const from = +el.textContent || 0; if (from === v) return;
+  const t0 = performance.now();
+  const step = (t) => { const k = Math.min(1, (t - t0) / 900); el.textContent = Math.round(from + (v - from) * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function setStatus(s) {
+  status = s || "idle";
+  $("status").textContent = status;
+  document.documentElement.style.setProperty("--orb", STATUS_COLORS[status] || STATUS_COLORS.idle);
+}
+
+// ── live activity ─────────────────────────────────────
+let lastId = 0;
+const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2" };
+async function poll() {
+  try {
+    const r = await api(`/api/activity?since=${lastId}`);
+    setStatus(r.status);
+    if (r.events.length) {
+      const first = lastId === 0;
+      lastId = r.events[r.events.length - 1].id;
+      const ul = $("feed-list");
+      for (const e of r.events) {
+        const li = document.createElement("li");
+        if (e.ref) { li.classList.add("link"); li.onclick = () => openById(e.ref); }
+        li.style.setProperty("--c", KIND_COLORS[e.kind] || "#8f97bf");
+        li.innerHTML = `<span class="ts">${esc(e.ts.slice(11, 16))}</span><span class="t"><span class="k">${esc(e.kind)}</span>${esc(e.title)}</span>`;
+        ul.prepend(li);
+      }
+      while (ul.children.length > 80) ul.lastChild.remove();
+      if (!first && r.events.some((e) => ["memory", "artifact"].includes(e.kind))) { await loadGraph(); loadStats(); }
+      else if (!first) loadStats();
+    }
+  } catch { setStatus("offline"); }
+  setTimeout(poll, 1500);
+}
+
+// ── detail panel ──────────────────────────────────────
+function openById(id) {
+  const n = nodeById.get(id);
+  if (n) select(n); else showItem(id, null);
+}
+async function select(n) {
+  if (n.kind === "core") { closePanel(); flyTo(n, 260); return; }
+  if (n.kind === "hub") { tip.style.display = "none"; flyTo(n, 180); return; }
+  tip.style.display = "none";
+  selected = n; flyTo(n, 120); showItem(n.id, n);
+}
+async function showItem(id, n) {
+  const it = await api(`/api/item?id=${encodeURIComponent(id)}`);
+  if (it.error) return;
+  const color = n?.color || "#8b7bff";
+  const panel = $("panel");
+  panel.style.setProperty("--c", color);
+  $("p-type").querySelector("span").textContent = labelFor(it.type);
+  $("p-title").textContent = it.title;
+  $("p-when").textContent = it.created ? new Date(it.created).toLocaleString() : (it.location || "");
+  let h = "";
+  const pv = it.preview;
+  if (pv?.type === "image") h += `<div class="preview"><img src="${pv.src}" alt=""></div>`;
+  if (pv?.type === "video") h += `<div class="preview"><video src="${pv.src}" controls autoplay muted loop playsinline></video></div>`;
+  if (pv?.type === "audio") h += `<div class="preview"><audio src="${pv.src}" controls></audio></div>`;
+  if (pv?.type === "site") h += `<div class="preview"><iframe src="${pv.src}" loading="lazy"></iframe></div>`;
+  if (it.gallery?.length) h += `<div class="gallery">${it.gallery.map((g) => `<img src="${g}" alt="">`).join("")}</div>`;
+  if (it.body && it.body !== it.title) h += `<pre>${esc(it.body)}</pre>`;
+  const meta = { ...(it.meta || {}) }; if (it.location) meta.location = it.location;
+  if (Object.keys(meta).length) h += `<dl>${Object.entries(meta).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
+  if (it.history?.length) h += `<h4>Earlier versions</h4><pre>${it.history.map((x) => `• ${esc(x.text)}  (${esc(x.created.slice(0, 10))})`).join("\n")}</pre>`;
+  if (it.related?.length) h += `<h4>Connected thoughts</h4><div class="related">${it.related.map((r) => {
+    const rn = nodeById.get(r.id);
+    return `<button data-id="${esc(r.id)}" style="--c:${rn?.color || "#8f97bf"}"><i></i><span>${esc(r.title)}</span></button>`; }).join("")}</div>`;
+  $("p-body").innerHTML = h;
+  $("p-open").disabled = !it.openable;
+  $("p-open").onclick = async () => { const r = await api("/api/open", { id }); flash(r.message); };
+  $("p-focus").onclick = () => n && flyTo(n, 45);
+  panel.classList.add("open");
+}
+$("p-body").addEventListener("click", (e) => { const b = e.target.closest("button[data-id]"); if (b) openById(b.dataset.id); });
+function closePanel() {
+  $("panel").classList.remove("open"); selected = null;
+  const c = Graph.camera().position; angle = Math.atan2(c.x, c.z);
+}
+$("close").onclick = closePanel;
+
+function flash(msg) { const r = $("reply"); r.textContent = msg; r.classList.add("show"); clearTimeout(flash.t); flash.t = setTimeout(() => r.classList.remove("show"), 4000); }
+
+// ── search ────────────────────────────────────────────
+$("q").addEventListener("input", () => {
+  const q = $("q").value.trim().toLowerCase();
+  if (!q) { $("results").innerHTML = ""; return; }
+  const hits = data.nodes.filter((n) => !["core"].includes(n.kind) && n.label.toLowerCase().includes(q)).slice(0, 12);
+  $("results").innerHTML = hits.map((n) => `<button data-id="${esc(n.id)}" style="--c:${n.color}"><i></i><span>${esc(n.label)}</span></button>`).join("")
+    || `<div style="color:var(--muted);font-size:12.5px;padding:6px 8px">No matches</div>`;
+});
+$("results").addEventListener("click", (e) => { const b = e.target.closest("button[data-id]"); if (b) select(nodeById.get(b.dataset.id)); });
+addEventListener("keydown", (e) => {
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("q").focus(); }
+  if (e.key === "Escape") closePanel();
+});
+
+// ── views ─────────────────────────────────────────────
+const setView = (id) => ["v-orbit", "v-free"].forEach((v) => $(v).classList.toggle("on", v === id));
+$("v-orbit").onclick = () => { orbit = true; setView("v-orbit"); };
+$("v-free").onclick = () => { orbit = false; setView("v-free"); };
+$("v-fit").onclick = () => { userBusy = performance.now() + 3000; Graph.zoomToFit(1200, 60); };
+
+// ── ask Nova ──────────────────────────────────────────
+$("ask").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = $("ask-in").value.trim(); if (!text) return;
+  $("ask-in").value = ""; flash("Thinking…"); setStatus("thinking");
+  try { const r = await api("/api/ask", { text, speak: $("speak").checked }); flash(r.text || r.error); clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 15000); }
+  catch { flash("Nova is offline."); }
+});
+
+addEventListener("resize", () => { Graph.width(innerWidth).height(innerHeight); bloom.setSize(innerWidth, innerHeight); });
+
+// ── start ─────────────────────────────────────────────
+Graph.cameraPosition({ x: 0, y: 120, z: 1400 });
+await Promise.all([loadGraph(), loadStats()]);
+requestAnimationFrame(animate);
+setTimeout(() => {
+  $("intro").classList.add("gone");
+  Graph.cameraPosition({ x: 0, y: 80, z: 620 }, { x: 0, y: 0, z: 0 }, 3200);
+  userBusy = performance.now() + 3200;
+}, 500);
+poll();
+</script>
+</body>
+</html>

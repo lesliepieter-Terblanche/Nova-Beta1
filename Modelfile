@@ -1,0 +1,5 @@
+# Nova's local brain: Qwen 2.5 3B with a bigger context window (fits a 4 GB GPU).
+# Built by setup.bat with:  ollama create nova-qwen -f Modelfile
+FROM qwen2.5:3b
+PARAMETER num_ctx 8192
+PARAMETER temperature 0.3

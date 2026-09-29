@@ -1,0 +1,91 @@
+# Troubleshooting
+
+Start with the health check. It tells you what's missing:
+
+```bat
+run.bat --check
+```
+
+## Setup
+
+| Problem | Fix |
+|---|---|
+| `Python 3.11 was not found` | Install 3.11 from python.org with **Add python.exe to PATH** ticked, then reopen the terminal. |
+| `pip install` fails on a package with "Microsoft Visual C++ 14.0 is required" | Install [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/) ("Desktop development with C++"), rerun setup. Usually caused by using Python 3.13. Use 3.11. |
+| `winget` not recognised | Windows 10: install **App Installer** from the Microsoft Store, or install [Ollama](https://ollama.com/download) and [Git](https://git-scm.com) manually. |
+| `ollama pull` hangs or fails | Check your internet, then run the three `ollama` lines from INSTALL.md manually. The model is ~2.5 GB. |
+| Setup window closes instantly | Run it from a terminal (`cd` to the folder, type `setup.bat`) to see the error. |
+
+## Voice
+
+| Problem | Fix |
+|---|---|
+| Never wakes up | Check the Windows microphone privacy setting (Settings → Privacy → Microphone → allow desktop apps). Set your mic as the **default** input device. Lower `voice.wake_threshold` to 0.35. |
+| Wakes up randomly | Raise `wake_threshold` to 0.6–0.7. |
+| Cuts me off mid-sentence | Raise `voice.silence_seconds` to 1.5. |
+| Keeps recording forever | Background noise is above the threshold. Use a headset or move away from fans/TV. |
+| Wrong words transcribed | `voice.stt_model: small.en` (more accurate, slower). |
+| Robotic voice | ElevenLabs isn't being used. Check `ELEVENLABS_API_KEY`, your quota and `tts.engine: elevenlabs`. The console shows `[tts] ElevenLabs failed (…)` with the reason. |
+| No sound at all | Check the default output device. `pip install --force-reinstall sounddevice`. |
+| `PortAudio library not found` | `pip install --force-reinstall sounddevice` (the Windows wheel bundles PortAudio). |
+
+## Brain
+
+| Problem | Fix |
+|---|---|
+| `All models failed` | Is Ollama running? `ollama list` should show `nova-qwen`. Start it with `ollama serve`. |
+| Slow answers | The first request loads the model into the GPU (~10 s). Keep Ollama running. `nvidia-smi` shows whether the GPU is used. |
+| Local model gives odd answers or calls the wrong tools | Normal for 3B models on complex asks. Add a `GEMINI_API_KEY`: hard requests and struggling turns escalate automatically. Add words to `llm.escalate_keywords`. |
+| `[llm] smart=none` | No Gemini/Groq keys in `.env`. |
+| Gemini `400` on tool schema | An MCP server's tool schema uses features Gemini rejects. Use `only_tools` to exclude it, or put Groq first in `smart`. |
+| Semantic memory search not working | `ollama pull nomic-embed-text`. Without it, keyword search is used. |
+
+## Telegram
+
+| Problem | Fix |
+|---|---|
+| Bot says "Not authorised" | Put the ID it shows into `telegram.allowed_user_ids` and restart. |
+| Bot doesn't respond | Check `TELEGRAM_BOT_TOKEN`. Only one program can poll a bot. Close other copies of Nova. |
+| No voice replies | ElevenLabs or ffmpeg issue. Text still arrives, and the console shows `[telegram] voice reply failed`. |
+
+## Google
+
+| Problem | Fix |
+|---|---|
+| `Google isn't connected yet` | `run.bat --google-login` |
+| `Missing secrets\credentials.json` | Download the **Desktop app** OAuth client JSON, save it with exactly that name. |
+| `access_denied` / "app not verified" blocks you | Add yourself as a test user, or publish the app, then click *Advanced → Go to Nova*. |
+| Logged out every 7 days | Publish the app (OAuth consent screen → Publish). Delete `secrets\token.json` and log in again. |
+| `insufficient permissions` | You enabled more APIs later. Delete `secrets\token.json` and run `--google-login` again. |
+| `API has not been used in project` | Enable that API in Google Cloud Console → Library. |
+
+## Browser, webcam, media
+
+| Problem | Fix |
+|---|---|
+| Browser tools fail to start | `.venv\Scripts\python -m playwright install chromium` |
+| Sites log you out | Nova uses its own profile in `data\browser_profile`. Log in once in *that* window. |
+| `Couldn't open the webcam` | Close Teams/Zoom/Camera app. Check Settings → Privacy → Camera. |
+| Ads have the full photo, not a cut-out | `pip install "rembg[cpu]"`. The first run downloads a ~170 MB model. |
+| Video creation fails | The console shows the ffmpeg error. Check disk space. |
+
+## MCP
+
+| Problem | Fix |
+|---|---|
+| `[mcp] <name> failed to start` | Run the `command args…` from the config manually in a terminal to see its error. For `uvx`, start Nova via `run.bat` so the venv's `uvx` is on PATH. For `npx`, install Node.js LTS. |
+| Tools never used | Add `keywords` that you actually say. Check with *"which extensions are loaded?"* |
+| Asks for confirmation too often | `confirm: never` for read-only servers, or a list of the tools that should ask. |
+
+## Updates and rollback
+
+| Problem | Fix |
+|---|---|
+| "Nova isn't a git repository yet" | Run `setup_github.bat` (or clone the repo instead of downloading the ZIP). |
+| Update says my edits were stashed | They're safe: `git stash list`, then `git stash pop`. |
+| Want to undo a rollback | Say "update yourself" or run `update.bat`. |
+
+## Still stuck?
+
+[Open an issue](../../issues/new?template=bug_report.md) with the output of `run.bat --check` and the console
+lines around the error. Remove keys and personal details first.

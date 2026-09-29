@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    { "name": "Nova (voice + Telegram + dashboard)", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/main.py", "cwd": "${workspaceFolder}", "console": "integratedTerminal" },
+    { "name": "Nova (type instead of talk)", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/main.py", "args": ["--text"], "cwd": "${workspaceFolder}", "console": "integratedTerminal" },
+    { "name": "Nova (no microphone)", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/main.py", "args": ["--no-voice"], "cwd": "${workspaceFolder}", "console": "integratedTerminal" },
+    { "name": "Nova health check", "type": "debugpy", "request": "launch",
+      "program": "${workspaceFolder}/main.py", "args": ["--check"], "cwd": "${workspaceFolder}", "console": "integratedTerminal" }
+  ]
+}

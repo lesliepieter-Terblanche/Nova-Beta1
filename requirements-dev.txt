@@ -1,0 +1,3 @@
+# For contributors: tests + lint (CI installs only these plus the light core packages)
+pytest>=8
+ruff>=0.5

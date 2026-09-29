@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Nova: save my changes to GitHub (new version)", "type": "shell", "command": "${workspaceFolder}\\release.bat", "problemMatcher": [] },
+    { "label": "Nova: update from GitHub", "type": "shell", "command": "${workspaceFolder}\\update.bat", "problemMatcher": [] },
+    { "label": "Nova: roll back to an earlier version", "type": "shell", "command": "${workspaceFolder}\\rollback.bat", "problemMatcher": [] },
+    { "label": "Nova: health check", "type": "shell", "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe main.py --check", "problemMatcher": [] }
+  ]
+}

@@ -1,0 +1,7 @@
+# Optional: local AI image generation (Stable Diffusion 1.5) on an NVIDIA GPU.
+# ~5 GB download. Then set media.image_gen_enabled: true in config.yaml
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch
+diffusers>=0.29
+transformers>=4.41
+accelerate>=0.30

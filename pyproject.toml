@@ -1,0 +1,30 @@
+[project]
+name = "nova-agent"
+version = "1.1.0"
+description = "Voice-first, local-first personal AI agent with permanent memory, a 3D second-brain dashboard, MCP support and Telegram remote control."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+keywords = ["voice-assistant", "local-first", "ollama", "mcp", "second-brain", "whisper", "elevenlabs"]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Operating System :: Microsoft :: Windows",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Documentation = "https://github.com/lesliepieter-Terblanche/Nova-Beta1/tree/main/docs"
+Issues = "https://github.com/lesliepieter-Terblanche/Nova-Beta1/issues"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["nova/dashboard/vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501", "E731", "E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

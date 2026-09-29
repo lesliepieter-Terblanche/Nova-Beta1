@@ -1,0 +1,9 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "files.exclude": { "**/__pycache__": true, ".venv": true },
+  "search.exclude": { "data": true, "workspace": true, "nova/dashboard/vendor": true },
+  "editor.formatOnSave": false,
+  "git.enableSmartCommit": true,
+  "git.postCommitCommand": "push"
+}

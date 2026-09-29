@@ -1,0 +1,186 @@
+# ─────────────────────────────────────────────────────────────
+#  Nova — voice-first, local-first AI agent
+#  This is the template. Setup copies it to config.yaml (your personal copy,
+#  never committed). Secrets (API keys, bot token) go in .env, NOT here.
+# ─────────────────────────────────────────────────────────────
+
+assistant:
+  name: Nova
+  owner: Friend                 # your first name — setup asks for it
+  timezone: UTC                 # IANA name, e.g. Africa/Johannesburg, Europe/London, America/New_York
+  city: ""                      # used for weather in briefings
+  max_history_turns: 12
+
+llm:
+  # Hybrid: local Ollama for everyday requests. Hard tasks / failures go down the "smart" list.
+  # Providers without an API key in .env are skipped automatically.
+  primary: ollama
+  smart: [gemini, groq]      # tried in this order
+  providers:
+    ollama:
+      base_url: http://localhost:11434/v1
+      model: nova-qwen       # qwen2.5:3b with an 8k context window (made by setup). Fits 4 GB VRAM.
+      timeout: 90
+    gemini:                  # free API key: aistudio.google.com/apikey  -> GEMINI_API_KEY in .env
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+      model: gemini-2.5-flash
+      key_env: GEMINI_API_KEY
+      timeout: 90
+    groq:                    # free API key: console.groq.com/keys  -> GROQ_API_KEY in .env
+      base_url: https://api.groq.com/openai/v1
+      model: llama-3.3-70b-versatile
+      key_env: GROQ_API_KEY
+      timeout: 60
+    # ollama_vision:         # fully local vision: `ollama pull gemma3:4b`, then set vision_provider: ollama_vision
+    #   base_url: http://localhost:11434/v1
+    #   model: gemma3:4b
+    #   timeout: 120
+  vision_provider: gemini    # used to look at screenshots, photos and webcam images
+  # Requests containing these go straight to the smarter cloud model.
+  escalate_keywords: ["think hard", "in detail", "plan ", "write a", "write me", "build a website", "analyse", "analyze",
+                      "compare", "summarise", "summarize", "draft", "explain why", "strategy"]
+  max_tool_rounds: 6
+
+voice:
+  enabled: true
+  wake_word: hey_jarvis      # built-in openWakeWord models: hey_jarvis, alexa, hey_mycroft
+  wake_threshold: 0.5
+  stt_model: base.en         # tiny.en | base.en | small.en | base (multilingual). Runs on CPU.
+  stt_language: en           # null = auto-detect (e.g. Afrikaans, with a multilingual model)
+  silence_seconds: 1.1       # stop recording after this much silence
+  max_record_seconds: 25
+  follow_up_seconds: 6       # after replying, keep listening this long without needing the wake word
+  max_spoken_chars: 450      # longer answers: speak the start, send the full text to Telegram
+  chime: true                # little beep when Nova starts listening
+
+tts:
+  engine: elevenlabs         # elevenlabs | piper   (piper is the offline backup, used automatically on failure)
+  elevenlabs:
+    voice_id: JBFqnCBsd6RMkjVDRZzb   # replace with your own voice ID from elevenlabs.io -> Voices
+    model: eleven_flash_v2_5         # fastest; use eleven_multilingual_v2 for richer quality
+    stability: 0.45
+    similarity_boost: 0.8
+    style: 0.15
+    speed: 1.0
+  piper:
+    voice: voices/en_GB-alan-medium.onnx
+
+telegram:
+  enabled: true
+  # Only these Telegram user IDs may control Nova. Message the bot /id to find yours.
+  allowed_user_ids: []
+  voice_replies: true        # answer voice notes with a voice note (your ElevenLabs voice)
+
+google:
+  enabled: true
+  credentials_file: secrets/credentials.json
+  token_file: secrets/token.json
+
+brain:
+  vault_dir: data/brain      # plain markdown notes — open in Obsidian if you like
+  db_file: data/nova.db      # permanent memory, activity log, search index
+  embed_model: nomic-embed-text
+  learn_automatically: true  # extract new memories after every conversation
+
+dashboard:
+  enabled: true
+  port: 8765                 # http://localhost:8765
+  open_on_start: true
+
+files:
+  # Nova may only touch files inside these folders.
+  allowed_roots:
+    - "~/Documents"
+    - "~/Desktop"
+    - "~/Downloads"
+    - "~/Pictures"
+    - "~/Videos"
+    - "./workspace"
+
+web:
+  sites_dir: workspace/sites
+
+media:
+  output_dir: workspace/videos
+  # Optional local AI images (Stable Diffusion 1.5, ~3 GB VRAM). Needs requirements-imagegen.txt
+  image_gen_enabled: false
+  image_model: runwayml/stable-diffusion-v1-5
+
+system:
+  allow_shell: true          # shell commands always need a "yes" first
+
+# ─────────────────────────────────────────────────────────────
+#  MCP servers — plug in any Model Context Protocol server (docs/MCP.md)
+#  Same shape as Claude Desktop. Each server's tools become Nova tools.
+#    keywords: words that make Nova offer this server's tools to the model
+#    confirm:  auto (default: ask before write/destructive tools) | always | never | [tool names]
+#    only_tools: [..] expose just these tools (keeps small local models focused)
+# ─────────────────────────────────────────────────────────────
+mcp_import_claude_desktop: false   # true = also load servers from Claude Desktop's config
+
+mcp_servers:
+  windows:                   # control any Windows app: click, type, read the screen (CursorTouch/Windows-MCP)
+    enabled: false
+    command: uvx
+    args: ["windows-mcp"]
+    keywords: [window, app, desktop, click on, type into, excel, outlook app, settings app]
+    confirm: auto
+
+  home_assistant:            # smart home — enable the "Model Context Protocol Server" integration in HA
+    enabled: false
+    url: http://homeassistant.local:8123/api/mcp
+    headers: { Authorization: "Bearer ${HA_TOKEN}" }     # long-lived token in .env
+    keywords: [light, lights, lamp, aircon, geyser, gate, alarm, temperature, thermostat, switch, plug]
+    confirm: never
+
+  github:                    # repos, issues, PRs (needs Docker + a GitHub token in .env)
+    enabled: false
+    command: docker
+    args: ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"]
+    env: { GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}" }
+    keywords: [github, repo, pull request, issue]
+
+  git:                       # history/diffs of a local repo
+    enabled: false
+    command: uvx
+    args: ["mcp-server-git", "--repository", "C:/path/to/repo"]
+    keywords: [git, commit, diff, branch]
+
+  fetch:                     # fetch any URL as markdown (official reference server)
+    enabled: false
+    command: uvx
+    args: ["mcp-server-fetch"]
+    keywords: [fetch, url, http]
+
+  blender:                   # 3D scenes in Blender (ahujasid/blender-mcp + its Blender add-on)
+    enabled: false
+    command: uvx
+    args: ["blender-mcp"]
+    keywords: [blender, 3d model, 3d scene, render]
+
+  google_workspace_plus:     # alternative/extra Google tools: Slides, Forms, Chat… (taylorwilsdon/google_workspace_mcp)
+    enabled: false
+    command: uvx
+    args: ["workspace-mcp", "--tools", "slides", "forms", "chat"]
+    env: { GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}", GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}" }
+    keywords: [slides, presentation, google form, google chat]
+
+# Let Claude Desktop / Claude Code / Cursor use Nova's memory and skills (python -m nova.mcp_server)
+nova_mcp_server:
+  expose_groups: [brain, files, web, google, media]
+
+# ─────────────────────────────────────────────────────────────
+#  Routines — things Nova does on its own at set times (docs/CONFIGURATION.md)
+# ─────────────────────────────────────────────────────────────
+routines: []
+#  - name: Morning briefing
+#    at: "07:30"
+#    days: [mon, tue, wed, thu, fri]
+#    prompt: "Give me my morning briefing"
+#    speak: true
+#    telegram: true
+#  - name: Weekly review
+#    at: "16:00"
+#    days: [fri]
+#    prompt: "Do my weekly review"
+#    telegram: true

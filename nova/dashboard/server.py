@@ -300,7 +300,9 @@ class Dashboard:
             waiting = s.db.execute("SELECT id,title,ts FROM activity WHERE kind='tool' AND status='waiting' "
                                    "ORDER BY id DESC LIMIT 5").fetchall()
             doing = s.db.execute("SELECT item, note FROM tracking WHERE status='doing' ORDER BY updated DESC LIMIT 8").fetchall()
-        out = {"status": s.status, "busy": tid is not None,
+        from ..presence import _presence
+        pres = _presence.status() if _presence else {"enabled": False}
+        out = {"status": s.status, "busy": tid is not None, "presence": pres,
                "waiting": [dict(w) for w in waiting],
                "doing": [{"id": d["item"], "title": self.title_of(d["item"]) or d["item"], "note": d["note"]} for d in doing]}
         t = self.turn(tid if tid is not None else tid_last) if (tid is not None or tid_last) else None

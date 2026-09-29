@@ -108,6 +108,8 @@ SCHEMA = [
         {"path": "telegram.allowed_user_ids", "label": "Allowed Telegram user IDs", "type": "tags",
          "help": "Message your bot /id to find yours. Only these IDs can control Nova."},
         {"path": "telegram.voice_replies", "label": "Reply to voice notes with a voice note", "type": "bool"},
+        {"path": "telegram.announce_online", "label": "Message me when Nova starts / stops", "type": "bool",
+         "default": True, "help": "🟢 online when run.bat starts Nova, 🔴 when it stops"},
     ]},
     {"id": "google", "title": "Google", "icon": "mail", "fields": [
         {"path": "google.enabled", "label": "Google Workspace enabled", "type": "bool"},
@@ -137,6 +139,22 @@ SCHEMA = [
         {"path": "gestures.actions.fist", "label": "✊ Fist (hold)", "type": "select", "default": "escape", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
         {"path": "gestures.actions.swipe_left", "label": "👈 Swipe left", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
         {"path": "gestures.actions.swipe_right", "label": "👉 Swipe right", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+    ]},
+    {"id": "presence", "title": "Presence", "icon": "eye", "fields": [
+        {"path": "presence.enabled", "label": "Presence awareness", "type": "bool", "default": False,
+         "help": "Uses the webcam. Also: say 'turn on presence awareness'"},
+        {"path": "presence.away_seconds", "label": "Away after (seconds without you)", "type": "number", "min": 15,
+         "max": 900, "default": 60},
+        {"path": "presence.greet", "label": "Welcome me back", "type": "bool", "default": True},
+        {"path": "presence.greet_after_seconds", "label": "…after being away at least (s)", "type": "number", "min": 0,
+         "max": 7200, "default": 300},
+        {"path": "presence.morning_briefing", "label": "Morning briefing when I first sit down", "type": "bool",
+         "default": True},
+        {"path": "presence.briefing_prompt", "label": "Briefing request", "type": "text",
+         "default": "I just sat down at my desk. Give me my short morning briefing: today's calendar, the weather and anything urgent."},
+        {"path": "presence.lock_pc", "label": "Lock the PC when I walk away", "type": "bool", "default": False},
+        {"path": "presence.lock_after_seconds", "label": "Lock after (seconds away)", "type": "number", "min": 30,
+         "max": 3600, "default": 120},
     ]},
     {"id": "globe", "title": "God's Eye View", "icon": "globe", "fields": [
         {"path": "globe.auto_start", "label": "Start the globe with Nova", "type": "bool", "default": False,
@@ -527,6 +545,16 @@ def run_test(kind: str) -> dict:
                           headers={"Authorization": key}, timeout=15)
             return {"ok": r.status_code == 200, "message": "Pexels key works." if r.status_code == 200
                     else f"Pexels said {r.status_code}."}
+        if kind in ("presence", "presence_off"):
+            from .presence import presence
+            p = presence()
+            if kind == "presence_off":
+                return {"ok": True, "message": p.stop()}
+            msg = p.start() if not p.enabled else "Presence awareness is on."
+            if not p.enabled:
+                return {"ok": False, "message": msg}
+            seen = "I can see you" if p.faces else "I can't see a face yet — sit in front of the camera"
+            return {"ok": True, "message": f"{msg} {seen}."}
         if kind in ("gestures", "gestures_off"):
             from .gestures import engine
             e = engine()

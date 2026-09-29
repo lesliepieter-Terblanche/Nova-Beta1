@@ -205,8 +205,16 @@ def main() -> None:
             tg.push(text, files)
 
     context.notify = notify
+    from nova.presence import presence
+
+    def say(text):
+        """Speak something out of the blue — unless you've walked away (then it's held and sent to Telegram)."""
+        if not presence().hold_or_say(text) and use_voice:
+            speech.speak(text)
+
     if use_voice:
-        context.announce = lambda text: threading.Thread(target=speech.speak, args=(text,), daemon=True).start()
+        context.speak_now = lambda text: threading.Thread(target=speech.speak, args=(text,), daemon=True).start()
+    context.announce = lambda text: threading.Thread(target=say, args=(text,), daemon=True).start()
 
     if cfg.dashboard.get("enabled", True):
         from nova.dashboard.server import Dashboard
@@ -214,8 +222,8 @@ def main() -> None:
 
     from nova.skills.system import reminder_worker
     from nova.routines import worker as routines_worker
-    threading.Thread(target=reminder_worker, args=(speech.speak if use_voice else None,), daemon=True).start()
-    threading.Thread(target=routines_worker, args=(agent, cfg, speech.speak if use_voice else None), daemon=True).start()
+    threading.Thread(target=reminder_worker, args=(say if use_voice else None,), daemon=True).start()
+    threading.Thread(target=routines_worker, args=(agent, cfg, say if use_voice else None), daemon=True).start()
     threading.Thread(target=startup_update_check, args=(None,), daemon=True).start()
 
     if args.text:
@@ -230,6 +238,8 @@ def main() -> None:
         threading.Thread(target=guarded, args=("Voice", loop.run), daemon=True, name="voice").start()
     if tg and tg.token:
         threading.Thread(target=guarded, args=("Telegram", tg.run), daemon=True, name="telegram").start()
+    if (cfg.get("presence") or {}).get("enabled"):
+        threading.Thread(target=lambda: print(f"[presence] {presence().start()}"), daemon=True, name="presence").start()
     if (cfg.get("gestures") or {}).get("enabled"):
         from nova.gestures import engine
         threading.Thread(target=lambda: print(f"[gestures] {engine().start()}"), daemon=True, name="gestures").start()
@@ -241,6 +251,8 @@ def main() -> None:
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:
+        if tg:
+            tg.say_goodbye()
         print("[nova] Stopped.")
 
 

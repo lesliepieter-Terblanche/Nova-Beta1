@@ -184,6 +184,15 @@ Offered to the model when you say things like: _gesture, gestures, hand control,
 |---|---|---|
 | `gesture_control` | Turn webcam hand-gesture control on or off, or say what the gestures do. | `action`? |
 
+## presence
+
+Offered to the model when you say things like: _presence, away, at my desk, walk away, lock my pc, lock the pc, greet me, sit down, i'm back, notice me_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `presence_awareness` | Turn presence awareness on/off (webcam notices when you sit down or walk away), or report its status. | `action`? |
+| `lock_computer` 🔒 | Lock the Windows PC now (like Windows+L). | — |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

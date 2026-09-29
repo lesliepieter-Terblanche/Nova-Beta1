@@ -114,6 +114,7 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | `weather.py` | weather | live forecast, spoken + weather page (Open-Meteo, free) |
 | `globe.py` | globe | God's Eye View 3D globe: fly anywhere, styles, planes overhead, earthquakes, ISS, install 🔒/start/stop |
 | `gestures.py` | gestures | gesture control on/off/status/help (engine in `nova/gestures.py`, camera in `nova/camera.py`) |
+| `presence.py` | presence | presence on/off/status, lock the PC 🔒 (engine in `nova/presence.py`) |
 | `maintenance.py` | maintenance | updates 🔒, versions, rollback 🔒, restart 🔒, dashboard, extensions status |
 
 After adding or changing tools, regenerate the reference: `python scripts/gen_tool_docs.py`.

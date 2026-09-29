@@ -52,3 +52,13 @@ def test_salvage_json_tool_call():
 
 def test_every_tool_has_a_description(nova):
     assert all(t.description for t in REGISTRY.values())
+
+
+def test_telegram_stale_messages_are_not_acted_on():
+    import datetime as dt
+
+    from nova.telegram_bot import TelegramBot
+    now = dt.datetime.now(dt.timezone.utc)
+    assert not TelegramBot.is_stale(now - dt.timedelta(minutes=5))
+    assert TelegramBot.is_stale(now - dt.timedelta(hours=2))
+    assert not TelegramBot.is_stale((now - dt.timedelta(minutes=1)).replace(tzinfo=None))

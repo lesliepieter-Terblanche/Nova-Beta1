@@ -4,6 +4,20 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-09-29
+### Added
+- **Presence awareness** — the webcam notices when you sit down and when you walk away (face detection on the CPU,
+  no pictures kept; typing also counts as being here).
+  - Sit down: "Welcome back" plus anything Nova wanted to say while you were gone; the first time before noon,
+    your morning briefing.
+  - Walk away: Nova stops talking, holds spoken reminders for you (they still reach Telegram), the orb dims to
+    *away*, and it can lock the PC (off by default).
+  - Say "turn on presence awareness", or **Settings → Presence**. The dashboard's Busy card shows 👤 at your desk /
+    🚶 away. New "lock my PC" tool (asks first).
+- **Telegram starts with Nova** and now tells you: 🟢 online when run.bat starts it, 🔴 when it stops
+  (Settings → Telegram). Messages you sent while Nova was off are answered when it starts; ones older than
+  30 minutes get "I was offline — send it again" instead of being acted on late.
+
 ## [1.7.0] — 2026-09-29
 ### Added
 - **Gesture control** — steer Nova with your hands through the webcam (Google MediaPipe, runs on the CPU, nothing

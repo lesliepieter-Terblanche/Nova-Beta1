@@ -382,7 +382,7 @@
 <script type="module">
 import { ForceGraph3D, THREE, UnrealBloomPass, CSS2DRenderer, CSS2DObject } from "./vendor/nova-vendor.js";
 
-const STATUS_COLORS = { idle: "#8b7bff", listening: "#4cc9f0", thinking: "#ffd166", speaking: "#ff5fa2" };
+const STATUS_COLORS = { idle: "#8b7bff", listening: "#4cc9f0", thinking: "#ffd166", speaking: "#ff5fa2", away: "#5b6280" };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const api = (p, body) => fetch(p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}).then((r) => r.json());
@@ -554,7 +554,7 @@ function animate() {
   }
   if (coreObj) {
     const c = new THREE.Color(STATUS_COLORS[status] || STATUS_COLORS.idle);
-    const speed = status === "thinking" ? 2.2 : status === "listening" ? 1.4 : status === "speaking" ? 3.2 : 0.6;
+    const speed = status === "thinking" ? 2.2 : status === "listening" ? 1.4 : status === "speaking" ? 3.2 : status === "away" ? 0.25 : 0.6;
     coreObj.shell.rotation.y += 0.004 * speed; coreObj.shell.rotation.x += 0.002 * speed;
     coreObj.ring.rotation.z += 0.003 * speed;
     const pulse = 1 + Math.sin(t * speed * 2) * (status === "idle" ? 0.04 : 0.12);
@@ -653,7 +653,7 @@ function setStatus(s) {
 // ── live activity ─────────────────────────────────────
 let lastId = 0;
 const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2",
-  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166" };
+  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166", presence: "#52ffa8" };
 async function poll() {
   try {
     const r = await api(`/api/activity?since=${lastId}`);
@@ -964,6 +964,12 @@ async function loadNow() {
   } else h += `<div class="meta">Nothing yet — ask Nova something.</div>`;
   if (r.waiting?.length) h += `<div class="sec">Waiting for your yes / no</div><ul>${r.waiting.map((w) => `<li>${mark("waiting")}<span>${esc(w.title.replace(" (waiting for your yes/no)", ""))}</span></li>`).join("")}</ul>`;
   if (r.doing?.length) h += `<div class="sec">In progress (${r.doing.length})</div><ul>${r.doing.map((d) => `<li data-go="${esc(d.id)}">${mark("running")}<span title="${esc(d.note || "")}">${esc(d.title)}</span></li>`).join("")}</ul>`;
+  const p = r.presence || {};
+  if (p.enabled) {
+    const mins = Math.round((p.for_seconds || 0) / 60), dur = mins < 1 ? "just now" : mins < 90 ? `${mins} min` : `${(mins / 60).toFixed(1)} h`;
+    const where = p.present === true ? `👤 At your desk · ${dur}` : p.present === false ? `🚶 Away · ${dur}` : "👤 Looking for you…";
+    h = `<div class="meta" style="margin:-2px 0 8px;color:${p.present === false ? "var(--muted)" : "var(--ok)"}">${where}${p.held ? ` · ${p.held} message${p.held > 1 ? "s" : ""} waiting` : ""}</div>` + h;
+  }
   $("busy-b").className = ""; $("busy-b").innerHTML = h;
 }
 $("busy").addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (g) openItem(g.dataset.go); });

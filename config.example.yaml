@@ -55,6 +55,17 @@ globe:
   port: 4173
   auto_start: false           # start it together with Nova
 
+# Presence awareness — the webcam notices when you sit down or walk away (face detection, local, nothing saved).
+presence:
+  enabled: false              # or say "turn on presence awareness"
+  away_seconds: 60            # no face and no typing for this long = you've left
+  greet: true                 # "Welcome back" (+ anything Nova held for you) after being away 5+ min
+  greet_after_seconds: 300
+  morning_briefing: true      # first time you sit down before noon: your morning briefing
+  briefing_prompt: "I just sat down at my desk. Give me my short morning briefing: today's calendar, the weather and anything urgent."
+  lock_pc: false              # lock Windows when you walk away
+  lock_after_seconds: 120
+
 # Gesture control — steer Nova with your hands via the webcam (MediaPipe, runs locally on the CPU).
 gestures:
   enabled: false              # or say "turn on gestures"
@@ -109,6 +120,7 @@ telegram:
   # Only these Telegram user IDs may control Nova. Message the bot /id to find yours.
   allowed_user_ids: []
   voice_replies: true        # answer voice notes with a voice note (your ElevenLabs voice)
+  announce_online: true      # message you when Nova starts (🟢) and stops (🔴)
 
 google:
   enabled: true

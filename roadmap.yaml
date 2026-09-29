@@ -7,11 +7,11 @@
   version: "1.7.0"
 - id: presence-awareness
   title: "Nova upgrade: Presence awareness — greet me when I sit down, pause and lock the PC when I walk away"
-  status: doing
+  status: done
   version: "1.8.0"
 - id: screen-watcher
   title: "Nova upgrade: Screen watcher — watch the screen and tell me when something finishes, appears or changes"
-  status: todo
+  status: doing
   version: "1.9.0"
 - id: missions
   title: "Nova upgrade: Missions — long-running goals Nova plans and works on by itself, with progress on the dashboard"

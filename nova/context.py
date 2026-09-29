@@ -12,6 +12,8 @@ speech = None           # nova.speech.Speech
 mcp = None              # nova.mcp_client.MCPManager
 agent = None            # nova.agent.Agent
 voice = None            # nova.voice.Voice (when the microphone loop runs)
+# speak_now(text) says something immediately (announce() may hold it while you're away from the desk)
+speak_now: Callable[[str], None] | None = None
 # announce(text) says something out loud if the voice loop is running (set by main.py)
 announce: Callable[[str], None] | None = None
 # notify(text, files) pushes a message to the owner (Telegram and/or speaker).

@@ -33,6 +33,11 @@ class TelegramBot:
     async def _guard(self, update: Update) -> bool:
         uid = update.effective_user.id if update.effective_user else None
         if uid in self.allowed:
+            msg = update.effective_message
+            if msg and msg.date and self.is_stale(msg.date):
+                await msg.reply_text("⏸ I was offline when you sent this, so I didn't act on it. Send it again if you "
+                                     "still need it.")
+                return False
             return True
         await update.effective_message.reply_text(
             f"Not authorised. Your Telegram ID is {uid}. Add it to telegram.allowed_user_ids in config.yaml and restart Nova.")
@@ -136,8 +141,40 @@ class TelegramBot:
         for uid in self.allowed:
             asyncio.run_coroutine_threadsafe(self._send(uid, text, files), self.loop)
 
+    @staticmethod
+    def is_stale(sent, max_age_min: float = 30) -> bool:
+        """Messages sent while Nova was off are answered on start-up — unless they're too old to act on."""
+        import datetime as dt
+        now = dt.datetime.now(dt.timezone.utc)
+        if sent.tzinfo is None:
+            sent = sent.replace(tzinfo=dt.timezone.utc)
+        return (now - sent).total_seconds() > max_age_min * 60
+
     async def _post_init(self, app: Application):
         self.loop = asyncio.get_running_loop()
+        try:
+            me = await app.bot.get_me()
+            print(f"[telegram] connected as @{me.username}")
+        except Exception as e:
+            print(f"[telegram] couldn't reach Telegram yet: {e}")
+        if self.cfg.telegram.get("announce_online", True):
+            for uid in self.allowed:
+                try:
+                    await app.bot.send_message(uid, f"🟢 {self.cfg.assistant.name} is online.")
+                except Exception as e:
+                    print(f"[telegram] couldn't message {uid}: {e}")
+
+    def say_goodbye(self) -> None:
+        """Best effort '🔴 going offline' when Nova is stopped with Ctrl+C or restarted."""
+        if self.cfg.telegram.get("announce_online", True) and self.app and self.loop:
+            futs = [asyncio.run_coroutine_threadsafe(self.app.bot.send_message(uid, f"🔴 {self.cfg.assistant.name} is "
+                                                                                   "going offline."), self.loop)
+                    for uid in self.allowed]
+            for f in futs:
+                try:
+                    f.result(timeout=4)
+                except Exception:
+                    pass
 
     def run(self) -> None:
         """Blocking. Run in the main thread."""
@@ -157,4 +194,4 @@ class TelegramBot:
         if not self.allowed:
             print("[telegram] No allowed_user_ids yet. Message your bot /id, add the number to config.yaml, restart.")
         print("[telegram] bot running.")
-        a.run_polling(drop_pending_updates=True, stop_signals=None)
+        a.run_polling(drop_pending_updates=False, stop_signals=None)    # pick up messages sent while Nova was off

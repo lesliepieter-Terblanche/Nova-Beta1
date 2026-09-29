@@ -55,6 +55,22 @@ globe:
   port: 4173
   auto_start: false           # start it together with Nova
 
+# Gesture control — steer Nova with your hands via the webcam (MediaPipe, runs locally on the CPU).
+gestures:
+  enabled: false              # or say "turn on gestures"
+  camera: 0                   # webcam number (0 = the first one)
+  mirror: true                # move your hand right -> the pointer goes right
+  mouse: true                 # 👉 point moves the mouse, 🤏 pinch clicks / drags
+  fps: 12                     # hand checks per second (lower = lighter on the CPU)
+  actions:                    # stop | yes | no | listen | escape | dashboard | none | key:<combo> e.g. key:alt+left
+    palm: stop
+    thumbs_up: "yes"
+    thumbs_down: "no"
+    victory: listen
+    fist: escape
+    swipe_left: dashboard
+    swipe_right: dashboard
+
 voice:
   enabled: true
   wake_word: hey_jarvis      # built-in openWakeWord models: hey_jarvis, alexa, hey_mycroft

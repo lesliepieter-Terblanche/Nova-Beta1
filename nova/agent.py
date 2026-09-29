@@ -38,6 +38,7 @@ class Pending:
     prefer_smart: bool
     skipped_ids: list[str]
     log_id: int | None = None
+    created: float = field(default_factory=time.time)
 
 
 class Agent:
@@ -87,6 +88,12 @@ class Agent:
                         store, self.llm, self.cfg.assistant.owner, text, out, list(self._tools_used)),
                         kwargs={"turn": turn}).start()
             return Reply(out, files)
+
+    def waiting_session(self) -> str | None:
+        """The conversation whose yes/no question was asked most recently (for 👍/👎 gestures)."""
+        if not self.pending:
+            return None
+        return max(self.pending.items(), key=lambda kv: kv[1].created)[0]
 
     def reset(self, session: str) -> None:
         self.histories.pop(session, None)

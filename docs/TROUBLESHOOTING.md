@@ -109,6 +109,16 @@ run.bat --check
 | Messed up `config.yaml` | Each save keeps the previous version as `config.yaml.bak`. Copy it back. |
 | 403 when opening via Tailscale or another name | Add the host name to `dashboard.allowed_hosts`. |
 
+## Gestures
+
+| Problem | Fix |
+|---|---|
+| "MediaPipe isn't installed" | Run `update.bat`, or `.venv\Scripts\pip install mediapipe`. |
+| "Couldn't open webcam" | Close Teams/Zoom/Camera app, or set another **Webcam number** in Settings → Gestures. |
+| Model download fails | The first start downloads two small models (`models/vision/`) from Google — check the internet connection. |
+| Pointer jumps / wrong gesture | Good light, hand 40–80 cm from the camera, palm facing it. Lower **Checks per second** if the PC is busy. |
+| Don't want the mouse moved | Untick **Point to move the mouse** in Settings → Gestures. |
+
 ## Slow replies
 
 Every reply shows where the time went (console: `[timing] …`; dashboard: open the action → *Where the time went*).

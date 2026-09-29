@@ -4,6 +4,19 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-09-29
+### Added
+- **Gesture control** — steer Nova with your hands through the webcam (Google MediaPipe, runs on the CPU, nothing
+  leaves the PC). Hold for about half a second:
+  ✋ palm = stop talking · 👍 = yes · 👎 = no (answers the question Nova is waiting on) · ✌️ = start listening ·
+  ✊ = Escape · 👋 swipe = turn the 3D brain · 👉 point = move the mouse · 🤏 pinch = click, pinch-and-move = drag
+  (spin the brain or the God's Eye globe). Every action can be changed in **Settings → Gestures**.
+  Say "turn on gestures", or tick it in Settings. The dashboard shows a ✋ chip with the gesture it sees and a live
+  **Camera** preview with your hand skeleton.
+- **Roadmap on the Projects board** — `roadmap.yaml` syncs Nova's upgrade plan into Projects (To do → In progress →
+  Done) on every start. Your own notes and pins are kept.
+- One shared webcam for gestures, presence and photos (Windows only lets one app use a camera).
+
 ## [1.6.0] — 2026-09-29
 ### Added
 - **God's Eye View globe** ([bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), MIT):

@@ -31,6 +31,12 @@ def _ads_dir() -> Path:
 
 def capture(camera_index: int = 0, warmup: float = 1.2) -> Path:
     import cv2
+    from ..camera import _hub
+    out = resolve("workspace/camera") / f"cam_{dt.datetime.now():%Y%m%d_%H%M%S}.jpg"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if _hub is not None and _hub.running and _hub.snapshot(out):     # gestures/presence already have the camera
+        context.record("image", out.name, out, "webcam photo")
+        return out
     backend = cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else 0
     cap = cv2.VideoCapture(camera_index, backend)
     if not cap.isOpened():
@@ -47,8 +53,6 @@ def capture(camera_index: int = 0, warmup: float = 1.2) -> Path:
     cap.release()
     if frame is None:
         raise RuntimeError("The webcam returned no image.")
-    out = resolve("workspace/camera") / f"cam_{dt.datetime.now():%Y%m%d_%H%M%S}.jpg"
-    out.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out), frame)
     context.record("image", out.name, out, "webcam photo")
     return out

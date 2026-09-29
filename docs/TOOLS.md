@@ -176,6 +176,14 @@ Offered to the model when you say things like: _globe, god's eye, gods eye, god 
 | `globe_app` | Manage the God's Eye View app: status, start, stop, open or update. | `action`? |
 | `install_globe` 🔒 | Download and install the God's Eye View 3D globe app (open source, a few hundred MB, needs Node.js 24). | — |
 
+## gestures
+
+Offered to the model when you say things like: _gesture, gestures, hand control, hand tracking, hands, air mouse, wave, webcam control_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `gesture_control` | Turn webcam hand-gesture control on or off, or say what the gestures do. | `action`? |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

@@ -1,0 +1,23 @@
+# Nova's upgrade roadmap. Synced into the dashboard's Projects on every start:
+# each item becomes a project with its status (todo → doing → done). Your own notes and pins are kept;
+# the status only changes when it changes here.
+- id: gesture-control
+  title: "Nova upgrade: Gesture control — steer Nova, the 3D brain and the globe with hand gestures via the webcam"
+  status: done
+  version: "1.7.0"
+- id: presence-awareness
+  title: "Nova upgrade: Presence awareness — greet me when I sit down, pause and lock the PC when I walk away"
+  status: doing
+  version: "1.8.0"
+- id: screen-watcher
+  title: "Nova upgrade: Screen watcher — watch the screen and tell me when something finishes, appears or changes"
+  status: todo
+  version: "1.9.0"
+- id: missions
+  title: "Nova upgrade: Missions — long-running goals Nova plans and works on by itself, with progress on the dashboard"
+  status: todo
+  version: "2.0.0"
+- id: nightly-dreaming
+  title: "Nova upgrade: Nightly dreaming — overnight memory clean-up, linking ideas, a daily journal and encrypted backup"
+  status: todo
+  version: "2.1.0"

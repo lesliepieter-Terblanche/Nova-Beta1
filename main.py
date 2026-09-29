@@ -30,6 +30,13 @@ def build():
     b = cfg.brain
     context.store = Store(resolve(b.db_file), cfg.llm.providers.ollama.base_url, b.embed_model)
     context.store.vault = resolve(b.vault_dir)
+    try:
+        from nova import roadmap
+        r = roadmap.sync(context.store)
+        if r["added"] or r["moved"]:
+            print(f"[roadmap] {r['added']} new, {r['moved']} moved on the Projects board")
+    except Exception as e:
+        print(f"[roadmap] skipped: {e}")
     context.llm = LLM(cfg)
     context.store.keep_alive = context.llm.keep_alive
     threading.Thread(target=keep_warm, daemon=True, name="keep-warm").start()
@@ -42,6 +49,7 @@ def build():
     context.mcp = MCPManager(cfg)
     context.mcp.start(timeout=3)          # keeps connecting in the background; never delays start-up
     agent = Agent(cfg, context.llm)
+    context.agent = agent
     if (cfg.get("globe") or {}).get("auto_start"):
         from nova.skills import globe
         threading.Thread(target=lambda: print(f"[globe] {globe.start()}"), daemon=True, name="globe").start()
@@ -218,9 +226,13 @@ def main() -> None:
     if use_voice:
         from nova.voice import VoiceLoop
         loop = VoiceLoop(cfg, agent, speech)
+        context.voice = loop
         threading.Thread(target=guarded, args=("Voice", loop.run), daemon=True, name="voice").start()
     if tg and tg.token:
         threading.Thread(target=guarded, args=("Telegram", tg.run), daemon=True, name="telegram").start()
+    if (cfg.get("gestures") or {}).get("enabled"):
+        from nova.gestures import engine
+        threading.Thread(target=lambda: print(f"[gestures] {engine().start()}"), daemon=True, name="gestures").start()
     if not use_voice and not (tg and tg.token):
         print("[nova] Voice is off and Telegram has no token — the dashboard is running at "
               f"http://localhost:{cfg.dashboard.get('port', 8765)} (type in its Ask box).")

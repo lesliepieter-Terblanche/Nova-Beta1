@@ -10,6 +10,8 @@ llm = None              # nova.llm.LLM
 store = None            # nova.store.Store  (permanent memory + activity log)
 speech = None           # nova.speech.Speech
 mcp = None              # nova.mcp_client.MCPManager
+agent = None            # nova.agent.Agent
+voice = None            # nova.voice.Voice (when the microphone loop runs)
 # announce(text) says something out loud if the voice loop is running (set by main.py)
 announce: Callable[[str], None] | None = None
 # notify(text, files) pushes a message to the owner (Telegram and/or speaker).

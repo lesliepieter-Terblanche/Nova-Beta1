@@ -591,6 +591,27 @@ class Dashboard:
                             return
                         remaining -= len(chunk)
 
+            def _mjpeg(self):
+                """Live webcam preview with the hand skeleton drawn on (only while gestures/presence run)."""
+                import time as _t
+
+                from ..camera import _hub
+                if _hub is None or not _hub.running:
+                    return self.send_error(404, "camera is off")
+                self.send_response(200)
+                self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                try:
+                    while _hub.running:
+                        jpg = _hub.preview_jpeg()
+                        if jpg:
+                            self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                                             + str(len(jpg)).encode() + b"\r\n\r\n" + jpg + b"\r\n")
+                        _t.sleep(0.12)
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                    pass
+
             def _host_ok(self) -> bool:
                 """Blocks DNS-rebinding: only answer requests addressed to this PC's dashboard."""
                 host = (self.headers.get("Host") or "").lower()
@@ -619,6 +640,12 @@ class Dashboard:
                         return self._json(weather.fetch(cached["place"]) if q.get("refresh") else cached)
                     if u.path in ("/globe", "/globe.html"):
                         return self._file(HERE / "globe.html")
+                    if u.path == "/api/gesture":
+                        from ..gestures import engine
+                        e = engine()
+                        return self._json({**e.status(), "events": e.recent(int(q.get("since", 0) or 0))})
+                    if u.path == "/api/camera.mjpg":
+                        return self._mjpeg()
                     if u.path == "/api/globe/status":
                         from ..skills import globe
                         return self._json(globe.status())
@@ -685,6 +712,11 @@ class Dashboard:
                     if self.path == "/api/restart":
                         settings.restart_soon()
                         return self._json({"message": "Restarting…"})
+                    if self.path == "/api/gesture":
+                        from ..gestures import engine
+                        on = body.get("on")
+                        msg = engine().start() if on else engine().stop()
+                        return self._json({"message": msg, **engine().status()})
                     if self.path == "/api/globe/start":
                         from ..skills import globe
                         msg = globe.start(wait=90)

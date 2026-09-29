@@ -122,6 +122,22 @@ SCHEMA = [
         {"path": "media.broll", "label": "Stock footage in videos (Pexels)", "type": "bool"},
         {"path": "media.image_gen_enabled", "label": "Local image generation", "type": "bool", "help": "Needs requirements-imagegen.txt"},
     ]},
+    {"id": "gestures", "title": "Gestures", "icon": "hand", "fields": [
+        {"path": "gestures.enabled", "label": "Gesture control", "type": "bool", "default": False,
+         "help": "Uses the webcam. Also: say 'turn on gestures'"},
+        {"path": "gestures.mouse", "label": "Point to move the mouse, pinch to click / drag", "type": "bool", "default": True},
+        {"path": "gestures.camera", "label": "Webcam number", "type": "number", "min": 0, "max": 5, "default": 0},
+        {"path": "gestures.mirror", "label": "Mirror (hand right = pointer right)", "type": "bool", "default": True},
+        {"path": "gestures.fps", "label": "Checks per second", "type": "number", "min": 4, "max": 30, "default": 12,
+         "help": "Lower = lighter on the CPU"},
+        {"path": "gestures.actions.palm", "label": "✋ Open palm (hold)", "type": "select", "default": "stop", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+        {"path": "gestures.actions.thumbs_up", "label": "👍 Thumbs up (hold)", "type": "select", "default": "yes", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+        {"path": "gestures.actions.thumbs_down", "label": "👎 Thumbs down (hold)", "type": "select", "default": "no", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+        {"path": "gestures.actions.victory", "label": "✌️ Victory (hold)", "type": "select", "default": "listen", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+        {"path": "gestures.actions.fist", "label": "✊ Fist (hold)", "type": "select", "default": "escape", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+        {"path": "gestures.actions.swipe_left", "label": "👈 Swipe left", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+        {"path": "gestures.actions.swipe_right", "label": "👉 Swipe right", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+    ]},
     {"id": "globe", "title": "God's Eye View", "icon": "globe", "fields": [
         {"path": "globe.auto_start", "label": "Start the globe with Nova", "type": "bool", "default": False,
          "help": "Otherwise it starts the first time you ask for it"},
@@ -511,6 +527,16 @@ def run_test(kind: str) -> dict:
                           headers={"Authorization": key}, timeout=15)
             return {"ok": r.status_code == 200, "message": "Pexels key works." if r.status_code == 200
                     else f"Pexels said {r.status_code}."}
+        if kind in ("gestures", "gestures_off"):
+            from .gestures import engine
+            e = engine()
+            if kind == "gestures_off":
+                return {"ok": True, "message": e.stop()}
+            msg = e.start() if not e.enabled else "Gesture control is on."
+            s = e.status()
+            if not s["enabled"]:
+                return {"ok": False, "message": msg}
+            return {"ok": True, "message": f"{msg} Watch the preview on the dashboard (click the ✋ chip)."}
         if kind == "globe":
             from .skills import globe
             st = globe.status()

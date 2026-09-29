@@ -265,6 +265,25 @@
   .skill.off { opacity: .5; }
   .muted { color: var(--muted); font-size: 12.5px; }
 
+  /* gesture chip + camera preview */
+  .gchip { position: fixed; left: 18px; bottom: 24px; z-index: 6; display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px 8px 14px; border-radius: 999px; font-size: 12.5px; cursor: default; }
+  .gchip .gi { font-size: 20px; width: 26px; text-align: center; transition: transform .25s; }
+  .gchip.pop .gi { transform: scale(1.5); }
+  .gchip b { font-weight: 600; } .gchip small { color: var(--muted); display: block; font-size: 11px; }
+  .gchip button { border: 1px solid var(--line); background: none; color: var(--text); border-radius: 999px; padding: 5px 10px;
+    font: 11.5px var(--body); cursor: pointer; }
+  .gchip button:hover { border-color: var(--line-strong); }
+  .gchip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .gchip.hand .dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .gcam { position: fixed; left: 18px; bottom: 84px; z-index: 6; width: 300px; border-radius: 14px; overflow: hidden; display: none;
+    border: 1px solid var(--line-strong); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  .gcam.show { display: block; } .gcam img { width: 100%; display: block; }
+  .gtoast { position: fixed; left: 50%; top: 110px; transform: translateX(-50%); z-index: 9; padding: 10px 18px; border-radius: 999px;
+    font: 600 15px var(--display); opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; }
+  .gtoast.show { opacity: 1; transform: translateX(-50%) translateY(6px); }
+  body.gest .rail { max-height: calc(100vh - 250px); }
+
   @media (max-width: 900px) {
     .rail, .feed { display: none; }
     .stats .stat:nth-child(n+3) { display: none; }
@@ -352,6 +371,11 @@
 </form>
 
 <div class="tooltip" id="tip"></div>
+<div class="gchip glass" id="gchip" style="display:none"><span class="dot"></span><span class="gi" id="g-emoji">✋</span>
+  <span><b>Gestures</b><small id="g-label">show your hand</small></span>
+  <button id="g-cam" title="Show what the camera sees">Camera</button><button id="g-off" title="Turn gesture control off">Off</button></div>
+<div class="gcam" id="gcam"><img id="g-img" alt="Webcam preview"></div>
+<div class="gtoast glass" id="gtoast"></div>
 <div class="empty" id="empty"><strong>The brain is waiting</strong>Talk to Nova — every memory, note and creation will appear here as a star.</div>
 <div class="intro" id="intro"><span>Nova</span></div>
 
@@ -629,7 +653,7 @@ function setStatus(s) {
 // ── live activity ─────────────────────────────────────
 let lastId = 0;
 const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2",
-  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c" };
+  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166" };
 async function poll() {
   try {
     const r = await api(`/api/activity?since=${lastId}`);
@@ -888,6 +912,44 @@ function closePanel() {
 $("close").onclick = closePanel;
 document.addEventListener("click", (e) => { const b = e.target.closest(".stat[data-open], .quick button[data-open]"); if (b) openTopic(b.dataset.open); });
 
+// ── gestures ──────────────────────────────────────────
+let gSeq = -1, gOn = false;
+async function pollGestures() {
+  let r;
+  try { r = await api(`/api/gesture?since=${Math.max(0, gSeq)}`); } catch { return setTimeout(pollGestures, 3000); }
+  gOn = r.enabled;
+  document.body.classList.toggle("gest", gOn);
+  $("gchip").style.display = gOn ? "flex" : "none";
+  if (!gOn) { $("gcam").classList.remove("show"); $("g-img").removeAttribute("src"); }
+  $("gchip").classList.toggle("hand", r.hand);
+  $("g-emoji").textContent = r.hand ? (r.emoji || "🖐") : "✋";
+  $("g-label").textContent = r.error ? r.error : r.hand ? (r.label || "hand seen") + (r.pinching ? " · dragging" : "") : "show your hand";
+  if (gSeq >= 0) for (const e of r.events) onGesture(e);
+  gSeq = r.seq;
+  setTimeout(pollGestures, gOn ? 250 : 3000);
+}
+function onGesture(e) {
+  if (e.gesture === "pinch") return;
+  const t = $("gtoast");
+  const what = { stop: "Stop", yes: "Yes", no: "No", listen: "Listening…", escape: "Escape", dashboard: "" }[e.action] ?? e.action;
+  t.textContent = `${e.emoji} ${e.label}${what ? " — " + what : ""}${e.result && !["stopped", "listening", "escape"].includes(e.result) ? " · " + e.result : ""}`;
+  t.classList.add("show"); clearTimeout(onGesture.t); onGesture.t = setTimeout(() => t.classList.remove("show"), 1600);
+  $("gchip").classList.add("pop"); setTimeout(() => $("gchip").classList.remove("pop"), 300);
+  if (e.action === "dashboard" && e.gesture.startsWith("swipe")) {
+    const dir = e.gesture === "swipe_right" ? 1 : -1, start = angle, t0 = performance.now();
+    userBusy = 0; orbit = true;
+    const spin = (now) => { const k = Math.min(1, (now - t0) / 900); angle = start + dir * 1.1 * (1 - Math.pow(1 - k, 3)); if (k < 1) requestAnimationFrame(spin); };
+    requestAnimationFrame(spin);
+  }
+  if (e.action === "stop" && $("panel").classList.contains("open")) closePanel();
+}
+$("g-cam").onclick = () => {
+  const c = $("gcam"), on = !c.classList.contains("show");
+  c.classList.toggle("show", on);
+  if (on) $("g-img").src = "/api/camera.mjpg?" + Date.now(); else $("g-img").removeAttribute("src");
+};
+$("g-off").onclick = async () => { await api("/api/gesture", { on: false }); gSeq = -1; };
+
 // "Busy with" card
 async function loadNow() {
   let r; try { r = await api("/api/now"); } catch { return; }
@@ -942,6 +1004,7 @@ addEventListener("resize", () => { Graph.width(innerWidth).height(innerHeight); 
 // ── start ─────────────────────────────────────────────
 Graph.cameraPosition({ x: 0, y: 120, z: 1400 });
 poll.n = 0;
+pollGestures();
 await Promise.all([loadGraph(), loadStats(), applyTheme(), loadNow()]);
 requestAnimationFrame(animate);
 setTimeout(() => {

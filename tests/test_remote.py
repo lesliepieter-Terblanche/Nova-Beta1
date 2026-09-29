@@ -34,6 +34,12 @@ def ts(monkeypatch):
         return 0, ""
     monkeypatch.setattr(remote, "exe", lambda: "tailscale")
     monkeypatch.setattr(remote, "_run", run)
+
+    def serve(args, wait=25):
+        code, text = run(args)
+        link = remote._https_link(text)
+        return ("approve", link) if link else ("ok", text) if code == 0 else ("error", text)
+    monkeypatch.setattr(remote, "_serve", serve)
     remote._cache.update(t=0.0, status=None)
     return state
 
@@ -66,10 +72,35 @@ def test_enable_serves_dashboard_and_globe_then_disable(nova, ts):
     assert d["ok"] and not d["serving"] and ts["served"] == {}
 
 
-def test_https_not_enabled_gives_the_link(nova, ts):
+def test_https_not_enabled_gives_the_link_then_check_finishes(nova, ts):
     ts["https_enabled"] = False
     r = remote.enable()
     assert not r["ok"] and r["link"] == "https://login.tailscale.com/f/serve?node=abc"
+    assert "Enable" in r["message"]
+    # you approve in the browser -> the waiting tailscale command finishes and serves the dashboard
+    ts["https_enabled"] = True
+    ts["served"]["443"] = "http://127.0.0.1:8765"
+    st = remote.finish_setup()
+    assert st["url"] and st["globe_url"] and ts["served"]["8443"] == "http://127.0.0.1:4173"
+
+
+def test_real_serve_returns_link_without_waiting(monkeypatch, tmp_path):
+    """The real tailscale CLI prints the approval link and then blocks — we must return straight away."""
+    import sys
+    fake = tmp_path / "fake_tailscale.py"
+    fake.write_text("import time, sys\nprint('Serve is not enabled on your tailnet.')\n"
+                    "print('To enable, visit:\\n  https://login.tailscale.com/f/serve?node=xyz', flush=True)\n"
+                    "time.sleep(30)\n")
+    real_popen = remote.subprocess.Popen
+    monkeypatch.setattr(remote, "exe", lambda: sys.executable)
+    monkeypatch.setattr(remote.subprocess, "Popen",
+                        lambda cmd, **kw: real_popen([sys.executable, str(fake)], **kw))
+    import time
+    t = time.time()
+    state, text = remote._serve(["serve", "--bg", "http://127.0.0.1:8765"], wait=10)
+    assert state == "approve" and text == "https://login.tailscale.com/f/serve?node=xyz"
+    assert time.time() - t < 5
+    remote._pending["proc"].kill()
 
 
 def test_dashboard_accepts_tailscale_host_and_blocks_others(nova, ts, monkeypatch):

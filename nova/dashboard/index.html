@@ -1042,6 +1042,13 @@ $("pmodal").addEventListener("click", async (e) => {
   if (b.dataset.remote === "check") return showPhone(true);
   b.disabled = true; b.textContent = "Working…";
   const r = await api("/api/remote", { on: b.dataset.remote === "on" });
+  if (!r.ok && r.link) {
+    $("p-bodyr").innerHTML = `<p><b>One-time approval.</b> Tailscale needs your OK to share Nova privately on your own devices.</p>
+      <ol><li>Click <b>Approve in Tailscale</b> and then <b>Enable</b> on the page that opens.</li><li>Come back and click <b>Check again</b>.</li></ol>
+      <a class="btn primary" href="${esc(r.link)}" target="_blank" style="display:inline-block;text-decoration:none">Approve in Tailscale</a>
+      <button class="btn" data-remote="check">Check again</button>`;
+    return;
+  }
   if (!r.ok) { $("p-bodyr").innerHTML = `<p>${esc(r.message).replace(/(https:\/\/\S+)/g, '<a href="$1" target="_blank" style="color:var(--accent-2)">$1</a>')}</p><button class="btn" data-remote="check">Check again</button>`; return; }
   showPhone(true);
 });

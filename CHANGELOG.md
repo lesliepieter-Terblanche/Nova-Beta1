@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.2.1] — 2026-09-29
+### Fixed
+- Remote access **Set up** timed out the first time: Tailscale prints an approval link and then waits for you.
+  Nova now shows that link straight away (**Approve in Tailscale**), and **Check again** finishes the setup
+  (dashboard + globe) once you've approved.
+
 ## [2.2.0] — 2026-09-29
 ### Added
 - **Nova on your phone with Tailscale** — private access to the dashboard (and the God's Eye globe) from anywhere:

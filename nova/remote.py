@@ -109,26 +109,73 @@ def _https_link(text: str) -> str:
     return m.group(0).rstrip(".") if m else ""
 
 
+def _serve(args: list[str], wait: float = 25) -> tuple[str, str]:
+    """Run `tailscale serve …`. The first time, Tailscale prints an approval link and then WAITS until you approve it
+    in the browser — so we return as soon as that link appears and let it finish in the background.
+    Returns (state, text): state is "ok", "approve" (text = link), or "error"."""
+    import threading
+    ts = exe()
+    if not ts:
+        return "error", "Tailscale isn't installed."
+    flags = subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0   # type: ignore[attr-defined]
+    proc = subprocess.Popen([ts, *args], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            creationflags=flags)
+    lines: list[str] = []
+    reader = threading.Thread(target=lambda: [lines.append(ln) for ln in proc.stdout], daemon=True)
+    reader.start()
+    end = time.time() + wait
+    while time.time() < end:
+        link = _https_link("".join(lines))
+        if link:
+            _pending["proc"] = proc                       # keeps waiting for your approval, then finishes by itself
+            return "approve", link
+        if proc.poll() is not None:
+            reader.join(timeout=2)
+            text = "".join(lines)
+            link = _https_link(text)
+            if link:
+                return "approve", link
+            return ("ok", text) if proc.returncode == 0 else ("error", text.strip()[:300] or "Tailscale failed.")
+        time.sleep(0.2)
+    text = "".join(lines)
+    link = _https_link(text)
+    if link:
+        _pending["proc"] = proc
+        return "approve", link
+    proc.kill()
+    return "error", "Tailscale didn't answer in time. Open the Tailscale app, make sure it says Connected, then retry."
+
+
+_pending: dict = {}
+
+
 def enable(globe_too: bool = True) -> dict:
     st = status(fresh=True)
     if not st["installed"] or not st["running"]:
         return {"ok": False, "message": st["message"] or "Tailscale isn't running."}
-    code, text = _run(["serve", "--bg", f"http://127.0.0.1:{_port()}"], timeout=40)
-    if code != 0:
-        link = _https_link(text)
-        if link or "https" in text.lower() and "enable" in text.lower():
-            return {"ok": False, "message": "One more step: turn on HTTPS for your Tailscale network (free, one click)"
-                    + (f": {link}" if link else " in the Tailscale admin console → DNS → HTTPS Certificates.")
-                    + " Then click Set up again.", "link": link}
-        return {"ok": False, "message": f"Tailscale said: {text.strip()[:300]}"}
+    state, text = _serve(["serve", "--bg", f"http://127.0.0.1:{_port()}"])
+    if state == "approve":
+        return {"ok": False, "link": text, "message": "One-time step: open this link, click Enable (it lets your PC "
+                f"share Nova privately on your Tailscale network), then click Check again: {text}"}
+    if state == "error":
+        return {"ok": False, "message": f"Tailscale said: {text}"}
     if globe_too:
-        _run(["serve", "--bg", f"--https={GLOBE_HTTPS_PORT}", f"http://127.0.0.1:{_globe_port()}"], timeout=40)
+        _serve(["serve", "--bg", f"--https={GLOBE_HTTPS_PORT}", f"http://127.0.0.1:{_globe_port()}"], wait=20)
     st = status(fresh=True)
     if context.store:
         context.store.log("remote", "system", "📱 Remote access on (Tailscale)", st["url"], turn=0)
     return {**st, "ok": bool(st["url"]),
             "message": f"Done — open {st['url']} on your phone (Tailscale must be on there too)."
             if st["url"] else "Tailscale accepted it, but I can't see the address yet — try Check in a moment."}
+
+
+def finish_setup() -> dict:
+    """After you've approved the link: make sure the globe is shared too, and report the address."""
+    st = status(fresh=True)
+    if st["serving"] and not st["globe_serving"]:
+        _serve(["serve", "--bg", f"--https={GLOBE_HTTPS_PORT}", f"http://127.0.0.1:{_globe_port()}"], wait=15)
+        st = status(fresh=True)
+    return st
 
 
 def disable() -> dict:

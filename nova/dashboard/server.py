@@ -722,7 +722,7 @@ class Dashboard:
                         return self._mjpeg()
                     if u.path == "/api/remote":
                         from .. import remote
-                        st = remote.status(fresh=bool(q.get("fresh")))
+                        st = remote.finish_setup() if q.get("fresh") else remote.status()
                         return self._json({**st, "qr": remote.qr_svg(st["url"]) if st["url"] else "",
                                            "here": self.headers.get("Host", "")})
                     if u.path == "/api/globe/status":

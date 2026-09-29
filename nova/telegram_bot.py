@@ -144,6 +144,7 @@ class TelegramBot:
         if not self.token:
             print("[telegram] TELEGRAM_BOT_TOKEN missing in .env — Telegram disabled.")
             return
+        asyncio.set_event_loop(asyncio.new_event_loop())      # runs in its own thread
         self.app = Application.builder().token(self.token).post_init(self._post_init).build()
         a = self.app
         a.add_handler(CommandHandler("id", self.cmd_id))

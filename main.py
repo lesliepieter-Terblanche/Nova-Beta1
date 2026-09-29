@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import sys
 import threading
+import time
 
 from nova import context, updater
 from nova.agent import Agent
@@ -192,20 +193,39 @@ def main() -> None:
     if args.text:
         return text_mode(agent)
 
+    # Voice and Telegram each run in their own guarded thread: if one fails (no microphone, bad token…)
+    # it's reported and retried, and the dashboard, Settings and everything else keep running.
     if use_voice:
         from nova.voice import VoiceLoop
         loop = VoiceLoop(cfg, agent, speech)
-        if tg and tg.token:
-            threading.Thread(target=loop.run, daemon=True, name="voice").start()
-        else:
-            loop.run()
-            return
+        threading.Thread(target=guarded, args=("Voice", loop.run), daemon=True, name="voice").start()
     if tg and tg.token:
-        tg.run()      # blocks
-    elif not use_voice:
-        print("Nothing to run: voice is off and Telegram has no token. Try --text.")
-        sys.exit(1)
+        threading.Thread(target=guarded, args=("Telegram", tg.run), daemon=True, name="telegram").start()
+    if not use_voice and not (tg and tg.token):
+        print("[nova] Voice is off and Telegram has no token — the dashboard is running at "
+              f"http://localhost:{cfg.dashboard.get('port', 8765)} (type in its Ask box).")
+    print("[nova] Running. Close this window or press Ctrl+C to stop Nova.")
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        print("[nova] Stopped.")
 
+
+def guarded(name: str, fn, retries: int = 3) -> None:
+    """Run a part of Nova; if it crashes, explain and retry instead of taking Nova down."""
+    import traceback
+    for attempt in range(1, retries + 1):
+        try:
+            fn()
+            return
+        except Exception as e:
+            print(f"\n[nova] {name} stopped with an error (attempt {attempt}/{retries}): {type(e).__name__}: {e}")
+            traceback.print_exc()
+            if attempt < retries:
+                print(f"[nova] Retrying {name} in 20 seconds… (the dashboard and Settings keep working)")
+                time.sleep(20)
+    print(f"[nova] {name} is off until Nova restarts. See data\\logs\\nova.log for details.")
 
 if __name__ == "__main__":
     main()

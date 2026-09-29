@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-09-29
+### Fixed
+- If the voice part crashed at start-up (microphone, wake-word model…), the whole of Nova closed, taking the
+  dashboard and Settings with it ("localhost refused to connect"). Voice and Telegram now run in guarded
+  threads: an error is shown and retried, and the dashboard, Settings and everything else keep running.
+
 ## [1.4.1] — 2026-09-29
 ### Fixed
 - The **Nova Brain** desktop shortcut now starts Nova if it isn't running, then opens the dashboard

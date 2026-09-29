@@ -387,12 +387,20 @@ $("#main").addEventListener("click", async (e) => {
   if (eye) { const i = eye.previousElementSibling; i.type = i.type === "password" ? "text" : "password"; return; }
   const clr = e.target.closest("[data-clear]");
   if (clr) { changes.secrets[clr.dataset.clear] = null; const row = clr.closest(".key"); row.querySelector(".pill").className = "pill pending"; row.querySelector(".pill").textContent = "Will be cleared"; markDirty(); return; }
-  const t = e.target.closest("[data-test]");
+  let t = e.target.closest("[data-test]");
   if (t) {
-    if (Object.keys(changes.secrets).length || Object.keys(changes.values).length) { toast("Save your changes first — tests use saved settings.", false); return; }
+    const kind = t.dataset.test, keyName = t.closest(".key")?.dataset.key;
+    if (dirty()) {                                   // tests use saved settings: save first, automatically
+      const ok = await saveAll(true);
+      if (!ok) return;
+      // the page was redrawn after saving: find the same button again
+      t = keyName ? document.querySelector(`.key[data-key="${keyName}"] [data-test]`)
+                  : document.querySelector(`main section.on [data-test="${kind}"]`);
+      if (!t) return;
+    }
     const box = t.closest(".key")?.querySelector(".result") || t.closest(".card").querySelector(".result");
     t.disabled = true; const old = t.textContent; t.textContent = "Testing…";
-    const r = await api("/api/settings/test", { kind: t.dataset.test }).catch(() => ({ ok: false, message: "Nova didn't answer." }));
+    const r = await api("/api/settings/test", { kind }).catch(() => ({ ok: false, message: "Nova didn't answer." }));
     t.disabled = false; t.textContent = old;
     box.className = "result show " + (r.ok ? "ok" : "bad"); box.textContent = (r.ok ? "✓ " : "✕ ") + r.message;
   }
@@ -429,7 +437,8 @@ $("#main").addEventListener("change", (e) => {
 function renderRoutines() {
   $("#tab-routines").innerHTML = `<h2 class="sec-title">Routines</h2>
     <p class="sec-sub">Things Nova does by itself at set times — exactly as if you'd asked. Great with playbooks (e.g. “Give me my morning briefing”).</p>
-    <div id="rlist"></div><button class="btn" id="radd">+ Add routine</button>`;
+    <div id="rlist"></div><p class="field-err" id="rerr" style="color:var(--bad);font-size:13px;margin:0 0 10px"></p>
+    <button class="btn" id="radd">+ Add routine</button>`;
   drawRoutines();
   $("#radd").onclick = () => { routines.push({ name: "", at: "08:00", days: ["mon", "tue", "wed", "thu", "fri"], prompt: "", speak: true, telegram: true }); routinesChanged(); drawRoutines(); };
 }
@@ -444,7 +453,18 @@ function drawRoutines() {
         <span style="flex:1"></span><button class="btn small danger" data-rdel>Delete</button></div></div>`).join("")
     || `<div class="card glass"><p style="margin:0" class="note">No routines yet.</p></div>`;
 }
-function routinesChanged() { changes.routines = routines; markDirty(); }
+function normTime(v) {
+  const m = String(v).trim().toLowerCase().match(/^(\d{1,2})(?:[:h.](\d{2}))?\s*(am|pm)?$/);
+  if (!m) return v;
+  let h = +m[1]; const min = m[2] || "00";
+  if (m[3] === "pm" && h < 12) h += 12;
+  if (m[3] === "am" && h === 12) h = 0;
+  return String(h).padStart(2, "0") + ":" + min;
+}
+function routinesChanged() {
+  routines.forEach((r) => { r.at = normTime(r.at); });
+  changes.routines = routines; markDirty();
+}
 $("#main").addEventListener("input", (e) => {
   const card = e.target.closest(".routine"); if (!card || !e.target.dataset.r) return;
   const r = routines[+card.dataset.i]; const k = e.target.dataset.r;
@@ -515,33 +535,46 @@ function markDirty() {
 addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
 
 $("#discard").onclick = () => { for (const k of Object.keys(changes)) changes[k] = k === "values" || k === "secrets" ? {} : null; load(); toast("Changes discarded.", true); };
-$("#save").onclick = async () => {
+$("#save").onclick = () => saveAll(false);
+async function saveAll(quiet) {
   $("#save").disabled = true; $("#save").textContent = "Saving…";
   const body = { values: changes.values, secrets: changes.secrets };
   if (changes.extensions) body.extensions = changes.extensions;
   if (changes.routines) body.routines = changes.routines;
-  const r = await api("/api/settings", body).catch(() => ({ errors: { _: "Nova didn't answer — is it running?" } }));
+  let r;
+  try {
+    const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    r = await res.json().catch(() => ({}));
+    if (!res.ok || r.error) r = { saved: [], errors: { _: r.error || `Nova answered ${res.status}` } };
+  } catch { r = { saved: [], errors: { _: "Nova didn't answer — is it running?" } }; }
   $("#save").textContent = "Save changes";
   const errs = Object.entries(r.errors || {});
+  const rerr = $("#rerr"); if (rerr) rerr.textContent = (r.errors || {}).routines ? "Not saved: " + r.errors.routines : "";
   for (const [path, msg] of errs) {
     const row = document.querySelector(`.field[data-path="${CSS.escape(path)}"]`);
     if (row) row.querySelector(".err").textContent = msg;
   }
-  if (errs.length) { toast("Some settings weren't saved: " + errs.map(([p, m]) => `${p.split(".").pop()} — ${m}`).join("; "), false); }
-  const savedAny = (r.saved || []).length;
-  if (savedAny) {
+  if (errs.length) { toast("Not saved: " + errs.map(([p, m]) => (p === "_" ? m : `${p.split(".").pop()} — ${m}`)).join("; "), false); }
+  const saved = r.saved || [];
+  if (saved.length) {
     try { localStorage.setItem("nova-theme-rev", String(Date.now())); } catch {}
-    for (const p of r.saved) { delete changes.values[p]; delete changes.secrets[p]; }
-    if ((r.saved || []).includes("routines")) changes.routines = null;
-    if (r.saved.some((p) => p.endsWith(".disabled") || p.startsWith("mcp_"))) changes.extensions = null;
-    const keep = { ...changes.values };
-    await load();
-    Object.assign(changes.values, keep);
-    if (!errs.length) toast("Saved ✓", true);
+    for (const p of saved) {
+      if (p in changes.values) { S.values[p] = changes.values[p]; delete changes.values[p];
+        document.querySelector(`.field[data-path="${CSS.escape(p)}"]`)?.classList.remove("changed"); }
+      delete changes.secrets[p];
+    }
+    if (saved.includes("routines")) changes.routines = null;
+    if (saved.some((p) => p.endsWith(".disabled") || p.startsWith("mcp_"))) changes.extensions = null;
     if (r.restart) $("#banner").classList.add("show");
   }
+  if (!errs.length) {
+    await load();                         // everything saved: refresh the page from what's on disk
+    if (!quiet) toast("Saved ✓", true);
+  }
+  // if something failed, nothing is reloaded, so what you typed (e.g. a routine) stays on screen to fix
   markDirty();
-};
+  return !errs.length;
+}
 $("#later").onclick = () => $("#banner").classList.remove("show");
 $("#restart").onclick = async () => {
   $("#banner").classList.remove("show"); $("#restarting").classList.add("show");

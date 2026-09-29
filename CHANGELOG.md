@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.4.3] — 2026-09-29
+### Fixed
+- Settings: if saving failed on Nova's side, the page showed nothing. Every failure is now shown ("Not saved: …"),
+  and the cause is printed in Nova's window and log.
+- Settings: a routine that couldn't be saved (e.g. no task filled in) disappeared from the screen. It now stays,
+  with the reason shown under the routines. Times like `7:30`, `7h30` or `12:30 pm` are accepted.
+- Settings: **Test** buttons no longer say "save first" — they save your changes automatically, then test.
+
 ## [1.4.2] — 2026-09-29
 ### Fixed
 - If the voice part crashed at start-up (microphone, wake-word model…), the whole of Nova closed, taking the

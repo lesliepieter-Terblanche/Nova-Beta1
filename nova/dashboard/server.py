@@ -348,7 +348,12 @@ class Dashboard:
                     return self._json({"error": "forbidden"}, 403)
                 try:
                     if self.path == "/api/settings":
-                        return self._json(settings.apply(body))
+                        try:
+                            return self._json(settings.apply(body))
+                        except Exception as e:
+                            import traceback
+                            traceback.print_exc()
+                            return self._json({"saved": [], "errors": {"_": f"{type(e).__name__}: {e}"}})
                     if self.path == "/api/settings/test":
                         return self._json(settings.run_test(str(body.get("kind", ""))))
                     if self.path == "/api/restart":

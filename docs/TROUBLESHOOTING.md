@@ -119,6 +119,15 @@ run.bat --check
 | Pointer jumps / wrong gesture | Good light, hand 40–80 cm from the camera, palm facing it. Lower **Checks per second** if the PC is busy. |
 | Don't want the mouse moved | Untick **Point to move the mouse** in Settings → Gestures. |
 
+## Backups & dreaming
+
+| Problem | Fix |
+|---|---|
+| Where are my backups? | `backups\nova-backup-<date>.nova` (encrypted, last 7). Optional copy in Google Drive › Nova Backups. |
+| Lost the passphrase | It's in `.env` as `NOVA_BACKUP_PASSPHRASE` (also sent to your Telegram the first time). Without it a backup can't be opened. |
+| Restore on a new PC | Install Nova, stop it, then `python -m nova.dreaming restore backups\<file>.nova --apply` and enter the passphrase. Current files are moved to `restore\before-…`. |
+| Dreaming didn't run | The PC was off at 02:30 — it catches up ~10 min after Nova starts. Or say "dream now". |
+
 ## Slow replies
 
 Every reply shows where the time went (console: `[timing] …`; dashboard: open the action → *Where the time went*).

@@ -55,6 +55,18 @@ globe:
   port: 4173
   auto_start: false           # start it together with Nova
 
+# Nightly dreaming — memory clean-up, connections, journal and an encrypted backup while you sleep.
+dreaming:
+  enabled: true
+  at: "02:30"                 # if the PC is off then, it catches up ~10 min after Nova next starts
+  consolidate: true           # merge duplicate memories (old versions kept as history)
+  connect: true               # find related ideas and write them down
+  journal: true               # brain/Journal/<date>.md
+  backup: true                # encrypted with NOVA_BACKUP_PASSPHRASE (made for you the first time)
+  backup_dir: backups
+  backup_keep: 7
+  drive_backup: false         # also copy each backup to Google Drive › Nova Backups
+
 # Presence awareness — the webcam notices when you sit down or walk away (face detection, local, nothing saved).
 presence:
   enabled: false              # or say "turn on presence awareness"
@@ -121,6 +133,7 @@ telegram:
   allowed_user_ids: []
   voice_replies: true        # answer voice notes with a voice note (your ElevenLabs voice)
   announce_online: true      # message you when Nova starts (🟢) and stops (🔴)
+  quiet_hours: ["22:00", "07:00"]   # messages in these hours arrive without a buzz
 
 google:
   enabled: true

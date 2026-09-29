@@ -24,3 +24,5 @@ __pycache__/
 .ruff_cache/
 tools/gods-eye-view/
 models/vision/
+backups/
+restore/

@@ -52,6 +52,7 @@ mediapipe>=0.10.14      # gesture control + presence (hand / face tracking on th
 rembg[cpu]>=2.0.57
 
 # system
+cryptography>=42          # encrypted nightly backups
 psutil>=5.9
 mss>=9.0
 pyperclip>=1.8

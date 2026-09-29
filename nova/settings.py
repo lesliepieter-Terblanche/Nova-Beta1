@@ -32,6 +32,8 @@ SECRETS = [
      "help": "Free — very fast backup model (starts with gsk_)", "link": "https://console.groq.com/keys", "test": "groq"},
     {"key": "XAI_API_KEY", "label": "xAI Grok API key", "group": "AI models",
      "help": "Paid — Grok models (starts with xai-)", "link": "https://console.x.ai", "test": "xai"},
+    {"key": "NOVA_BACKUP_PASSPHRASE", "label": "Backup passphrase", "group": "Backups",
+     "help": "Encrypts the nightly backups. Made for you if empty — keep a copy, you need it to restore"},
     {"key": "TELEGRAM_BOT_TOKEN", "label": "Telegram bot token", "group": "Remote",
      "help": "Telegram → @BotFather → /newbot", "link": "https://t.me/BotFather", "test": "telegram"},
     {"key": "PEXELS_API_KEY", "label": "Pexels API key", "group": "Media",
@@ -139,6 +141,17 @@ SCHEMA = [
         {"path": "gestures.actions.fist", "label": "✊ Fist (hold)", "type": "select", "default": "escape", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
         {"path": "gestures.actions.swipe_left", "label": "👈 Swipe left", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
         {"path": "gestures.actions.swipe_right", "label": "👉 Swipe right", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
+    ]},
+    {"id": "dreaming", "title": "Dreaming", "icon": "moon", "fields": [
+        {"path": "dreaming.enabled", "label": "Dream every night", "type": "bool", "default": True},
+        {"path": "dreaming.at", "label": "At", "type": "text", "default": "02:30",
+         "help": "If the PC is off then, Nova catches up ~10 minutes after it next starts"},
+        {"path": "dreaming.consolidate", "label": "Merge duplicate memories", "type": "bool", "default": True},
+        {"path": "dreaming.connect", "label": "Find connections between ideas", "type": "bool", "default": True},
+        {"path": "dreaming.journal", "label": "Write the day's journal", "type": "bool", "default": True},
+        {"path": "dreaming.backup", "label": "Encrypted backup", "type": "bool", "default": True},
+        {"path": "dreaming.backup_keep", "label": "Backups to keep", "type": "number", "min": 1, "max": 60, "default": 7},
+        {"path": "dreaming.drive_backup", "label": "Also copy backups to Google Drive", "type": "bool", "default": False},
     ]},
     {"id": "presence", "title": "Presence", "icon": "eye", "fields": [
         {"path": "presence.enabled", "label": "Presence awareness", "type": "bool", "default": False,
@@ -545,6 +558,21 @@ def run_test(kind: str) -> dict:
                           headers={"Authorization": key}, timeout=15)
             return {"ok": r.status_code == 200, "message": "Pexels key works." if r.status_code == 200
                     else f"Pexels said {r.status_code}."}
+        if kind in ("dream", "backup"):
+            import threading as _t
+
+            from .dreaming import backup, dreamer
+            if kind == "backup":
+                info = backup()
+                extra = " A backup passphrase was created and saved in .env — the Telegram bot sends it to you." \
+                    if info.get("new_passphrase") else ""
+                return {"ok": True, "message": f"Backed up {info['files']} files ({info['size_mb']} MB) to "
+                        f"{info['path']}.{extra}" + (f" Drive: {info.get('drive') or info.get('drive_error')}"
+                                                   if info.get("drive") or info.get("drive_error") else "")}
+            if dreamer().running:
+                return {"ok": True, "message": f"Already dreaming ({dreamer().step})."}
+            _t.Thread(target=dreamer().dream, daemon=True).start()
+            return {"ok": True, "message": "Dreaming now — the report arrives on Telegram and in brain/Dreams."}
         if kind in ("presence", "presence_off"):
             from .presence import presence
             p = presence()

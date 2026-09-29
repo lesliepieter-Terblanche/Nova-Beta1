@@ -4,6 +4,22 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-09-29
+### Added
+- **Nightly dreaming** (every night at 02:30; if the PC was off it catches up once Nova has been running and quiet
+  for 10 minutes):
+  - merges duplicate memories into one clear memory (old versions kept as history, your tracking follows)
+  - finds related ideas across memories and notes and writes down why they matter (💡 connections)
+  - writes the day's journal into `brain/Journal/<date>.md` — done, decisions, open loops
+  - makes an **encrypted backup** of the brain database, notes, settings and keys into `backups/` (last 7 kept,
+    optionally copied to Google Drive › Nova Backups). A passphrase is created for you the first time and sent to
+    your Telegram — keep it in a password manager. Restore: `python -m nova.dreaming restore <file> --apply`
+  - a Dream note (`brain/Dreams/<date>.md`) and a quiet Telegram summary
+  - Settings → Dreaming (Dream now / Back up now), voice: "dream now", "what did you do last night?", "back up now"
+- Telegram **quiet hours** (22:00–07:00 by default): night-time messages arrive without a buzz.
+### Roadmap
+- All five upgrades done: gesture control, presence awareness, screen watcher, missions, nightly dreaming.
+
 ## [2.0.0] — 2026-09-29
 ### Added
 - **Missions** — goals Nova works on by itself, once or on a schedule:

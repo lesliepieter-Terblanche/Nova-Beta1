@@ -211,6 +211,7 @@ const ICONS = {
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   puzzle: '<path d="M10 3h4v3a2 2 0 1 0 4 0V3h3v7h-3a2 2 0 1 0 0 4h3v7h-7v-3a2 2 0 1 0-4 0v3H3v-7h3a2 2 0 1 0 0-4H3V3h7z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
@@ -262,6 +263,7 @@ const INTRO = {
   telegram: "Control Nova from your phone. Only the user IDs listed here are allowed.",
   google: "Gmail, Calendar, Drive, Docs, Sheets and Tasks.",
   files: "Where Nova may read and write, plus web and video options.",
+  dreaming: "Every night Nova merges duplicate memories, connects related ideas, writes the day's journal (brain/Journal) and makes an encrypted backup (backups folder, last 7). Restore with: python -m nova.dreaming restore <file> --apply",
   presence: "Nova notices when you sit down (welcome back, morning briefing) and when you walk away (stops talking, keeps messages for you, can lock the PC). Face detection runs on your PC; no pictures are kept. Typing also counts as being here.",
   gestures: "Control Nova with your hands through the webcam: ✋ stop · 👍 yes · 👎 no · ✌️ listen · ✊ Escape · 👋 swipe · 👉 point to move the mouse · 🤏 pinch to click or drag. Hold a gesture for about half a second. Runs on your PC only.",
   globe: "A live 3D globe with real planes, ships, satellites, earthquakes and weather. Say “show me Cape Town on the globe” or “what planes are overhead?”. Needs Node.js 24 (nodejs.org).",
@@ -272,7 +274,8 @@ const TESTS = { voice: [["voice", "Test voice"], ["elevenlabs", "Check ElevenLab
   telegram: [["telegram", "Send test message"]], google: [["google", "Check connection"]],
   globe: [["globe", "Check"], ["globe_install", "Install"]],
   gestures: [["gestures", "Try it now"], ["gestures_off", "Turn off"]],
-  presence: [["presence", "Try it now"], ["presence_off", "Turn off"]] };
+  presence: [["presence", "Try it now"], ["presence_off", "Turn off"]],
+  dreaming: [["dream", "Dream now"], ["backup", "Back up now"]] };
 
 function renderSection(sec) {
   const el = $("#tab-" + sec.id);

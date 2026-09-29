@@ -108,10 +108,19 @@ class TelegramBot:
         reply = await asyncio.to_thread(self.agent.handle, text, self._session(update))
         await self._send(chat.id, reply.text, reply.files, voice)
 
+    def quiet_now(self) -> bool:
+        """Night-time messages arrive silently (no buzz) — e.g. mission and dream reports."""
+        import datetime as dt
+        q = self.cfg.telegram.get("quiet_hours") or ["22:00", "07:00"]
+        now = dt.datetime.now().strftime("%H:%M")
+        start, end = str(q[0]), str(q[1])
+        return (start <= now or now < end) if start > end else (start <= now < end)
+
     async def _send(self, chat_id: int, text: str, files: list[str], voice: bool = False):
         bot = self.app.bot
+        silent = self.quiet_now()
         for i in range(0, max(len(text), 1), 4000):
-            await bot.send_message(chat_id, text[i:i + 4000] or "Done.")
+            await bot.send_message(chat_id, text[i:i + 4000] or "Done.", disable_notification=silent)
         if voice and text:
             try:
                 with tempfile.TemporaryDirectory() as td:
@@ -128,11 +137,11 @@ class TelegramBot:
                 continue
             with open(p, "rb") as fh:
                 if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
-                    await bot.send_photo(chat_id, fh, caption=p.name)
+                    await bot.send_photo(chat_id, fh, caption=p.name, disable_notification=silent)
                 elif p.suffix.lower() in (".mp4", ".mov") and p.stat().st_size < 50e6:
-                    await bot.send_video(chat_id, fh, caption=p.name)
+                    await bot.send_video(chat_id, fh, caption=p.name, disable_notification=silent)
                 else:
-                    await bot.send_document(chat_id, fh, filename=p.name)
+                    await bot.send_document(chat_id, fh, filename=p.name, disable_notification=silent)
 
     # ── push from anywhere (reminders, voice follow-ups) ──
     def push(self, text: str, files: list[str]) -> None:

@@ -214,6 +214,16 @@ Offered to the model when you say things like: _mission, missions, every monday,
 | `mission_report` | The latest result of a mission (summary and where the full report is). | `mission_id` |
 | `manage_mission` | Pause, resume, run now or delete a mission. | `mission_id`, `action` |
 
+## dreaming
+
+Offered to the model when you say things like: _dream, dreaming, backup, back up, journal, consolidate, last night, while i slept, tidy your memory, clean up your memory_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `dream_now` | Run Nova's nightly 'dream' now: merge duplicate memories, connect ideas, write the journal, back up. | — |
+| `last_dream` | What Nova did during its last nightly dream (memories merged, connections, journal, backup). | — |
+| `backup_now` | Make an encrypted backup of Nova's brain, notes, settings and keys right now. | — |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

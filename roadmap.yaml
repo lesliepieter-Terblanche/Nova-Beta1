@@ -19,5 +19,5 @@
   version: "2.0.0"
 - id: nightly-dreaming
   title: "Nova upgrade: Nightly dreaming — overnight memory clean-up, linking ideas, a daily journal and encrypted backup"
-  status: doing
+  status: done
   version: "2.1.0"

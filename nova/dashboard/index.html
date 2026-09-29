@@ -654,7 +654,7 @@ function setStatus(s) {
 // ── live activity ─────────────────────────────────────
 let lastId = 0;
 const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2",
-  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166", presence: "#52ffa8", watch: "#4cc9f0", mission: "#c77dff" };
+  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166", presence: "#52ffa8", watch: "#4cc9f0", mission: "#c77dff", dream: "#9b8cff" };
 async function poll() {
   try {
     const r = await api(`/api/activity?since=${lastId}`);
@@ -990,6 +990,7 @@ async function loadNow() {
       <div class="meta">${esc(t.how)} · ${ago(t.created)}${t.ms ? ` · ${secs(t.ms)}` : ""}${t.status === "error" ? ` · <span style="color:#ff6b81">failed</span>` : ""}</div>`;
     if (t.steps?.length) h += `<ul>${t.steps.map((x) => `<li data-go="${esc(t.id)}">${mark(x.status || "ok")}<span>${esc(x.title)}</span></li>`).join("")}</ul>`;
   } else h += `<div class="meta">Nothing yet — ask Nova something.</div>`;
+  if (r.dreaming?.running) h += `<div class="sec">🌙 Dreaming</div><ul><li>${mark("running")}<span>${esc(r.dreaming.step)}</span></li></ul>`;
   if (r.missions?.length) h += `<div class="sec">🚀 Missions running (${r.missions.length})</div><ul>${r.missions.map((m) =>
     `<li data-go="${esc(m.id)}">${mark("running")}<span>${esc(m.title)} · ${Math.round(m.progress * 100)}% ${esc(m.step)}</span></li>`).join("")}</ul>`;
   if (r.watching?.length) h += `<div class="sec">👀 Watching (${r.watching.length})</div><ul>${r.watching.map((w) =>

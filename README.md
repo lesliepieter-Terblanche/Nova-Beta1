@@ -45,6 +45,7 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 🎬 **Media** | Narrated videos with burned-in captions and free stock footage · photo slideshows · voice-overs · transcription · trims and conversions |
 | 👁 **Vision** | "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?" · describe photos and scans · Gemini, or fully local with Gemma 3 |
+| 🌙 **Nightly dreaming** | Overnight memory clean-up, 💡 connections between ideas, a daily journal and an encrypted backup |
 | 🚀 **Missions** | Goals Nova works on by itself, once or on a schedule — plans, researches, writes a report to your 2nd brain and briefs you (never sends/deletes on its own) |
 | 👀 **Screen watcher** | "Tell me when the render finishes / the download lands / *Export complete* appears" — local OCR, windows, programs, Downloads, vision; optional follow-up action |
 | 👤 **Presence awareness** | Greets you (and briefs you) when you sit down; pauses, holds messages and can lock the PC when you walk away |

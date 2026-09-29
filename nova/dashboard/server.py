@@ -59,6 +59,11 @@ SKILL_TITLES = {"system": "PC control", "memory": "Second brain", "files": "File
                 "maintenance": "Updates & upkeep", "currency": "Currency", "globe": "God's Eye View globe"}
 
 
+def _dream_state() -> dict:
+    from ..dreaming import _dreamer
+    return {"running": bool(_dreamer and _dreamer.running), "step": _dreamer.step if _dreamer else ""}
+
+
 def _how(session: str) -> str:
     if (session or "").startswith("mission:"):
         return f"by mission #{session.split(':', 1)[1]}"
@@ -355,6 +360,7 @@ class Dashboard:
         watching = [{"id": w.id, "label": w.label(), "left_min": max(0, int((w.until - time.time()) / 60))}
                     for w in (_mgr.active() if _mgr else [])]
         out = {"status": s.status, "busy": tid is not None, "presence": pres, "watching": watching, "missions": running,
+               "dreaming": _dream_state(),
                "waiting": [dict(w) for w in waiting],
                "doing": [{"id": d["item"], "title": self.title_of(d["item"]) or d["item"], "note": d["note"]} for d in doing]}
         t = self.turn(tid if tid is not None else tid_last) if (tid is not None or tid_last) else None

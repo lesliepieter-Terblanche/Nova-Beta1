@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-09-29
+### Fixed
+- The **Nova Brain** desktop shortcut now starts Nova if it isn't running, then opens the dashboard
+  (it used to show "localhost refused to connect"). Run `setup.bat` once to update the shortcut.
+- MCP servers connect in the background, so a slow first download (e.g. Windows-MCP) no longer delays start-up.
+### Added
+- Everything Nova prints is saved to `data\logs\nova.log` (previous run: `nova.previous.log`), including crashes.
+
 ## [1.4.0] — 2026-09-29
 ### Added
 - **Weather skill:** live forecast from Open-Meteo (free, no key) for your home city or anywhere, today or any day

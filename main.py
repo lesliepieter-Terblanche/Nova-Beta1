@@ -37,9 +37,7 @@ def build():
     print(f"[nova] skills: {', '.join(skills)}" + (f" | plugins: {', '.join(plugins)}" if plugins else "")
           + (f" | playbooks: {len(books)}" if books else ""))
     context.mcp = MCPManager(cfg)
-    status = context.mcp.start()
-    for name, st in status.items():
-        print(f"[mcp] {name}: {st}")
+    context.mcp.start(timeout=3)          # keeps connecting in the background; never delays start-up
     agent = Agent(cfg, context.llm)
     # index any notes added/edited in the vault while Nova was off
     threading.Thread(target=lambda: context.store.sync_vault(resolve(b.vault_dir)), daemon=True).start()
@@ -101,7 +99,52 @@ def check(cfg) -> None:
     print(f"  {ok(updater.is_repo())}GitHub (git repo) — version {updater.current() if updater.is_repo() else 'n/a'}")
 
 
+class _Tee:
+    """Mirror console output to data/logs/nova.log so problems can be diagnosed after the fact."""
+
+    def __init__(self, stream, log):
+        self.stream, self.log = stream, log
+
+    def write(self, text):
+        try:
+            self.stream.write(text)
+        except Exception:
+            pass
+        self.log.write(text)
+        self.log.flush()
+        return len(text)
+
+    def flush(self):
+        try:
+            self.stream.flush()
+        except Exception:
+            pass
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
+
+
+def start_logging() -> None:
+    import datetime as dt
+    import traceback
+    logs = resolve("data/logs")
+    logs.mkdir(parents=True, exist_ok=True)
+    log_path = logs / "nova.log"
+    if log_path.exists() and log_path.stat().st_size > 0:
+        log_path.replace(logs / "nova.previous.log")
+    log = open(log_path, "a", encoding="utf-8", buffering=1)
+    log.write(f"=== Nova started {dt.datetime.now():%Y-%m-%d %H:%M:%S} ===\n")
+    sys.stdout = _Tee(sys.__stdout__, log)
+    sys.stderr = _Tee(sys.__stderr__, log)
+
+    def crash(exc_type, exc, tb):
+        print("\n[nova] CRASH:\n" + "".join(traceback.format_exception(exc_type, exc, tb)), file=sys.stderr)
+    sys.excepthook = crash
+    threading.excepthook = lambda a: crash(a.exc_type, a.exc_value, a.exc_traceback)
+
+
 def main() -> None:
+    start_logging()
     ap = argparse.ArgumentParser(description="Nova voice agent")
     ap.add_argument("--text", action="store_true")
     ap.add_argument("--no-voice", action="store_true")

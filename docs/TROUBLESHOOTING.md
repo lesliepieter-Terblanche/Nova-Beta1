@@ -109,6 +109,11 @@ run.bat --check
 | Messed up `config.yaml` | Each save keeps the previous version as `config.yaml.bak`. Copy it back. |
 | 403 when opening via Tailscale or another name | Add the host name to `dashboard.allowed_hosts`. |
 
+## Nova won't start / "localhost refused to connect"
+
+Nova isn't running. Start it with the **Nova** or **Nova Brain** shortcut, or run `run.bat` in a Command Prompt to
+see messages. The full log of the last run is in `data\logs\nova.log` (and `nova.previous.log`).
+
 ## Still stuck?
 
 [Open an issue](../../issues/new?template=bug_report.md) with the output of `run.bat --check` and the console

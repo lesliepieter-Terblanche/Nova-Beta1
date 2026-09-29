@@ -77,6 +77,8 @@ class MCPManager:
     def start(self, timeout: float = 60) -> dict[str, str]:
         if not self.servers():
             return {}
+        for name in self.servers():
+            self.status.setdefault(name, "connecting…")
         threading.Thread(target=self._run_loop, daemon=True, name="mcp").start()
         self._ready.wait(timeout)
         return self.status

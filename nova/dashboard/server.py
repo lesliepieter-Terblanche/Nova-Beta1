@@ -3,7 +3,10 @@
   /                 the 3D 2nd-brain dashboard
   /api/graph        everything Nova knows/made, as a graph
   /api/activity     live activity feed + Nova's status (polled)
-  /api/item?id=     details for one node
+  /api/item?id=     details for one node: what it is, where it came from, its timeline, your tracking
+  /api/topic?kind=  every item in a topic (People, Projects, Actions, … or memories/notes/creations/tracked)
+  /api/now          what Nova is busy with right now (current request and its steps)
+  /api/track        set your status / pin / note on an item (POST)
   /api/open         open an item on the PC (POST {"id": ...})
   /api/ask          talk to Nova by typing (POST {"text": ...})
   /media?id=        stream an image/video for previews
@@ -38,7 +41,28 @@ HUBS = {
     "video": ("Videos", "#ff4d6d"), "ad": ("Ads", "#ff9f1c"), "image": ("Images", "#ffb4a2"),
     "email": ("Email", "#90e0ef"), "doc": ("Google Docs", "#80ed99"), "scrape": ("Web research", "#48cae4"),
     "audio": ("Audio", "#e0aaff"), "meeting": ("Meetings", "#f4a261"),
+    "action": ("Actions", "#ffe066"),
 }
+MEMORY_HUBS = ("person", "project", "preference", "fact", "goal", "decision", "routine", "event")
+GROUPS = {"memories": "Memories", "notes": "Notes", "creations": "Creations", "actions": "Actions",
+          "tracked": "Tracked", "doing": "In progress"}
+SESSION_LABEL = {"voice": "by voice", "telegram": "on Telegram", "dashboard": "on the dashboard",
+                 "text": "typed", "routine": "by a routine", "system": "automatically"}
+STEP_LABEL = {"user": "You asked", "reply": "Nova replied", "tool": "Action", "memory": "Memory",
+              "artifact": "Created", "timing": "Timing", "open": "Opened", "track": "Tracking"}
+
+
+SKILL_TITLES = {"system": "PC control", "memory": "Second brain", "files": "Files & folders", "web": "Web & websites",
+                "browser": "Browser control", "google_ws": "Google Workspace", "media": "Video & media",
+                "camera_ads": "Webcam & ads", "meetings": "Meeting recorder", "weather": "Weather",
+                "maintenance": "Updates & upkeep", "currency": "Currency"}
+
+
+def _json_or(text: str):
+    try:
+        return json.loads(text)
+    except Exception:
+        return None
 
 
 def _kind_of_artifact(k: str) -> str:
@@ -63,6 +87,9 @@ class Dashboard:
                                  "(SELECT embedding FROM chunks c2 WHERE c2.path=chunks.path AND c2.idx=0) e "
                                  "FROM chunks GROUP BY path ORDER BY m DESC LIMIT 500").fetchall()
             recent = {r["ref"] for r in s.db.execute("SELECT ref FROM activity WHERE ref!='' ORDER BY id DESC LIMIT 25")}
+            turns = s.db.execute("SELECT id,ts,title,status,session FROM activity WHERE kind='user' AND turn=id "
+                                 "ORDER BY id DESC LIMIT 40").fetchall()
+            track = {r["item"]: dict(r) for r in s.db.execute("SELECT * FROM tracking")}
 
         nodes = [{"id": "core", "label": self.cfg.assistant.name, "kind": "core", "val": 30, "color": "#ffffff"}]
         links, vecs = [], []
@@ -71,8 +98,10 @@ class Dashboard:
         def add(nid, label, kind, val, created, vec, extra=None):
             hub = f"hub:{kind}"
             used_hubs.add(kind)
-            n = {"id": nid, "label": label[:120], "kind": kind, "val": val, "color": HUBS[kind][1],
-                 "created": created, "hot": nid in recent}
+            t = track.get(nid) or {}
+            n = {"id": nid, "label": label[:120], "kind": kind, "val": val * (1.3 if t.get("pinned") else 1),
+                 "color": HUBS[kind][1], "created": created, "hot": (nid in recent and kind != "action") or t.get("status") == "doing",
+                 "track": t.get("status", ""), "pinned": bool(t.get("pinned"))}
             if extra:
                 n.update(extra)
             nodes.append(n)
@@ -93,6 +122,12 @@ class Dashboard:
         for a in arts:
             add(f"artifact:{a['id']}", a["title"] or Path(a["location"]).name, _kind_of_artifact(a["kind"]), 4,
                 a["ts"], a["embedding"])
+
+        for t in turns:
+            add(f"turn:{t['id']}", t["title"], "action", 3.2, t["ts"], None,
+                {"status": t["status"] or "done", "session": t["session"]})
+            if t["status"] == "running":
+                nodes[-1]["hot"] = True
 
         # [[wiki links]] between notes
         for n in notes:
@@ -137,15 +172,281 @@ class Dashboard:
                 "memories": q("SELECT COUNT(*) FROM memories WHERE superseded_by IS NULL"),
                 "notes": q("SELECT COUNT(DISTINCT path) FROM chunks"),
                 "artifacts": q("SELECT COUNT(*) FROM artifacts"),
-                "actions": q("SELECT COUNT(*) FROM activity WHERE kind='tool'"),
+                "actions": q("SELECT COUNT(*) FROM activity WHERE kind='user' AND turn=id")
+                           or q("SELECT COUNT(*) FROM activity WHERE kind='tool'"),
+                "tracked": q("SELECT COUNT(*) FROM tracking"),
+                "projects": self.active_projects(),
+                "skills": self._skill_count(),
+                "doing": q("SELECT COUNT(*) FROM tracking WHERE status='doing'"),
                 "status": s.status, "theme": settings.theme(), "name": self.cfg.assistant.name, "owner": self.cfg.assistant.owner,
-                "models": {"local": self.cfg.llm.providers.ollama.model, "smart": context.llm.smart if context.llm else []},
+                "models": {"local": self.cfg.llm.providers.ollama.model, "primary": getattr(context.llm, "primary", ""),
+                           "smart": context.llm.smart if context.llm else []},
             }
+
+    def _skill_count(self) -> int:
+        try:
+            from ..tools import REGISTRY
+            return len({t.func.__module__ for t in REGISTRY.values()})
+        except Exception:
+            return 0
 
     # ── items ─────────────────────────────────────────────
     def item(self, nid: str) -> dict:
+        out = self._item(nid)
+        if "error" in out:
+            return out
+        if not nid.startswith("turn:"):
+            out["tracking"] = context.store.get_tracking(nid)
+            out["timeline"] = self.timeline(nid, out)
+            if out.get("turn"):
+                out["origin"] = self.turn_brief(out["turn"])
+        return out
+
+    # ── turns: one request and everything Nova did for it ──
+    def turn_brief(self, tid: int) -> dict | None:
+        s = context.store
+        with s.lock:
+            r = s.db.execute("SELECT * FROM activity WHERE id=? AND kind='user'", (tid,)).fetchone()
+        if not r:
+            return None
+        return {"id": f"turn:{tid}", "request": r["detail"] or r["title"], "ts": r["ts"],
+                "how": SESSION_LABEL.get(r["session"], r["session"]), "status": r["status"] or "done", "ms": r["ms"]}
+
+    def turn(self, tid: int) -> dict:
+        s = context.store
+        with s.lock:
+            r = s.db.execute("SELECT * FROM activity WHERE id=? AND kind='user'", (tid,)).fetchone()
+            if not r:
+                return {"error": "not found"}
+            rows = s.db.execute("SELECT * FROM activity WHERE turn=? AND id!=? ORDER BY id", (tid, tid)).fetchall()
+            mems = s.db.execute("SELECT id,kind,text FROM memories WHERE turn=?", (tid,)).fetchall()
+            arts = s.db.execute("SELECT id,kind,title,location FROM artifacts WHERE turn=?", (tid,)).fetchall()
+            used = s.db.execute("SELECT DISTINCT item FROM uses WHERE turn=?", (tid,)).fetchall()
+        steps, reply, timing = [], "", None
+        for a in rows:
+            if a["kind"] == "reply":
+                reply = a["detail"] or a["title"]
+            if a["kind"] == "timing":
+                timing = _json_or(a["detail"])
+                continue
+            d = _json_or(a["detail"] or "")
+            steps.append({"kind": a["kind"], "label": STEP_LABEL.get(a["kind"], a["kind"]), "title": a["title"],
+                          "ts": a["ts"], "status": a["status"] or "", "ms": a["ms"], "ref": a["ref"],
+                          "args": d.get("args", d) if isinstance(d, dict) else None,
+                          "result": d.get("result") if isinstance(d, dict) else None,
+                          "text": None if isinstance(d, dict) else (a["detail"] or "")[:1500]})
+        made = [{"id": f"memory:{m['id']}", "title": m["text"], "kind": m["kind"]} for m in mems]
+        made += [{"id": f"artifact:{a['id']}", "title": a["title"] or Path(a["location"]).name, "kind": a["kind"]}
+                 for a in arts]
+        recalled = [{"id": u["item"], "title": self.title_of(u["item"])} for u in used]
+        req = r["detail"] or r["title"]
+        status = r["status"] or "done"
+        return {"id": f"turn:{tid}", "type": "action", "title": req, "created": r["ts"], "status": status,
+                "how": SESSION_LABEL.get(r["session"], r["session"]), "ms": r["ms"], "reply": reply,
+                "steps": steps, "made": made, "recalled": [x for x in recalled if x["title"]], "timing": timing,
+                "tracking": s.get_tracking(f"turn:{tid}"),
+                "meta": {"channel": r["session"], "status": status,
+                         "took": f"{r['ms'] / 1000:.1f} s" if r["ms"] else "—"}}
+
+    def title_of(self, nid: str) -> str:
         s = context.store
         kind, _, key = nid.partition(":")
+        with s.lock:
+            if kind == "memory" and key.isdigit():
+                r = s.db.execute("SELECT text FROM memories WHERE id=?", (int(key),)).fetchone()
+                return r["text"] if r else ""
+            if kind == "artifact" and key.isdigit():
+                r = s.db.execute("SELECT title, location FROM artifacts WHERE id=?", (int(key),)).fetchone()
+                return (r["title"] or Path(r["location"]).name) if r else ""
+            if kind == "turn" and key.isdigit():
+                r = s.db.execute("SELECT title FROM activity WHERE id=?", (int(key),)).fetchone()
+                return r["title"] if r else ""
+        if kind == "note":
+            return Path(key).stem
+        return ""
+
+    def timeline(self, nid: str, it: dict) -> list:
+        """Everything that happened to one item, newest first."""
+        s = context.store
+        ev = []
+        if it.get("created"):
+            ev.append({"ts": it["created"], "what": "Created", "icon": "create"})
+        for h in it.get("history") or []:
+            ev.append({"ts": h["created"], "what": f"Earlier version: {h['text'][:140]}", "icon": "edit"})
+        with s.lock:
+            rows = s.db.execute("SELECT ts,kind,title,session FROM activity WHERE ref=? ORDER BY id DESC LIMIT 60",
+                                (nid,)).fetchall()
+            uses = s.db.execute("SELECT u.ts, u.turn, a.title FROM uses u LEFT JOIN activity a ON a.id=u.turn "
+                                "WHERE u.item=? ORDER BY u.rowid DESC LIMIT 40", (nid,)).fetchall()
+        for r in rows:
+            if r["kind"] in ("memory", "artifact") and abs(len(ev)) and r["ts"][:16] == (it.get("created") or "")[:16]:
+                continue         # same moment as "Created"
+            icon = {"open": "open", "track": "track", "memory": "edit", "artifact": "create"}.get(r["kind"], "dot")
+            ev.append({"ts": r["ts"], "what": r["title"], "icon": icon})
+        for u in uses:
+            ev.append({"ts": u["ts"], "what": f"Recalled while answering “{(u['title'] or '')[:90]}”", "icon": "recall",
+                       "ref": f"turn:{u['turn']}"})
+        ev.sort(key=lambda e: e["ts"] or "", reverse=True)
+        return ev[:80]
+
+    def now(self) -> dict:
+        """What Nova is doing right now, for the 'Busy with' card."""
+        s = context.store
+        tid = s.current_turn
+        with s.lock:
+            if tid is None:
+                last = s.db.execute("SELECT id FROM activity WHERE kind='user' AND turn=id ORDER BY id DESC LIMIT 1").fetchone()
+                tid_last = last["id"] if last else None
+            waiting = s.db.execute("SELECT id,title,ts FROM activity WHERE kind='tool' AND status='waiting' "
+                                   "ORDER BY id DESC LIMIT 5").fetchall()
+            doing = s.db.execute("SELECT item, note FROM tracking WHERE status='doing' ORDER BY updated DESC LIMIT 8").fetchall()
+        out = {"status": s.status, "busy": tid is not None,
+               "waiting": [dict(w) for w in waiting],
+               "doing": [{"id": d["item"], "title": self.title_of(d["item"]) or d["item"], "note": d["note"]} for d in doing]}
+        t = self.turn(tid if tid is not None else tid_last) if (tid is not None or tid_last) else None
+        if t and "error" not in t:
+            out["turn"] = {k: t[k] for k in ("id", "title", "created", "status", "how", "ms")}
+            out["turn"]["steps"] = [{"label": x["label"], "title": x["title"], "status": x["status"], "ms": x["ms"]}
+                                    for x in t["steps"] if x["kind"] in ("tool", "artifact", "memory")][-6:]
+        return out
+
+    def topic(self, kind: str, limit: int = 300) -> dict:
+        """Every item in one topic, with when it was made, last touched, times recalled and your tracking."""
+        s = context.store
+        with s.lock:
+            track = {r["item"]: dict(r) for r in s.db.execute("SELECT * FROM tracking")}
+            uses = {r["item"]: (r["n"], r["last"]) for r in s.db.execute(
+                "SELECT item, COUNT(*) n, MAX(ts) last FROM uses GROUP BY item")}
+            touched = {r["ref"]: r["last"] for r in s.db.execute(
+                "SELECT ref, MAX(ts) last FROM activity WHERE ref!='' GROUP BY ref")}
+            items = []
+
+            def push(nid, title, k, created, extra=None):
+                t = track.get(nid) or {}
+                n_use, last_use = uses.get(nid, (0, None))
+                last = max([x for x in (created, last_use, touched.get(nid), t.get("updated")) if x] or [""])
+                row = {"id": nid, "title": (title or "")[:200], "kind": k, "created": created, "last": last,
+                       "recalled": n_use, "track": t.get("status", ""), "pinned": bool(t.get("pinned")),
+                       "note": t.get("note", ""), "color": HUBS.get(k, ("", "#8f97bf"))[1]}
+                if extra:
+                    row.update(extra)
+                items.append(row)
+
+            if kind in MEMORY_HUBS or kind in ("memories", "tracked", "doing"):
+                kinds = MEMORY_HUBS if kind in ("memories", "tracked", "doing") else (kind,)
+                q = ",".join("?" * len(kinds))
+                for m in s.db.execute(f"SELECT id,kind,text,created,importance,source,turn FROM memories "
+                                      f"WHERE superseded_by IS NULL AND kind IN ({q}) ORDER BY id DESC LIMIT ?",
+                                      (*kinds, limit)):
+                    push(f"memory:{m['id']}", m["text"], m["kind"], m["created"],
+                         {"sub": f"{m['source']} · importance {m['importance']}"})
+            if kind in ("note", "notes", "tracked", "doing"):
+                for n in s.db.execute("SELECT path, MAX(mtime) m FROM chunks GROUP BY path ORDER BY m DESC LIMIT ?",
+                                      (limit,)):
+                    import datetime as _dt
+                    push(f"note:{n['path']}", Path(n["path"]).stem, "note",
+                         _dt.datetime.fromtimestamp(n["m"]).isoformat(timespec="seconds"))
+            art_kinds = [k for k in HUBS if k not in MEMORY_HUBS and k not in ("note", "action")]
+            if kind in art_kinds or kind in ("creations", "tracked", "doing"):
+                kinds = art_kinds if kind in ("creations", "tracked", "doing") else [kind]
+                q = ",".join("?" * len(kinds))
+                raw = s.db.execute("SELECT id,ts,kind,title,location FROM artifacts WHERE kind != 'note' "
+                                   "ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+                for a in raw:
+                    k = _kind_of_artifact(a["kind"])
+                    if k in kinds:
+                        push(f"artifact:{a['id']}", a["title"] or Path(a["location"]).name, k, a["ts"],
+                             {"sub": a["location"]})
+            if kind in ("action", "actions", "tracked", "doing"):
+                for t in s.db.execute("SELECT a.id,a.ts,a.title,a.status,a.ms,a.session, "
+                                      "(SELECT COUNT(*) FROM activity b WHERE b.turn=a.id AND b.kind='tool') tools "
+                                      "FROM activity a WHERE a.kind='user' AND a.turn=a.id ORDER BY a.id DESC LIMIT ?",
+                                      (limit,)):
+                    push(f"turn:{t['id']}", t["title"], "action", t["ts"],
+                         {"status": t["status"] or "done", "ms": t["ms"], "tools": t["tools"],
+                          "sub": SESSION_LABEL.get(t["session"], t["session"])})
+        if kind == "tracked":
+            items = [i for i in items if i["track"] or i["pinned"] or i["note"]]
+        if kind == "doing":
+            items = [i for i in items if i["track"] == "doing"]
+        items.sort(key=lambda i: (not i["pinned"], "" if not i["last"] else "~", i["last"] or ""), reverse=False)
+        items.sort(key=lambda i: i["last"] or "", reverse=True)
+        items.sort(key=lambda i: not i["pinned"])
+        label = HUBS[kind][0] if kind in HUBS else GROUPS.get(kind, kind.title())
+        color = HUBS[kind][1] if kind in HUBS else "#8b7bff"
+        counts = {st: sum(1 for i in items if i["track"] == st) for st in ("todo", "doing", "waiting", "done")}
+        counts["pinned"] = sum(1 for i in items if i["pinned"])
+        return {"kind": kind, "label": label, "color": color, "items": items[:limit], "total": len(items),
+                "counts": counts}
+
+    # ── projects & skills (header tiles) ──────────────────
+    def active_projects(self) -> dict:
+        """Projects Nova knows about that you haven't marked done."""
+        t = self.topic("project")
+        live = [i for i in t["items"] if i["track"] != "done"]
+        return {"active": len(live), "doing": sum(1 for i in live if i["track"] == "doing"),
+                "done": sum(1 for i in t["items"] if i["track"] == "done")}
+
+    def skills(self) -> dict:
+        """Every skill (and plugin / connector) with a short description, its tools and how often it's used."""
+        import ast
+        from ..skills import SKILLS
+        from ..tools import REGISTRY
+        off = settings.disabled("skills")
+        with context.store.lock:
+            used = {r["title"]: (r["n"], r["last"]) for r in context.store.db.execute(
+                "SELECT title, COUNT(*) n, MAX(ts) last FROM activity WHERE kind='tool' GROUP BY title")}
+        by_mod: dict[str, list] = {}
+        for t in REGISTRY.values():
+            by_mod.setdefault(t.func.__module__, []).append(t)
+
+        def doc_of(path: Path) -> str:
+            try:
+                d = ast.get_docstring(ast.parse(path.read_text(encoding="utf-8"))) or ""
+            except Exception:
+                return ""
+            first = d.split("\n\n")[0].replace("\n", " ").strip()
+            return first if len(first) <= 240 else first[:237].rsplit(" ", 1)[0] + "…"
+
+        def entry(name, kind, module, path, enabled=True, core=False, desc=None):
+            tools = sorted(by_mod.get(module, []), key=lambda t: t.name)
+            n_used, last = 0, None
+            for t in tools:
+                u = used.get(t.name.replace("_", " "))
+                if u:
+                    n_used += u[0]
+                    last = max(last or "", u[1])
+            return {"name": name, "title": SKILL_TITLES.get(name, name.replace("_", " ").title()), "kind": kind,
+                    "description": desc if desc is not None else doc_of(path), "enabled": enabled,
+                    "loaded": bool(tools), "core": core, "uses": n_used, "last": last,
+                    "tools": [{"name": t.name, "about": (t.description or "").split("\n")[0][:140],
+                               "confirm": t.confirm} for t in tools]}
+
+        here = Path(__file__).resolve().parents[1]
+        out = [entry(n, "skill", f"nova.skills.{n}", here / "skills" / f"{n}.py", n not in off,
+                     n in ("system", "memory", "maintenance")) for n in SKILLS]
+        root = here.parent
+        poff = settings.disabled("plugins")
+        for f in sorted((root / "plugins").glob("*.py")):
+            if not f.name.startswith("_"):
+                out.append(entry(f.stem, "plugin", f"plugins.{f.stem}", f, f.stem not in poff))
+        known = {e["name"] for e in out}
+        mods = {m for m in by_mod if m not in {f"nova.skills.{n}" for n in SKILLS}
+                and not m.startswith("plugins.")}
+        for m in sorted(mods):
+            name = m.rsplit(".", 1)[-1]
+            if name in known:
+                continue
+            out.append(entry(name, "connector", m, Path("-"), True, False,
+                             "Tools from connected MCP servers and other add-ons."))
+        active = [e for e in out if e["enabled"] and e["loaded"]]
+        return {"skills": out, "active": len(active), "tools": sum(len(e["tools"]) for e in active)}
+
+    def _item(self, nid: str) -> dict:
+        s = context.store
+        kind, _, key = nid.partition(":")
+        if kind == "turn" and key.isdigit():
+            return self.turn(int(key))
         if kind == "memory":
             with s.lock:
                 r = s.db.execute("SELECT * FROM memories WHERE id=?", (int(key),)).fetchone()
@@ -153,13 +454,25 @@ class Dashboard:
             if not r:
                 return {"error": "not found"}
             return {"id": nid, "type": r["kind"], "title": r["text"], "body": r["text"], "created": r["created"],
-                    "meta": {"source": r["source"], "importance": r["importance"], "times recalled": r["uses"]},
+                    "turn": r["turn"], "superseded": bool(r["superseded_by"]),
+                    "meta": {"source": r["source"], "importance": r["importance"], "times recalled": r["uses"],
+                             "last changed": (r["updated"] or "")[:16].replace("T", " ")},
                     "history": [dict(h) for h in history], "related": self._related(r["text"], nid)}
         if kind == "note":
             p = Path(key)
             body = p.read_text(encoding="utf-8", errors="ignore") if p.exists() else "(file missing)"
+            import datetime as _dt
+            with s.lock:
+                a = s.db.execute("SELECT turn, ts FROM artifacts WHERE location=? ORDER BY id LIMIT 1", (key,)).fetchone()
+            st = p.stat() if p.exists() else None
             return {"id": nid, "type": "note", "title": p.stem, "body": body[:20000], "location": str(p),
-                    "openable": True, "related": self._related(body[:1000], nid)}
+                    "created": a["ts"] if a else (_dt.datetime.fromtimestamp(st.st_ctime).isoformat(timespec="seconds")
+                                                  if st else None),
+                    "turn": a["turn"] if a else None, "openable": True,
+                    "meta": {"words": len(body.split()),
+                             "last edited": _dt.datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+                             if st else "—"},
+                    "related": self._related(body[:1000], nid)}
         if kind == "artifact":
             with s.lock:
                 r = s.db.execute("SELECT * FROM artifacts WHERE id=?", (int(key),)).fetchone()
@@ -167,7 +480,8 @@ class Dashboard:
                 return {"error": "not found"}
             loc = r["location"]
             out = {"id": nid, "type": r["kind"], "title": r["title"], "body": r["detail"], "created": r["ts"],
-                   "location": loc, "openable": True, "related": self._related(f"{r['title']} {r['detail']}", nid)}
+                   "turn": r["turn"], "location": loc, "openable": True,
+                   "related": self._related(f"{r['title']} {r['detail']}", nid)}
             p = Path(loc)
             if not loc.startswith("http") and p.exists():
                 ext = p.suffix.lower()
@@ -217,6 +531,7 @@ class Dashboard:
         loc = self.location_of(nid)
         if not loc:
             return "Nothing to open for this item."
+        context.store.log("open", "dashboard", f"Opened {Path(loc).name or loc}", loc, nid, turn=0)
         if loc.startswith("http"):
             webbrowser.open(loc)
         elif platform.system() == "Windows":
@@ -319,6 +634,12 @@ class Dashboard:
                                            "status": context.store.status})
                     if u.path == "/api/item":
                         return self._json(dash.item(q.get("id", "")))
+                    if u.path == "/api/topic":
+                        return self._json(dash.topic(q.get("kind", "memories")))
+                    if u.path == "/api/skills":
+                        return self._json(dash.skills())
+                    if u.path == "/api/now":
+                        return self._json(dash.now())
                     if u.path == "/media":
                         loc = dash.location_of(q.get("id", ""))
                         if not loc:
@@ -359,6 +680,15 @@ class Dashboard:
                     if self.path == "/api/restart":
                         settings.restart_soon()
                         return self._json({"message": "Restarting…"})
+                    if self.path == "/api/track":
+                        nid = str(body.get("id", ""))
+                        if not re.fullmatch(r"(memory|artifact|turn):\d+|note:.+", nid):
+                            return self._json({"error": "unknown item"}, 400)
+                        try:
+                            return self._json(context.store.set_tracking(
+                                nid, body.get("status"), body.get("pinned"), body.get("note")))
+                        except ValueError as e:
+                            return self._json({"error": str(e)}, 400)
                     if self.path == "/api/open":
                         return self._json({"message": dash.open_item(body.get("id", ""))})
                     if self.path == "/api/ask":

@@ -7,6 +7,11 @@ if not exist .venv\Scripts\activate.bat (
 )
 call .venv\Scripts\activate.bat
 set "NOVA_LAUNCHER=run.bat"
+rem keep the AI model loaded between commands (no 10-30 s reload after a pause)
+if not defined OLLAMA_KEEP_ALIVE (
+  setx OLLAMA_KEEP_ALIVE 24h >nul 2>nul
+  set "OLLAMA_KEEP_ALIVE=24h"
+)
 rem make sure the local AI engine is running and answering (restart it if it's frozen)
 curl -s -m 5 http://127.0.0.1:11434/api/version >nul 2>nul
 if errorlevel 1 (

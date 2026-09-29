@@ -109,6 +109,25 @@ run.bat --check
 | Messed up `config.yaml` | Each save keeps the previous version as `config.yaml.bak`. Copy it back. |
 | 403 when opening via Tailscale or another name | Add the host name to `dashboard.allowed_hosts`. |
 
+## Slow replies
+
+Every reply shows where the time went (console: `[timing] …`; dashboard: open the action → *Where the time went*).
+
+| What you see | Fix |
+|---|---|
+| First command after a pause takes 10–30 s | Fixed in 1.5 (model kept loaded). Restart Nova once after updating so Ollama picks up `OLLAMA_KEEP_ALIVE`. |
+| "thinking" is most of the time, on `ollama` | A 3B model on a 4 GB card needs 2–6 s per step. For much faster answers set **Settings → General → Everyday model** to `gemini` (or `groq`); Ollama stays as the offline backup. |
+| Several steps for a simple question | Normal for tool use (1 step to decide, 1 to answer). Short, specific requests help. |
+| Slow right after another command | Background learning was using the local model; in 1.5 it uses Gemini/Groq when a key is set. |
+
+## Cloud model errors
+
+| Problem | Fix |
+|---|---|
+| `model ... does not exist` / `decommissioned` | The provider retired the model. Set the model to `auto` in Settings (1.5 does this by itself on **Test**). |
+| Groq test says it's an xAI key | Groq keys start with `gsk_`; xAI Grok keys start with `xai-`. Paste each in its own box. |
+| `401` / invalid API key | Copy the key again (no spaces), save, Test. |
+
 ## Nova won't start / "localhost refused to connect"
 
 Nova isn't running. Start it with the **Nova** or **Nova Brain** shortcut, or run `run.bat` in a Command Prompt to

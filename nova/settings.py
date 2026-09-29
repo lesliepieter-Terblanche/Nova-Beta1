@@ -29,7 +29,9 @@ SECRETS = [
     {"key": "GEMINI_API_KEY", "label": "Gemini API key", "group": "AI models",
      "help": "Free — smart model + vision", "link": "https://aistudio.google.com/apikey", "test": "gemini"},
     {"key": "GROQ_API_KEY", "label": "Groq API key", "group": "AI models",
-     "help": "Free — backup smart model", "link": "https://console.groq.com/keys", "test": "groq"},
+     "help": "Free — very fast backup model (starts with gsk_)", "link": "https://console.groq.com/keys", "test": "groq"},
+    {"key": "XAI_API_KEY", "label": "xAI Grok API key", "group": "AI models",
+     "help": "Paid — Grok models (starts with xai-)", "link": "https://console.x.ai", "test": "xai"},
     {"key": "TELEGRAM_BOT_TOKEN", "label": "Telegram bot token", "group": "Remote",
      "help": "Telegram → @BotFather → /newbot", "link": "https://t.me/BotFather", "test": "telegram"},
     {"key": "PEXELS_API_KEY", "label": "Pexels API key", "group": "Media",
@@ -83,12 +85,18 @@ SCHEMA = [
         {"path": "tts.kokoro.speed", "label": "Kokoro speed", "type": "number", "min": 0.7, "max": 1.4, "step": 0.05},
     ]},
     {"id": "brain", "title": "AI brain", "icon": "brain", "fields": [
-        {"path": "llm.primary", "label": "Everyday model", "type": "select", "options": ["ollama", "gemini", "groq"]},
-        {"path": "llm.smart", "label": "Smart models (in order)", "type": "list", "help": "One per line, e.g. gemini, groq"},
+        {"path": "llm.primary", "label": "Everyday model", "type": "select", "options": ["ollama", "gemini", "groq", "xai"],
+         "help": "ollama = private and free but slower on a 4 GB card; gemini/groq = much faster replies"},
+        {"path": "llm.smart", "label": "Smart models (in order)", "type": "list", "help": "One per line, e.g. gemini, groq, xai"},
         {"path": "llm.providers.ollama.model", "label": "Local model (Ollama)", "type": "text"},
         {"path": "llm.providers.gemini.model", "label": "Gemini model", "type": "select",
          "options": ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"], "free": True},
-        {"path": "llm.providers.groq.model", "label": "Groq model", "type": "text"},
+        {"path": "llm.providers.groq.model", "label": "Groq model", "type": "text", "default": "auto",
+         "help": "auto = Nova picks the best model your key can use (and switches when Groq retires one)"},
+        {"path": "llm.providers.xai.model", "label": "Grok model", "type": "text", "default": "auto",
+         "help": "auto, or e.g. grok-4-fast"},
+        {"path": "llm.keep_alive", "label": "Keep local model loaded", "type": "select", "default": "24h",
+         "options": ["24h", "2h", "30m", "5m"], "help": "Longer = no waiting for the model to load"},
         {"path": "llm.vision_providers", "label": "Vision models (in order)", "type": "list"},
         {"path": "llm.escalate_keywords", "label": "Phrases that go to the smart model", "type": "list"},
         {"path": "llm.max_tool_rounds", "label": "Max tool steps per request", "type": "number", "min": 2, "max": 15},
@@ -430,17 +438,31 @@ def run_test(kind: str) -> dict:
     cfg = load_config()
     env = read_env()
     try:
-        if kind in ("ollama", "gemini", "groq"):
-            from .llm import Provider
-            p = cfg.llm.providers.get(kind)
+        if kind in ("ollama", "gemini", "groq", "xai"):
+            import time
+
+            from .llm import Provider, provider_config
+            p = provider_config(cfg, kind)
             if not p:
                 return {"ok": False, "message": f"No '{kind}' provider in config."}
             key = env.get(p.get("key_env", ""), "") if p.get("key_env") else "local"
             if not key:
                 return {"ok": False, "message": f"No {p.get('key_env')} saved yet."}
-            reply = Provider(kind, p["base_url"], p["model"], key, 30).chat(
-                [{"role": "user", "content": "Reply with just: OK"}])
-            return {"ok": True, "message": f"{p['model']} answered: {reply.content[:40]}"}
+            if kind == "groq" and key.startswith("xai-"):
+                return {"ok": False, "message": "That's an xAI Grok key (starts with xai-). Paste it in the "
+                        "'xAI Grok API key' box instead — Groq keys start with gsk_."}
+            if kind == "xai" and key.startswith("gsk_"):
+                return {"ok": False, "message": "That's a Groq key (starts with gsk_). Paste it in the "
+                        "'Groq API key' box instead — xAI keys start with xai-."}
+            prov = Provider(kind, p["base_url"], p["model"], key, 30)
+            t = time.perf_counter()
+            reply = prov.chat([{"role": "user", "content": "Reply with just: OK"}])
+            secs = time.perf_counter() - t
+            msg = f"{prov.model} answered '{reply.content[:30]}' in {secs:.1f}s."
+            if prov.switched_from and prov.switched_from != "auto":
+                apply({"values": {f"llm.providers.{kind}.model": prov.model}})
+                msg += f" ('{prov.switched_from}' was retired by {kind}, so I switched to {prov.model} and saved it.)"
+            return {"ok": True, "message": msg}
         if kind == "telegram":
             token = env.get("TELEGRAM_BOT_TOKEN", "")
             if not token:

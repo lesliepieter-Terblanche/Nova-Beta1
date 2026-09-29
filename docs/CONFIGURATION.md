@@ -32,16 +32,25 @@ assistant:
 ```yaml
 llm:
   primary: ollama           # tried first for every request
-  smart: [gemini, groq]     # tried in order for hard requests, or when the primary fails
+  smart: [gemini, groq, xai]  # tried in order for hard requests, or when the primary fails
   providers:
     ollama: { base_url: http://localhost:11434/v1, model: nova-qwen, timeout: 90 }
     gemini: { base_url: https://generativelanguage.googleapis.com/v1beta/openai/, model: gemini-2.5-flash, key_env: GEMINI_API_KEY }
-    groq:   { base_url: https://api.groq.com/openai/v1, model: llama-3.3-70b-versatile, key_env: GROQ_API_KEY }
+    groq:   { base_url: https://api.groq.com/openai/v1, model: auto, key_env: GROQ_API_KEY }
+    xai:    { base_url: https://api.x.ai/v1, model: auto, key_env: XAI_API_KEY }
     ollama_vision: { base_url: http://localhost:11434/v1, model: gemma3:4b, timeout: 180 }
   vision_providers: [gemini, ollama_vision]   # tried in order; local keeps vision working offline
   escalate_keywords: ["think hard", "in detail", "write a", "draft", "analyse", "compare", ...]
   max_tool_rounds: 6
+  keep_alive: 24h           # keep the local model loaded between commands
 ```
+
+- `model: auto` lets Nova pick the best chat model your key can use, and switch by itself when the provider
+  retires a model. You can still name one (e.g. `openai/gpt-oss-120b`); if it disappears Nova falls back to auto.
+- gemini, groq and xai are built in: adding the key in Settings is enough, even if they're missing from your
+  `config.yaml`. A cloud key that isn't in `smart` is used as the last backup.
+- **Speed:** on a 4 GB GPU, `primary: gemini` (or `groq`) answers several times faster than the local model;
+  Ollama then stays the private, offline backup.
 
 - Any **OpenAI-compatible** endpoint can be added as a provider: LM Studio (`http://localhost:1234/v1`),
   llama.cpp server, vLLM, OpenRouter, a work Azure OpenAI deployment and so on. Add it under `providers` and

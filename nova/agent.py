@@ -9,6 +9,7 @@ import datetime as dt
 import json
 import re
 import threading
+import time
 from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo
 
@@ -36,6 +37,7 @@ class Pending:
     tools: list
     prefer_smart: bool
     skipped_ids: list[str]
+    log_id: int | None = None
 
 
 class Agent:
@@ -51,21 +53,39 @@ class Agent:
         with self.lock:
             context.begin_turn()
             self._tools_used = []
+            self._model_ms = 0
+            self._rounds = 0
+            t0 = time.perf_counter()
+            turn = None
             if store:
                 store.set_status("thinking")
-                store.log("user", session, text[:200], text)
+                turn = store.begin_turn(session, text)
+            failed = False
             try:
                 out = self._handle(text.strip(), session)
             except Exception as e:
+                failed = True
                 out = f"Sorry, something went wrong: {e}"
             files = context.attachments()
+            total = int((time.perf_counter() - t0) * 1000)
+            model = getattr(self.llm, "last_provider", "") or "?"
+            timing = (f"{total / 1000:.1f}s total — thinking {self._model_ms / 1000:.1f}s on {model} "
+                      f"({self._rounds} step{'s' if self._rounds != 1 else ''})"
+                      + (f", tools: {', '.join(self._tools_used)}" if self._tools_used else ""))
+            print(f"[timing] {timing}")
             if store:
-                store.log("reply", session, out[:200], out)
+                waiting = session in self.pending
+                store.log("reply", session, out[:200], out, f"turn:{turn}" if turn else "",
+                          status="error" if failed else "ok", ms=total)
+                store.log("timing", session, timing, json.dumps({"total_ms": total, "model_ms": self._model_ms,
+                          "model": model, "rounds": self._rounds, "tools": self._tools_used}), turn=turn)
+                store.end_turn(turn, "error" if failed else "waiting" if waiting else "done", total)
                 store.set_status("idle")
                 # Learn in the background so the reply isn't delayed.
                 if self.cfg.brain.get("learn_automatically", True):
                     threading.Thread(target=learn_from_turn, daemon=True, args=(
-                        store, self.llm, self.cfg.assistant.owner, text, out, list(self._tools_used))).start()
+                        store, self.llm, self.cfg.assistant.owner, text, out, list(self._tools_used)),
+                        kwargs={"turn": turn}).start()
             return Reply(out, files)
 
     def reset(self, session: str) -> None:
@@ -97,7 +117,10 @@ class Agent:
         for round_no in range(max_rounds):
             # If the local model is going round in circles, hand over to the smart one.
             smart = prefer_smart or round_no >= 3
+            t = time.perf_counter()
             reply = self.llm.chat(messages, schemas, prefer_smart=smart)
+            self._model_ms = getattr(self, "_model_ms", 0) + int((time.perf_counter() - t) * 1000)
+            self._rounds = getattr(self, "_rounds", 0) + 1
             if not reply.tool_calls:
                 self._remember(session, user_text, reply.content)
                 return reply.content
@@ -118,6 +141,10 @@ class Agent:
                 elif t.confirm:
                     later = [c.id for c in reply.tool_calls[i + 1:]]
                     self.pending[session] = Pending(t, call.arguments, call.id, messages, tools, smart, later)
+                    if context.store:
+                        self.pending[session].log_id = context.store.log(
+                            "tool", session, t.name.replace("_", " ") + " (waiting for your yes/no)",
+                            json.dumps(call.arguments, ensure_ascii=False)[:1000], status="waiting")
                     return self._confirmation_question(t, call.arguments)
                 else:
                     result = self._run_tool(session, t, call.arguments)
@@ -125,6 +152,8 @@ class Agent:
         return "I couldn't finish that in a reasonable number of steps. Try breaking it into smaller requests."
 
     def _resume(self, session, text, p: Pending, approved: bool) -> str:
+        if context.store and getattr(p, "log_id", None):
+            context.store.finish(p.log_id, "approved" if approved else "declined")
         if approved:
             result = self._run_tool(session, p.tool, p.args)
         else:
@@ -137,10 +166,21 @@ class Agent:
 
     def _run_tool(self, session: str, t: Tool, args: dict) -> str:
         print(f"[tool] {t.name} {args}")
-        if context.store:
-            context.store.log("tool", session, t.name.replace("_", " "), json.dumps(args, ensure_ascii=False)[:1000])
+        store = context.store
+        aid = None
+        if store:
+            aid = store.log("tool", session, t.name.replace("_", " "), json.dumps(args, ensure_ascii=False)[:1000],
+                            status="running")
         self._tools_used.append(t.name)
-        return t.run(args)
+        started = time.perf_counter()
+        result = t.run(args)
+        ms = int((time.perf_counter() - started) * 1000)
+        print(f"[tool] {t.name} took {ms} ms")
+        if store and aid:
+            ok = not str(result).startswith("ERROR")
+            detail = json.dumps({"args": args, "result": str(result)[:1500]}, ensure_ascii=False, default=str)
+            store.finish(aid, "ok" if ok else "error", ms, detail)
+        return result
 
     @staticmethod
     def _confirmation_question(t: Tool, args: dict) -> str:

@@ -15,7 +15,7 @@ llm:
   # Hybrid: local Ollama for everyday requests. Hard tasks / failures go down the "smart" list.
   # Providers without an API key in .env are skipped automatically.
   primary: ollama
-  smart: [gemini, groq]      # tried in this order
+  smart: [gemini, groq, xai] # tried in this order
   providers:
     ollama:
       base_url: http://localhost:11434/v1
@@ -28,9 +28,14 @@ llm:
       timeout: 90
     groq:                    # free API key: console.groq.com/keys  -> GROQ_API_KEY in .env
       base_url: https://api.groq.com/openai/v1
-      model: llama-3.3-70b-versatile
+      model: auto            # auto = best model your key can use; switches by itself when Groq retires one
       key_env: GROQ_API_KEY
       timeout: 60
+    xai:                     # xAI Grok (paid): console.x.ai -> XAI_API_KEY in .env
+      base_url: https://api.x.ai/v1
+      model: auto
+      key_env: XAI_API_KEY
+      timeout: 90
     ollama_vision:           # fully local vision (setup offers to download it: `ollama pull gemma3:4b`, ~3.3 GB)
       base_url: http://localhost:11434/v1
       model: gemma3:4b
@@ -41,6 +46,7 @@ llm:
   escalate_keywords: ["think hard", "in detail", "plan ", "write a", "write me", "build a website", "analyse", "analyze",
                       "compare", "summarise", "summarize", "draft", "explain why", "strategy"]
   max_tool_rounds: 6
+  keep_alive: 24h            # keep the local model loaded so replies start instantly (uses ~2.5 GB VRAM)
 
 voice:
   enabled: true

@@ -4,6 +4,29 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-09-29
+### Added
+- **Track everything on the dashboard.** Click any topic (People, Projects, Actions…) or a header number to get a
+  list of every item in it, with when it was made, when it was last used and how often Nova recalled it.
+  Click an item for its full story: *where it came from* (the request that created it), a *timeline* (created,
+  corrected, recalled, opened), and **Track this** — set To do / In progress / Waiting / Done, ★ pin it, add a note.
+- **Actions**: every request is now recorded with each step Nova took (input, result, ✓/✕, how long), what it made
+  or learned, which memories it used, and where the time went (thinking vs tools).
+- **Busy with** card: what Nova is doing right now, anything waiting for your yes/no, and your in-progress items.
+- Header: **Projects** (active, and how many are in progress) and **Skills** — click for every skill with a short
+  description, its tools and how often you've used it.
+- **xAI Grok** as a cloud model (key in Settings → API keys; starts with `xai-`).
+### Fixed
+- Groq test/answers failing with "model `llama-3.3-70b-versatile` does not exist": Groq retired it. Cloud models
+  are now `auto` — Nova picks the best model your key can use and switches by itself when one is retired.
+- Settings explains when a key is pasted in the wrong box (Groq `gsk_…` vs xAI `xai-…`).
+### Faster
+- The local model and embeddings are loaded at start-up and kept loaded (`llm.keep_alive`, default 24h), so there's
+  no 10–30 s wait after a pause.
+- Learning after each reply now uses a cloud model when you have one (instead of blocking the local model), and is
+  skipped for quick requests like the time or weather.
+- Every reply prints and shows its timing, e.g. `2.1s total — thinking 1.8s on ollama (2 steps)`.
+
 ## [1.4.3] — 2026-09-29
 ### Fixed
 - Settings: if saving failed on Nova's side, the page showed nothing. Every failure is now shown ("Not saved: …"),

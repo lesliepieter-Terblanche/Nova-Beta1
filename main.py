@@ -31,6 +31,8 @@ def build():
     context.store = Store(resolve(b.db_file), cfg.llm.providers.ollama.base_url, b.embed_model)
     context.store.vault = resolve(b.vault_dir)
     context.llm = LLM(cfg)
+    context.store.keep_alive = context.llm.keep_alive
+    threading.Thread(target=keep_warm, daemon=True, name="keep-warm").start()
     context.speech = Speech(cfg)
     skills = load_all()
     plugins = load_plugins()
@@ -43,6 +45,21 @@ def build():
     # index any notes added/edited in the vault while Nova was off
     threading.Thread(target=lambda: context.store.sync_vault(resolve(b.vault_dir)), daemon=True).start()
     return cfg, agent
+
+
+def keep_warm() -> None:
+    """Load the local model + embeddings at start-up and keep them in memory, so typed and spoken
+    commands answer straight away instead of waiting for the model to load (can take 10-30 s)."""
+    import time
+    context.llm.warm_up()
+    context.store.embed(["warm up"])
+    while True:           # Ollama unloads idle models; a tiny ping every 4 minutes keeps them ready
+        time.sleep(240)
+        try:
+            if context.store.status == "idle":
+                context.llm.warm_up(quiet=True)
+        except Exception:
+            pass
 
 
 def startup_update_check(speak) -> None:

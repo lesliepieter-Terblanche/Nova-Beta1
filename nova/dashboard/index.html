@@ -55,7 +55,7 @@
   .brand .status b { color: var(--orb, #8b7bff); font-weight: 600; }
 
   .stats { display: flex; gap: 6px; padding: 8px; }
-  .stat { padding: 8px 14px; min-width: 88px; border-radius: 12px; }
+  .stat { padding: 8px 12px; min-width: 78px; border-radius: 12px; }
   .stat .n { font-family: var(--display); font-size: 22px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
   .stat .l { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: 6px; }
 
@@ -87,7 +87,7 @@
   .views button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
 
   /* detail panel */
-  .panel { position: fixed; top: 100px; right: 18px; bottom: 110px; width: min(430px, calc(100vw - 36px)); z-index: 6;
+  .panel { position: fixed; top: 100px; right: 18px; bottom: 110px; width: min(470px, calc(100vw - 36px)); z-index: 6;
     display: flex; flex-direction: column; transform: translateX(120%); transition: transform .5s cubic-bezier(.2,.8,.2,1);
     background: var(--glass-strong); }
   .panel.open { transform: none; }
@@ -167,6 +167,103 @@
   .intro span { font: 500 13px var(--display); letter-spacing: .6em; color: #c9ceff; text-transform: uppercase; animation: in 1.2s ease; }
   .intro.gone { opacity: 0; pointer-events: none; }
 
+  /* clickable stat tiles */
+  .stat { cursor: pointer; transition: background .2s; }
+  .stat:hover { background: rgba(255,255,255,.05); }
+  .stat .sub { font-size: 10.5px; color: var(--ok); margin-top: 3px; min-height: 12px; white-space: nowrap; }
+
+  /* busy-with card */
+  .busy { border: 1px solid var(--line); border-radius: 14px; padding: 11px 12px; margin-bottom: 12px; background: rgba(0,0,0,.22); }
+  .busy .hd { display: flex; align-items: center; gap: 8px; font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .busy .hd i { width: 8px; height: 8px; border-radius: 50%; background: var(--orb, var(--accent)); box-shadow: 0 0 10px var(--orb, var(--accent)); }
+  .busy.on .hd i { animation: blink 1s infinite; }
+  .busy .req { font-size: 13px; margin: 8px 0 4px; cursor: pointer; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .busy .req:hover { text-decoration: underline; text-decoration-color: var(--line-strong); }
+  .busy .meta { font-size: 11.5px; color: var(--muted); }
+  .busy ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .busy li { font-size: 12px; display: flex; gap: 7px; align-items: baseline; color: #cfd5f5; cursor: pointer; }
+  .busy li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .busy .sec { font: 600 10px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 10px; }
+  .quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .quick button { padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--text); font: 11.5px var(--body); cursor: pointer; }
+  .quick button:hover { border-color: var(--line-strong); }
+
+  /* status marks */
+  .st { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-size: 10px; flex: none; font-weight: 700; }
+  .st.ok, .st.done, .st.approved { background: rgba(82,255,168,.16); color: var(--ok); }
+  .st.error { background: rgba(255,90,110,.18); color: #ff6b81; }
+  .st.running { background: rgba(255,209,102,.18); color: #ffd166; animation: blink 1s infinite; }
+  .st.waiting { background: rgba(76,201,240,.18); color: #4cc9f0; }
+  .st.declined { background: rgba(160,160,180,.15); color: var(--muted); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; letter-spacing: .04em; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .pill.todo { color: #a0c4ff; border-color: rgba(160,196,255,.4); }
+  .pill.doing { color: #ffd166; border-color: rgba(255,209,102,.45); background: rgba(255,209,102,.08); }
+  .pill.waiting { color: #4cc9f0; border-color: rgba(76,201,240,.4); }
+  .pill.done { color: var(--ok); border-color: rgba(82,255,168,.35); }
+  .pill.error { color: #ff6b81; border-color: rgba(255,107,129,.4); }
+
+  /* panel: back button, topic lists, tracking, timeline, steps, skills */
+  .panel .back { position: absolute; top: 14px; right: 50px; height: 30px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--line);
+    background: none; color: var(--muted); cursor: pointer; font: 12px var(--body); display: none; }
+  .panel .back.show { display: block; }
+  .panel .back:hover, .panel .close:hover { color: var(--text); border-color: var(--line-strong); }
+  .filters { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+  .filters button { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: none; color: var(--muted); font: 11.5px var(--body); cursor: pointer; }
+  .filters button.on { color: var(--text); border-color: var(--c, var(--accent)); background: color-mix(in srgb, var(--c, var(--accent)) 14%, transparent); }
+  .filters button small { opacity: .7; margin-left: 3px; }
+  .find { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.25); color: var(--text); font: 13px var(--body); outline: none; margin-bottom: 10px; }
+  .list { display: flex; flex-direction: column; gap: 4px; }
+  .row { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: start; text-align: left; padding: 10px; border-radius: 12px;
+    border: 1px solid transparent; background: rgba(255,255,255,.025); cursor: pointer; color: var(--text); font: inherit; width: 100%; }
+  .row:hover { border-color: var(--line-strong); background: rgba(255,255,255,.05); }
+  .row > i { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--c); box-shadow: 0 0 8px var(--c); }
+  .row .tt { font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .row .mm { font-size: 11.5px; color: var(--muted); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row .rt { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .row .pin { color: #ffd166; font-size: 13px; }
+  .track { border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 14px; background: rgba(0,0,0,.18); }
+  .track .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+  .track .top b { font: 600 10.5px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .seg { display: flex; gap: 4px; flex-wrap: wrap; }
+  .seg button { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--line); background: none; color: var(--muted); font: 12px var(--body); cursor: pointer; }
+  .seg button.on { color: #070914; background: var(--c, var(--accent)); border-color: transparent; font-weight: 600; }
+  .star { background: none; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); cursor: pointer; padding: 4px 9px; font-size: 13px; }
+  .star.on { color: #ffd166; border-color: rgba(255,209,102,.5); }
+  .track textarea { width: 100%; margin-top: 9px; min-height: 54px; resize: vertical; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: rgba(0,0,0,.25); color: var(--text); font: 13px/1.45 var(--body); outline: none; }
+  .track .saved { font-size: 11px; color: var(--ok); opacity: 0; transition: opacity .3s; }
+  .track .saved.show { opacity: 1; }
+  .origin { border-left: 2px solid var(--c); padding: 8px 12px; border-radius: 0 10px 10px 0; background: rgba(255,255,255,.03); cursor: pointer; }
+  .origin:hover { background: rgba(255,255,255,.06); }
+  .origin q { display: block; font-size: 13.5px; line-height: 1.45; quotes: "“" "”"; }
+  .origin small { color: var(--muted); font-size: 11.5px; }
+  .tl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 1px solid var(--line); }
+  .tl li { position: relative; padding: 5px 0 9px 8px; font-size: 12.5px; color: #cfd5f5; }
+  .tl li::before { content: ""; position: absolute; left: -19px; top: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--dotc, var(--muted)); box-shadow: 0 0 8px var(--dotc, transparent); }
+  .tl li small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .tl li.link { cursor: pointer; } .tl li.link:hover { color: #fff; }
+  .steps { display: flex; flex-direction: column; gap: 6px; }
+  .step { border: 1px solid var(--line); border-radius: 11px; padding: 8px 10px; background: rgba(255,255,255,.02); }
+  .step summary { display: flex; gap: 8px; align-items: center; cursor: pointer; list-style: none; font-size: 13px; }
+  .step summary::-webkit-details-marker { display: none; }
+  .step summary .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .step summary .ms { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .step pre { font-size: 12px !important; margin-top: 8px !important; max-height: 220px; overflow: auto; background: rgba(0,0,0,.25); padding: 8px; border-radius: 8px; }
+  .quote { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
+  .bars { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.06); margin: 6px 0 4px; }
+  .bars span { display: block; height: 100%; }
+  .skill { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: rgba(255,255,255,.025); }
+  .skill + .skill { margin-top: 8px; }
+  .skill .sh { display: flex; align-items: center; gap: 8px; }
+  .skill .sh b { font: 600 14px var(--display); flex: 1; }
+  .skill p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: #c4cae8; }
+  .skill .sm { font-size: 11.5px; color: var(--muted); margin-top: 7px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .skill details { margin-top: 8px; } .skill summary { cursor: pointer; font-size: 12px; color: var(--accent-2); }
+  .skill ul { margin: 6px 0 0; padding-left: 16px; font-size: 12px; color: #c4cae8; line-height: 1.55; }
+  .skill code { font-size: 11.5px; color: #fff; }
+  .skill.off { opacity: .5; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+
   @media (max-width: 900px) {
     .rail, .feed { display: none; }
     .stats .stat:nth-child(n+3) { display: none; }
@@ -188,16 +285,19 @@
   </div>
   <div class="right">
   <div class="stats glass">
-    <div class="stat"><div class="n" id="s-mem">0</div><div class="l">Memories</div></div>
-    <div class="stat"><div class="n" id="s-notes">0</div><div class="l">Notes</div></div>
-    <div class="stat"><div class="n" id="s-art">0</div><div class="l">Creations</div></div>
-    <div class="stat"><div class="n" id="s-act">0</div><div class="l">Actions</div></div>
+    <div class="stat" data-open="project" title="Projects you haven't marked done — click to see and track them"><div class="n" id="s-proj">0</div><div class="l">Projects</div><div class="sub" id="s-proj-sub"></div></div>
+    <div class="stat" data-open="skills" title="Skills Nova can use — click for what each one does"><div class="n" id="s-skills">0</div><div class="l">Skills</div><div class="sub" id="s-skills-sub"></div></div>
+    <div class="stat" data-open="memories" title="Everything Nova has learned"><div class="n" id="s-mem">0</div><div class="l">Memories</div><div class="sub"></div></div>
+    <div class="stat" data-open="notes" title="Notes in your 2nd-brain vault"><div class="n" id="s-notes">0</div><div class="l">Notes</div><div class="sub"></div></div>
+    <div class="stat" data-open="creations" title="Files, sites, videos, ads… Nova made"><div class="n" id="s-art">0</div><div class="l">Creations</div><div class="sub"></div></div>
+    <div class="stat" data-open="actions" title="Every request and the steps Nova took"><div class="n" id="s-act">0</div><div class="l">Actions</div><div class="sub"></div></div>
   </div>
     <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
   </div>
 </header>
 
 <aside class="rail glass">
+  <div class="busy" id="busy"><div class="hd"><i></i><span id="busy-h">Busy with</span></div><div id="busy-b" class="muted" style="margin-top:8px">Loading…</div></div>
   <label class="search">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="q" placeholder="Search the brain…" autocomplete="off">
@@ -212,9 +312,18 @@
   </div>
   <h3>Layers</h3>
   <div class="chips" id="chips"></div>
+  <h3>Track</h3>
+  <div class="quick">
+    <button data-open="doing">In progress</button>
+    <button data-open="tracked">All tracked</button>
+    <button data-open="project">Projects</button>
+    <button data-open="actions">Actions</button>
+    <button data-open="skills">Skills</button>
+  </div>
 </aside>
 
 <section class="panel glass" id="panel">
+  <button class="back" id="back" aria-label="Back">← Back</button>
   <button class="close" id="close" aria-label="Close">✕</button>
   <div class="head">
     <div class="type" id="p-type"><i></i><span></span></div>
@@ -367,8 +476,8 @@ function makeNode(n) {
   }
   const r = Math.cbrt(n.val || 4) * 1.35;
   const s = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 18), new THREE.MeshBasicMaterial({ color }));
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: n.hot ? 0.8 : 0.28, depthWrite: false }));
-  halo.scale.set(r * (n.hot ? 9 : 4.5), r * (n.hot ? 9 : 4.5), 1);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: n.hot ? 0.65 : 0.28, depthWrite: false }));
+  halo.scale.set(r * (n.hot ? 6.5 : 4.5), r * (n.hot ? 6.5 : 4.5), 1);
   group.add(halo, s);
   group.userData = { halo, hot: n.hot, base: r };
   return group;
@@ -389,7 +498,8 @@ function onHover(n) {
 
 const LABELS = { person: "Person", project: "Project", preference: "Preference", fact: "Fact", goal: "Goal",
   decision: "Decision", routine: "Routine", event: "Event", note: "Note", file: "File", site: "Website", video: "Video",
-  ad: "Ad", image: "Image", email: "Email", doc: "Google Doc", scrape: "Web research", audio: "Audio" };
+  ad: "Ad", image: "Image", email: "Email", doc: "Google Doc", scrape: "Web research", audio: "Audio",
+  action: "Action", meeting: "Meeting" };
 const labelFor = (k) => LABELS[k] || k;
 
 // ── camera ────────────────────────────────────────────
@@ -428,7 +538,7 @@ function animate() {
   for (const n of data.nodes) {
     const u = n.__threeObj?.userData;
     if (u?.label) u.label.visible = n.__threeObj.visible;
-    if (u?.hot) { const k = 1 + Math.sin(t * 3 + (n.x || 0)) * 0.25; u.halo.scale.set(u.base * 9 * k, u.base * 9 * k, 1); }
+    if (u?.hot) { const k = 1 + Math.sin(t * 3 + (n.x || 0)) * 0.25; u.halo.scale.set(u.base * 6.5 * k, u.base * 6.5 * k, 1); }
   }
   stars.rotation.y += 0.00008; dust.rotation.y -= 0.0002;
   if (orbit && performance.now() - userBusy > 3500 && !selected) {
@@ -497,6 +607,9 @@ async function loadStats() {
   const s = await api("/api/stats");
   $("title").textContent = `${s.name} · Second Brain`;
   countTo($("s-mem"), s.memories); countTo($("s-notes"), s.notes); countTo($("s-art"), s.artifacts); countTo($("s-act"), s.actions);
+  countTo($("s-proj"), s.projects?.active || 0); countTo($("s-skills"), s.skills || 0);
+  $("s-proj-sub").textContent = s.projects?.doing ? `${s.projects.doing} in progress` : "";
+  $("s-skills-sub").textContent = s.models?.primary ? `brain: ${s.models.primary}` : "";
   setStatus(s.status);
 }
 function countTo(el, v) {
@@ -513,7 +626,8 @@ function setStatus(s) {
 
 // ── live activity ─────────────────────────────────────
 let lastId = 0;
-const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2" };
+const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2",
+  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c" };
 async function poll() {
   try {
     const r = await api(`/api/activity?since=${lastId}`);
@@ -524,65 +638,271 @@ async function poll() {
       const ul = $("feed-list");
       for (const e of r.events) {
         const li = document.createElement("li");
-        if (e.ref) { li.classList.add("link"); li.onclick = () => openById(e.ref); }
+        const target = e.ref && !e.ref.startsWith("turn:") ? e.ref : (e.turn ? `turn:${e.turn}` : e.ref);
+        if (target) { li.classList.add("link"); li.onclick = () => openById(target); }
         li.style.setProperty("--c", KIND_COLORS[e.kind] || "#8f97bf");
-        li.innerHTML = `<span class="ts">${esc(e.ts.slice(11, 16))}</span><span class="t"><span class="k">${esc(e.kind)}</span>${esc(e.title)}</span>`;
+        li.innerHTML = `<span class="ts">${esc(e.ts.slice(11, 16))}</span><span class="t"><span class="k">${esc(e.kind)}</span>${esc(e.title)}${e.ms != null && e.kind !== "user" ? ` <span style="color:var(--muted)">· ${secs(e.ms)}</span>` : ""}</span>`;
         ul.prepend(li);
       }
       while (ul.children.length > 80) ul.lastChild.remove();
-      if (!first && r.events.some((e) => ["memory", "artifact"].includes(e.kind))) { await loadGraph(); loadStats(); }
+      if (!first && r.events.some((e) => ["memory", "artifact", "user"].includes(e.kind))) { await loadGraph(); loadStats(); }
       else if (!first) loadStats();
+      if (!first) { loadNow(); if (view && view.type !== "skills" && $("panel").classList.contains("open")) refreshSoon(); }
     }
   } catch { setStatus("offline"); }
+  if (++poll.n % 8 === 0) loadNow();        // keeps the "ago" times fresh
   setTimeout(poll, 1500);
 }
 
-// ── detail panel ──────────────────────────────────────
-function openById(id) {
-  const n = nodeById.get(id);
-  if (n) select(n); else showItem(id, null);
+// ── detail panel: topics, items, actions, skills ─────
+const TRACK = [["", "None"], ["todo", "To do"], ["doing", "In progress"], ["waiting", "Waiting"], ["done", "Done"]];
+const TRACK_TXT = Object.fromEntries(TRACK);
+const MARK = { ok: "✓", done: "✓", approved: "✓", error: "✕", running: "•", waiting: "?", declined: "⊘" };
+const TL_COLORS = { create: "#52ffa8", edit: "#ffd166", recall: "#4cc9f0", open: "#ff9f1c", track: "#f78fb3", dot: "#8f97bf" };
+const mark = (st) => st ? `<span class="st ${esc(st)}" title="${esc(st)}">${MARK[st] || "•"}</span>` : "";
+const secs = (ms) => ms == null ? "" : ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+function ago(ts) {
+  if (!ts) return "";
+  const d = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (d < 45) return "just now";
+  if (d < 3600) return `${Math.round(d / 60)} min ago`;
+  if (d < 86400) return `${Math.round(d / 3600)} h ago`;
+  if (d < 86400 * 7) return `${Math.round(d / 86400)} d ago`;
+  return new Date(ts).toLocaleDateString();
 }
-async function select(n) {
-  if (n.kind === "core") { closePanel(); flyTo(n, 260); return; }
-  if (n.kind === "hub") { tip.style.display = "none"; flyTo(n, 180); return; }
-  tip.style.display = "none";
-  selected = n; flyTo(n, 120); showItem(n.id, n);
+const TOPIC_COLORS = { memories: "#7bdff2", notes: "#9b8cff", creations: "#ff9f1c", actions: "#ffe066", tracked: "#f78fb3", doing: "#ffd166", skills: "#52ffa8" };
+
+let view = null;
+const navStack = [];
+function openView(v, fromPanel = false) {
+  if (fromPanel && view) navStack.push(view); else navStack.length = 0;
+  view = v; renderView();
 }
-async function showItem(id, n) {
-  const it = await api(`/api/item?id=${encodeURIComponent(id)}`);
-  if (it.error) return;
-  const color = n?.color || "#8b7bff";
+$("back").onclick = () => { if (navStack.length) { view = navStack.pop(); renderView(); } };
+function kindColor(k) { for (const n of data.nodes) if (n.kind === "hub" && n.hubKind === k) return n.color; return TOPIC_COLORS[k] || "#8b7bff"; }
+function panelHead(color, type, title, when) {
   const panel = $("panel");
   panel.style.setProperty("--c", color);
-  $("p-type").querySelector("span").textContent = labelFor(it.type);
-  $("p-title").textContent = it.title;
-  $("p-when").textContent = it.created ? new Date(it.created).toLocaleString() : (it.location || "");
-  let h = "";
-  const pv = it.preview;
-  if (pv?.type === "image") h += `<div class="preview"><img src="${pv.src}" alt=""></div>`;
-  if (pv?.type === "video") h += `<div class="preview"><video src="${pv.src}" controls autoplay muted loop playsinline></video></div>`;
-  if (pv?.type === "audio") h += `<div class="preview"><audio src="${pv.src}" controls></audio></div>`;
-  if (pv?.type === "site") h += `<div class="preview"><iframe src="${pv.src}" loading="lazy"></iframe></div>`;
-  if (it.gallery?.length) h += `<div class="gallery">${it.gallery.map((g) => `<img src="${g}" alt="">`).join("")}</div>`;
-  if (it.body && it.body !== it.title) h += `<pre>${esc(it.body)}</pre>`;
-  const meta = { ...(it.meta || {}) }; if (it.location) meta.location = it.location;
-  if (Object.keys(meta).length) h += `<dl>${Object.entries(meta).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
-  if (it.history?.length) h += `<h4>Earlier versions</h4><pre>${it.history.map((x) => `• ${esc(x.text)}  (${esc(x.created.slice(0, 10))})`).join("\n")}</pre>`;
+  $("p-type").querySelector("span").textContent = type;
+  $("p-title").textContent = title;
+  $("p-when").innerHTML = when || "";
+  $("back").classList.toggle("show", navStack.length > 0);
+  panel.classList.add("open");
+}
+async function renderView() {
+  if (!view) return;
+  const keep = $("p-body").scrollTop, same = renderView.last === JSON.stringify([view.type, view.id, view.kind]);
+  if (view.type === "topic") await renderTopic(view);
+  else if (view.type === "skills") await renderSkills(view);
+  else await renderItem(view);
+  renderView.last = JSON.stringify([view.type, view.id, view.kind]);
+  if (same) $("p-body").scrollTop = keep;
+}
+
+// every item in one topic
+async function renderTopic(v) {
+  const t = await api(`/api/topic?kind=${encodeURIComponent(v.kind)}`);
+  v.filter ??= "all"; v.q ??= "";
+  const color = t.color !== "#8b7bff" ? t.color : kindColor(v.kind);
+  const doing = t.counts.doing ? ` · <span style="color:#ffd166">${t.counts.doing} in progress</span>` : "";
+  panelHead(color, "Topic", t.label, `${t.total} item${t.total === 1 ? "" : "s"}${doing}`);
+  $("p-open").parentElement.style.display = "none";
+  const F = [["all", "All", t.total], ["doing", "In progress", t.counts.doing], ["todo", "To do", t.counts.todo],
+             ["waiting", "Waiting", t.counts.waiting], ["done", "Done", t.counts.done], ["pinned", "★ Pinned", t.counts.pinned]];
+  const q = v.q.toLowerCase();
+  const items = t.items.filter((i) => (v.filter === "all" || (v.filter === "pinned" ? i.pinned : i.track === v.filter))
+                                    && (!q || i.title.toLowerCase().includes(q)));
+  const rows = items.slice(0, 250).map((i) => {
+    const bits = [];
+    if (i.kind === "action") {
+      bits.push(esc(i.sub));
+      if (i.tools) bits.push(`${i.tools} step${i.tools > 1 ? "s" : ""}`);
+      if (i.ms) bits.push(secs(i.ms));
+    } else {
+      if (v.kind.length > 0 && ["memories", "creations", "tracked", "doing"].includes(v.kind)) bits.push(esc(labelFor(i.kind)));
+      if (i.recalled) bits.push(`recalled ${i.recalled}×`);
+    }
+    bits.push(`<span title="${esc(i.created || "")}">${ago(i.last || i.created)}</span>`);
+    const right = (i.pinned ? `<span class="pin">★</span>` : "") +
+      (i.track ? `<span class="pill ${i.track}">${TRACK_TXT[i.track]}</span>` : "") +
+      (i.kind === "action" && i.status && i.status !== "done" ? `<span class="pill ${i.status === "error" ? "error" : i.status === "running" ? "doing" : "waiting"}">${esc(i.status)}</span>` : "");
+    return `<button class="row" data-id="${esc(i.id)}" style="--c:${i.color}"><i></i><div><div class="tt">${esc(i.title)}</div>
+      <div class="mm">${bits.join(" · ")}${i.note ? ` · <span title="${esc(i.note)}">📝 note</span>` : ""}</div></div><div class="rt">${right}</div></button>`;
+  }).join("");
+  $("p-body").innerHTML = `
+    <input class="find" id="t-find" placeholder="Filter ${esc(t.label.toLowerCase())}…" value="${esc(v.q)}">
+    <div class="filters" style="--c:${color}">${F.filter(([k, , n]) => k === "all" || n).map(([k, l, n]) =>
+      `<button data-f="${k}" class="${v.filter === k ? "on" : ""}">${l}<small>${n}</small></button>`).join("")}</div>
+    <div class="list">${rows || `<div class="muted" style="padding:10px 4px">${t.total ? "Nothing matches." :
+      v.kind === "tracked" ? "Nothing tracked yet. Open any memory, note, creation or action and give it a status or ★ pin." :
+      v.kind === "doing" ? "Nothing in progress. Open an item and set it to “In progress”." :
+      "Nothing here yet — it fills up as you talk to Nova."}</div>`}</div>`;
+  const f = $("t-find");
+  f.oninput = () => { v.q = f.value; const pos = f.selectionStart; renderTopic(v).then(() => { const g = $("t-find"); g.focus(); g.setSelectionRange(pos, pos); }); };
+}
+
+// one memory / note / creation / action
+async function renderItem(v) {
+  const id = v.id;
+  const it = await api(`/api/item?id=${encodeURIComponent(id)}`);
+  if (it.error) { panelHead("#8f97bf", "Gone", "This item no longer exists", ""); $("p-body").innerHTML = ""; return; }
+  const n = nodeById.get(id) || v.n;
+  const color = n?.color || (id.startsWith("turn:") ? kindColor("action") : "#8b7bff");
+  const when = it.created ? `${new Date(it.created).toLocaleString()} · ${ago(it.created)}` : esc(it.location || "");
+  const extra = it.type === "action" ? ` · ${esc(it.how)}${it.ms ? ` · took ${secs(it.ms)}` : ""}` : "";
+  panelHead(color, labelFor(it.type), it.title, when + extra);
+  $("p-open").parentElement.style.display = "";
+  let h = trackBox(id, it.tracking || {});
+  if (it.type === "action") h += turnBody(it);
+  else {
+    const pv = it.preview;
+    if (pv?.type === "image") h += `<div class="preview"><img src="${pv.src}" alt=""></div>`;
+    if (pv?.type === "video") h += `<div class="preview"><video src="${pv.src}" controls autoplay muted loop playsinline></video></div>`;
+    if (pv?.type === "audio") h += `<div class="preview"><audio src="${pv.src}" controls></audio></div>`;
+    if (pv?.type === "site") h += `<div class="preview"><iframe src="${pv.src}" loading="lazy"></iframe></div>`;
+    if (it.gallery?.length) h += `<div class="gallery">${it.gallery.map((g) => `<img src="${g}" alt="">`).join("")}</div>`;
+    if (it.body && it.body !== it.title) h += `<pre>${esc(it.body)}</pre>`;
+    const meta = { ...(it.meta || {}) }; if (it.location) meta.location = it.location;
+    if (Object.keys(meta).length) h += `<dl>${Object.entries(meta).map(([k, x]) => `<dt>${esc(k)}</dt><dd>${esc(x)}</dd>`).join("")}</dl>`;
+    h += `<h4>Where it came from</h4>`;
+    h += it.origin ? `<div class="origin" data-id="${esc(it.origin.id)}"><q>${esc(it.origin.request)}</q>
+        <small>You asked ${esc(it.origin.how)} · ${ago(it.origin.ts)} · tap to see every step</small></div>`
+      : `<div class="muted">${it.type === "note" ? "A note in your vault (written by you or Nova)." : "From before Nova started tracking requests (v1.5)."}</div>`;
+    if (it.timeline?.length) h += `<h4>Timeline</h4><ul class="tl">${it.timeline.map((e) =>
+      `<li class="${e.ref ? "link" : ""}" ${e.ref ? `data-id="${esc(e.ref)}"` : ""} style="--dotc:${TL_COLORS[e.icon] || TL_COLORS.dot}">${esc(e.what)}<small>${esc(new Date(e.ts).toLocaleString())} · ${ago(e.ts)}</small></li>`).join("")}</ul>`;
+  }
   if (it.related?.length) h += `<h4>Connected thoughts</h4><div class="related">${it.related.map((r) => {
     const rn = nodeById.get(r.id);
     return `<button data-id="${esc(r.id)}" style="--c:${rn?.color || "#8f97bf"}"><i></i><span>${esc(r.title)}</span></button>`; }).join("")}</div>`;
   $("p-body").innerHTML = h;
+  bindTrack(id);
   $("p-open").disabled = !it.openable;
   $("p-open").onclick = async () => { const r = await api("/api/open", { id }); flash(r.message); };
+  $("p-focus").disabled = !n;
   $("p-focus").onclick = () => n && flyTo(n, 45);
-  panel.classList.add("open");
 }
-$("p-body").addEventListener("click", (e) => { const b = e.target.closest("button[data-id]"); if (b) openById(b.dataset.id); });
+
+function turnBody(t) {
+  let h = "";
+  const st = t.status === "done" || t.status === "ok" ? "" : `<span class="pill ${t.status === "error" ? "error" : t.status === "running" ? "doing" : "waiting"}">${esc(t.status)}</span> `;
+  if (t.reply) h += `<h4>${st}Nova's answer</h4><div class="quote">${esc(t.reply)}</div>`;
+  else if (t.status === "running") h += `<h4><span class="pill doing">working on it…</span></h4>`;
+  const steps = t.steps.filter((x) => !["user", "reply"].includes(x.kind));
+  h += `<h4>Steps (${steps.length})</h4>`;
+  h += steps.length ? `<div class="steps">${steps.map((x) => {
+      const body = [x.args && Object.keys(x.args).length ? `Input:\n${JSON.stringify(x.args, null, 1)}` : "",
+                    x.result ? `Result:\n${x.result}` : "", x.text && x.text !== x.title ? x.text : ""].filter(Boolean).join("\n\n");
+      const open = x.ref && x.kind !== "tool" ? ` <a href="#" data-id="${esc(x.ref)}" style="color:var(--accent-2);font-size:11.5px">open</a>` : "";
+      return `<details class="step"><summary>${mark(x.status || "ok")}<span class="nm"><span class="k" style="color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-right:6px">${esc(x.label)}</span>${esc(x.title)}</span>${open}<span class="ms">${secs(x.ms)}</span></summary>${body ? `<pre>${esc(body)}</pre>` : ""}</details>`;
+    }).join("")}</div>` : `<div class="muted">Answered straight away — no tools needed.</div>`;
+  if (t.timing) {
+    const tot = t.timing.total_ms || 1, m = t.timing.model_ms || 0, rest = Math.max(0, tot - m);
+    h += `<h4>Where the time went</h4><div class="bars"><span style="width:${100 * m / tot}%;background:var(--accent)"></span><span style="width:${100 * rest / tot}%;background:#ffd166"></span></div>
+      <div class="muted">${secs(m)} thinking on <b>${esc(t.timing.model)}</b> (${t.timing.rounds} round${t.timing.rounds === 1 ? "" : "s"}) · ${secs(rest)} tools & memory · ${secs(tot)} total</div>`;
+  }
+  if (t.made?.length) h += `<h4>Made or learned</h4><div class="related">${t.made.map((r) =>
+    `<button data-id="${esc(r.id)}" style="--c:${kindColor(r.kind)}"><i></i><span>${esc(r.title)}</span></button>`).join("")}</div>`;
+  if (t.recalled?.length) h += `<h4>Memories it used</h4><div class="related">${t.recalled.map((r) =>
+    `<button data-id="${esc(r.id)}" style="--c:${nodeById.get(r.id)?.color || "#8f97bf"}"><i></i><span>${esc(r.title)}</span></button>`).join("")}</div>`;
+  return h;
+}
+
+function trackBox(id, tr) {
+  return `<div class="track"><div class="top"><b>Track this</b><span class="saved" id="tr-saved">saved ✓</span>
+      <button class="star ${tr.pinned ? "on" : ""}" id="tr-pin" title="Pin to the top of lists">${tr.pinned ? "★ Pinned" : "☆ Pin"}</button></div>
+    <div class="seg" id="tr-seg">${TRACK.map(([k, l]) => `<button data-s="${k}" class="${(tr.status || "") === k ? "on" : ""}">${l}</button>`).join("")}</div>
+    <textarea id="tr-note" placeholder="Your note — next step, deadline, who's involved…">${esc(tr.note || "")}</textarea></div>`;
+}
+function bindTrack(id) {
+  const saved = () => { const s = $("tr-saved"); s.classList.add("show"); clearTimeout(saved.t); saved.t = setTimeout(() => s.classList.remove("show"), 1500); refreshSoon(); };
+  $("tr-seg").onclick = async (e) => {
+    const b = e.target.closest("button[data-s]"); if (!b) return;
+    await api("/api/track", { id, status: b.dataset.s });
+    $("tr-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); saved();
+  };
+  $("tr-pin").onclick = async () => {
+    const on = !$("tr-pin").classList.contains("on");
+    await api("/api/track", { id, pinned: on });
+    $("tr-pin").classList.toggle("on", on); $("tr-pin").textContent = on ? "★ Pinned" : "☆ Pin"; saved();
+  };
+  const note = $("tr-note");
+  note.onblur = async () => { if (note.value !== note.defaultValue) { await api("/api/track", { id, note: note.value }); note.defaultValue = note.value; saved(); } };
+}
+
+// what each skill does
+async function renderSkills(v) {
+  const r = await api("/api/skills");
+  v.tab ??= "skill";
+  panelHead(TOPIC_COLORS.skills, "Skills", "What Nova can do", `${r.active} active skill sets · ${r.tools} tools`);
+  $("p-open").parentElement.style.display = "none";
+  const tabs = [["skill", "Skills"], ["plugin", "Plugins"], ["connector", "Connectors"]].filter(([k]) => r.skills.some((x) => x.kind === k));
+  const list = r.skills.filter((x) => x.kind === v.tab)
+    .sort((a, b) => (b.enabled && b.loaded) - (a.enabled && a.loaded) || b.uses - a.uses);
+  $("p-body").innerHTML = `<div class="filters" style="--c:${TOPIC_COLORS.skills}">${tabs.map(([k, l]) =>
+      `<button data-tab="${k}" class="${v.tab === k ? "on" : ""}">${l}<small>${r.skills.filter((x) => x.kind === k).length}</small></button>`).join("")}</div>` +
+    list.map((x) => {
+      const state = !x.enabled ? `<span class="pill">off</span>` : !x.loaded ? `<span class="pill error">not loaded</span>` :
+                    x.core ? `<span class="pill done">core</span>` : `<span class="pill done">on</span>`;
+      return `<div class="skill ${x.enabled && x.loaded ? "" : "off"}"><div class="sh"><b>${esc(x.title)}</b>${state}</div>
+        <p>${esc(x.description || "No description.")}</p>
+        <div class="sm"><span>${x.tools.length} tool${x.tools.length === 1 ? "" : "s"}</span><span>used ${x.uses}×</span>${x.last ? `<span>last ${ago(x.last)}</span>` : ""}</div>
+        ${x.tools.length ? `<details><summary>Show tools</summary><ul>${x.tools.map((t) => `<li><code>${esc(t.name)}</code>${t.confirm ? " 🔒" : ""} — ${esc(t.about)}</li>`).join("")}</ul></details>` : ""}</div>`;
+    }).join("") +
+    `<p class="muted" style="margin-top:14px">🔒 = asks for your yes/no first. Switch skills on or off in <a href="/settings#extensions" style="color:var(--accent-2)">Settings → Extensions</a>.</p>`;
+}
+
+// clicks inside the panel
+$("p-body").addEventListener("click", (e) => {
+  const tab = e.target.closest("button[data-tab]"); if (tab) { view.tab = tab.dataset.tab; return renderView(); }
+  const f = e.target.closest("button[data-f]"); if (f) { view.filter = f.dataset.f; return renderView(); }
+  const b = e.target.closest("[data-id]");
+  if (b) { e.preventDefault(); openItem(b.dataset.id, true); }
+});
+function openItem(id, fromPanel = false) {
+  const n = nodeById.get(id);
+  if (n && !fromPanel) { selected = n; flyTo(n, 120); }
+  openView({ type: "item", id, n }, fromPanel);
+}
+function openTopic(kind, fromPanel = false) {
+  tip.style.display = "none";
+  if (kind === "skills") return openView({ type: "skills" }, fromPanel);
+  const hub = nodeById.get(`hub:${kind}`); if (hub && !fromPanel) flyTo(hub, 180);
+  selected = hub || { id: "topic" };
+  openView({ type: "topic", kind }, fromPanel);
+}
+function openById(id) { openItem(id); }
+async function select(n) {
+  if (n.kind === "core") { closePanel(); flyTo(n, 260); return; }
+  if (n.kind === "hub") return openTopic(n.hubKind);
+  tip.style.display = "none";
+  openItem(n.id);
+}
+let refreshT;
+function refreshSoon() { clearTimeout(refreshT); refreshT = setTimeout(() => { if ($("panel").classList.contains("open") && !document.activeElement.closest?.("#panel textarea, #panel input")) renderView(); loadGraph(); loadStats(); }, 700); }
 function closePanel() {
-  $("panel").classList.remove("open"); selected = null;
+  $("panel").classList.remove("open"); selected = null; view = null; navStack.length = 0;
   const c = Graph.camera().position; angle = Math.atan2(c.x, c.z);
 }
 $("close").onclick = closePanel;
+document.addEventListener("click", (e) => { const b = e.target.closest(".stat[data-open], .quick button[data-open]"); if (b) openTopic(b.dataset.open); });
+
+// "Busy with" card
+async function loadNow() {
+  let r; try { r = await api("/api/now"); } catch { return; }
+  $("busy").classList.toggle("on", r.busy);
+  $("busy-h").textContent = r.busy ? "Working on" : r.status === "listening" ? "Listening" : r.status === "speaking" ? "Speaking" : "Busy with";
+  let h = "";
+  if (r.turn) {
+    const t = r.turn;
+    h += `<div class="req" data-go="${esc(t.id)}">${r.busy ? "" : "Last: "}${esc(t.title)}</div>
+      <div class="meta">${esc(t.how)} · ${ago(t.created)}${t.ms ? ` · ${secs(t.ms)}` : ""}${t.status === "error" ? ` · <span style="color:#ff6b81">failed</span>` : ""}</div>`;
+    if (t.steps?.length) h += `<ul>${t.steps.map((x) => `<li data-go="${esc(t.id)}">${mark(x.status || "ok")}<span>${esc(x.title)}</span></li>`).join("")}</ul>`;
+  } else h += `<div class="meta">Nothing yet — ask Nova something.</div>`;
+  if (r.waiting?.length) h += `<div class="sec">Waiting for your yes / no</div><ul>${r.waiting.map((w) => `<li>${mark("waiting")}<span>${esc(w.title.replace(" (waiting for your yes/no)", ""))}</span></li>`).join("")}</ul>`;
+  if (r.doing?.length) h += `<div class="sec">In progress (${r.doing.length})</div><ul>${r.doing.map((d) => `<li data-go="${esc(d.id)}">${mark("running")}<span title="${esc(d.note || "")}">${esc(d.title)}</span></li>`).join("")}</ul>`;
+  $("busy-b").className = ""; $("busy-b").innerHTML = h;
+}
+$("busy").addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (g) openItem(g.dataset.go); });
 
 function flash(msg) { const r = $("reply"); r.textContent = msg; r.classList.add("show"); clearTimeout(flash.t); flash.t = setTimeout(() => r.classList.remove("show"), 4000); }
 
@@ -597,7 +917,7 @@ $("q").addEventListener("input", () => {
 $("results").addEventListener("click", (e) => { const b = e.target.closest("button[data-id]"); if (b) select(nodeById.get(b.dataset.id)); });
 addEventListener("keydown", (e) => {
   if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("q").focus(); }
-  if (e.key === "Escape") closePanel();
+  if (e.key === "Escape") { if (navStack.length) $("back").click(); else closePanel(); }
 });
 
 // ── views ─────────────────────────────────────────────
@@ -619,7 +939,8 @@ addEventListener("resize", () => { Graph.width(innerWidth).height(innerHeight); 
 
 // ── start ─────────────────────────────────────────────
 Graph.cameraPosition({ x: 0, y: 120, z: 1400 });
-await Promise.all([loadGraph(), loadStats(), applyTheme()]);
+poll.n = 0;
+await Promise.all([loadGraph(), loadStats(), applyTheme(), loadNow()]);
 requestAnimationFrame(animate);
 setTimeout(() => {
   $("intro").classList.add("gone");

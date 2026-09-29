@@ -203,6 +203,17 @@ Offered to the model when you say things like: _tell me when, let me know when, 
 | `list_watchers` | What Nova is currently watching the screen for. | — |
 | `stop_watching` | Stop one screen watch by its number, or all of them (0). | `watch_id`? |
 
+## missions
+
+Offered to the model when you say things like: _mission, missions, every monday, every morning, every week, every day, each week, keep track of, monitor, research and brief, work on this, in the background_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `start_mission` | Give Nova a goal to work on by itself in the background: it plans the steps, does the research/work with its tools, writes a report into the 2nd brain and sends the summary. Can repeat on a schedule. | `goal`, `schedule`?, `title`? |
+| `list_missions` | List Nova's missions with their status and schedule. | — |
+| `mission_report` | The latest result of a mission (summary and where the full report is). | `mission_id` |
+| `manage_mission` | Pause, resume, run now or delete a mission. | `mission_id`, `action` |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

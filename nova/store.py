@@ -303,9 +303,9 @@ class Store:
                                 (status, ms, detail[:4000], activity_id))
             self.db.commit()
 
-    def begin_turn(self, session: str, text: str) -> int:
+    def begin_turn(self, session: str, text: str, title: str | None = None) -> int:
         """Start a new request. Everything logged until end_turn() belongs to it."""
-        tid = self.log("user", session, text[:200], text, status="running", turn=0)
+        tid = self.log("user", session, (title or text)[:200], text, status="running", turn=0)
         with self.lock:
             self.db.execute("UPDATE activity SET turn=? WHERE id=?", (tid, tid))
             self.db.commit()

@@ -338,6 +338,7 @@
     <button data-open="doing">In progress</button>
     <button data-open="tracked">All tracked</button>
     <button data-open="project">Projects</button>
+    <button data-open="mission">Missions</button>
     <button data-open="actions">Actions</button>
     <button data-open="skills">Skills</button>
   </div>
@@ -525,7 +526,7 @@ function onHover(n) {
 const LABELS = { person: "Person", project: "Project", preference: "Preference", fact: "Fact", goal: "Goal",
   decision: "Decision", routine: "Routine", event: "Event", note: "Note", file: "File", site: "Website", video: "Video",
   ad: "Ad", image: "Image", email: "Email", doc: "Google Doc", scrape: "Web research", audio: "Audio",
-  action: "Action", meeting: "Meeting" };
+  action: "Action", meeting: "Meeting", mission: "Mission" };
 const labelFor = (k) => LABELS[k] || k;
 
 // ── camera ────────────────────────────────────────────
@@ -653,7 +654,7 @@ function setStatus(s) {
 // ── live activity ─────────────────────────────────────
 let lastId = 0;
 const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2",
-  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166", presence: "#52ffa8", watch: "#4cc9f0" };
+  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166", presence: "#52ffa8", watch: "#4cc9f0", mission: "#c77dff" };
 async function poll() {
   try {
     const r = await api(`/api/activity?since=${lastId}`);
@@ -671,7 +672,7 @@ async function poll() {
         ul.prepend(li);
       }
       while (ul.children.length > 80) ul.lastChild.remove();
-      if (!first && r.events.some((e) => ["memory", "artifact", "user"].includes(e.kind))) { await loadGraph(); loadStats(); }
+      if (!first && r.events.some((e) => ["memory", "artifact", "user", "mission"].includes(e.kind))) { await loadGraph(); loadStats(); }
       else if (!first) loadStats();
       if (!first) { loadNow(); if (view && view.type !== "skills" && $("panel").classList.contains("open")) refreshSoon(); }
     }
@@ -696,7 +697,7 @@ function ago(ts) {
   if (d < 86400 * 7) return `${Math.round(d / 86400)} d ago`;
   return new Date(ts).toLocaleDateString();
 }
-const TOPIC_COLORS = { memories: "#7bdff2", notes: "#9b8cff", creations: "#ff9f1c", actions: "#ffe066", tracked: "#f78fb3", doing: "#ffd166", skills: "#52ffa8" };
+const TOPIC_COLORS = { mission: "#c77dff", memories: "#7bdff2", notes: "#9b8cff", creations: "#ff9f1c", actions: "#ffe066", tracked: "#f78fb3", doing: "#ffd166", skills: "#52ffa8" };
 
 let view = null;
 const navStack = [];
@@ -780,6 +781,7 @@ async function renderItem(v) {
   $("p-open").parentElement.style.display = "";
   let h = trackBox(id, it.tracking || {});
   if (it.type === "action") h += turnBody(it);
+  else if (it.type === "mission") h += missionBody(it);
   else {
     const pv = it.preview;
     if (pv?.type === "image") h += `<div class="preview"><img src="${pv.src}" alt=""></div>`;
@@ -833,6 +835,25 @@ function turnBody(t) {
   return h;
 }
 
+function missionBody(m) {
+  const pct = Math.round((m.progress || 0) * 100);
+  const st = { running: "doing", scheduled: "todo", paused: "waiting", done: "done", failed: "error" }[m.status] || "";
+  let h = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <span class="pill ${st}">${esc(m.status)}</span><span class="pill">${esc(m.when)}</span>
+      ${m.next_run && m.status === "scheduled" ? `<span class="muted">next ${esc(new Date(m.next_run).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" }))}</span>` : ""}</div>`;
+  if (m.status === "running") h += `<div class="bars"><span style="width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--accent-2))"></span></div><div class="muted">${pct}% · ${esc(m.step)}</div>`;
+  h += `<h4>Goal</h4><div class="quote">${esc(m.body)}</div>`;
+  h += `<div class="seg" style="margin-top:12px" id="m-acts">
+      <button data-mact="run">▶ Run now</button>
+      ${m.status === "paused" ? `<button data-mact="resume">⏵ Resume</button>` : `<button data-mact="pause">⏸ Pause</button>`}
+      <button data-mact="delete">🗑 Delete</button></div>`;
+  if (m.plan?.length) h += `<h4>${m.status === "running" ? "Plan — working on it" : "Last plan"}</h4><div class="steps">${m.plan.map((p) =>
+    `<details class="step"><summary>${mark(p.status || "")}<span class="nm">${esc(p.title)}</span><span class="ms">${secs(p.ms)}</span></summary><pre>${esc(p.do + (p.result ? "\n\nResult:\n" + p.result : ""))}</pre></details>`).join("")}</div>`;
+  if (m.runs?.length) h += `<h4>Runs (${m.runs_count})</h4><ul class="tl">${m.runs.map((r) =>
+    `<li class="${r.report ? "link" : ""}" ${r.report ? `data-id="${esc(r.report)}"` : ""} style="--dotc:${r.status === "done" ? "#52ffa8" : r.status === "failed" ? "#ff6b81" : "#ffd166"}">${esc(r.summary ? r.summary.slice(0, 220) : r.status)}<small>${esc(new Date(r.started).toLocaleString())}${r.report ? " · open report" : ""}</small></li>`).join("")}</ul>`;
+  return h;
+}
+
 function trackBox(id, tr) {
   return `<div class="track"><div class="top"><b>Track this</b><span class="saved" id="tr-saved">saved ✓</span>
       <button class="star ${tr.pinned ? "on" : ""}" id="tr-pin" title="Pin to the top of lists">${tr.pinned ? "★ Pinned" : "☆ Pin"}</button></div>
@@ -881,6 +902,13 @@ async function renderSkills(v) {
 $("p-body").addEventListener("click", (e) => {
   const tab = e.target.closest("button[data-tab]"); if (tab) { view.tab = tab.dataset.tab; return renderView(); }
   const f = e.target.closest("button[data-f]"); if (f) { view.filter = f.dataset.f; return renderView(); }
+  const ma = e.target.closest("button[data-mact]");
+  if (ma) {
+    if (ma.dataset.mact === "delete" && !confirm("Delete this mission? Its reports stay in your notes.")) return;
+    api("/api/mission", { id: +view.id.split(":")[1], action: ma.dataset.mact }).then((r) => { flash(r.message);
+      if (ma.dataset.mact === "delete") { closePanel(); loadGraph(); } else setTimeout(renderView, 600); });
+    return;
+  }
   const b = e.target.closest("[data-id]");
   if (b) { e.preventDefault(); openItem(b.dataset.id, true); }
 });
@@ -962,6 +990,8 @@ async function loadNow() {
       <div class="meta">${esc(t.how)} · ${ago(t.created)}${t.ms ? ` · ${secs(t.ms)}` : ""}${t.status === "error" ? ` · <span style="color:#ff6b81">failed</span>` : ""}</div>`;
     if (t.steps?.length) h += `<ul>${t.steps.map((x) => `<li data-go="${esc(t.id)}">${mark(x.status || "ok")}<span>${esc(x.title)}</span></li>`).join("")}</ul>`;
   } else h += `<div class="meta">Nothing yet — ask Nova something.</div>`;
+  if (r.missions?.length) h += `<div class="sec">🚀 Missions running (${r.missions.length})</div><ul>${r.missions.map((m) =>
+    `<li data-go="${esc(m.id)}">${mark("running")}<span>${esc(m.title)} · ${Math.round(m.progress * 100)}% ${esc(m.step)}</span></li>`).join("")}</ul>`;
   if (r.watching?.length) h += `<div class="sec">👀 Watching (${r.watching.length})</div><ul>${r.watching.map((w) =>
     `<li title="gives up in ${w.left_min} min">${mark("running")}<span>${esc(w.label)}</span><a href="#" data-unwatch="${w.id}" style="margin-left:auto;color:var(--muted);text-decoration:none" title="Stop watching">✕</a></li>`).join("")}</ul>`;
   if (r.waiting?.length) h += `<div class="sec">Waiting for your yes / no</div><ul>${r.waiting.map((w) => `<li>${mark("waiting")}<span>${esc(w.title.replace(" (waiting for your yes/no)", ""))}</span></li>`).join("")}</ul>`;

@@ -49,7 +49,7 @@ class Agent:
         self.lock = threading.Lock()      # one request at a time (one GPU)
 
     # ── public ─────────────────────────────────────────────
-    def handle(self, text: str, session: str = "voice") -> Reply:
+    def handle(self, text: str, session: str = "voice", prefer_smart: bool = False) -> Reply:
         store = context.store
         with self.lock:
             context.begin_turn()
@@ -60,10 +60,14 @@ class Agent:
             turn = None
             if store:
                 store.set_status("thinking")
-                turn = store.begin_turn(session, text)
+                title = None
+                if session.startswith("mission:"):
+                    m = re.search(r"Step (\d+) of (\d+) — ([^:\n]+)", text)
+                    title = f"🚀 Mission step {m.group(1)}/{m.group(2)}: {m.group(3)}" if m else "🚀 Mission step"
+                turn = store.begin_turn(session, text, title)
             failed = False
             try:
-                out = self._handle(text.strip(), session)
+                out = self._handle(text.strip(), session, prefer_smart)
             except Exception as e:
                 failed = True
                 out = f"Sorry, something went wrong: {e}"
@@ -83,7 +87,7 @@ class Agent:
                 store.end_turn(turn, "error" if failed else "waiting" if waiting else "done", total)
                 store.set_status("idle")
                 # Learn in the background so the reply isn't delayed.
-                if self.cfg.brain.get("learn_automatically", True):
+                if self.cfg.brain.get("learn_automatically", True) and not session.startswith("mission:"):
                     threading.Thread(target=learn_from_turn, daemon=True, args=(
                         store, self.llm, self.cfg.assistant.owner, text, out, list(self._tools_used)),
                         kwargs={"turn": turn}).start()
@@ -100,7 +104,7 @@ class Agent:
         self.pending.pop(session, None)
 
     # ── internals ──────────────────────────────────────────
-    def _handle(self, text: str, session: str) -> str:
+    def _handle(self, text: str, session: str, force_smart: bool = False) -> str:
         if session in self.pending:
             p = self.pending.pop(session)
             if YES.match(text):
@@ -112,7 +116,7 @@ class Agent:
         history = self.histories.setdefault(session, [])
         books = matching_playbooks(text)
         tools = select_tools(text, extra={g for b in books for g in b.groups})
-        prefer_smart = self.llm.should_escalate(text)
+        prefer_smart = force_smart or self.llm.should_escalate(text)
         messages = [{"role": "system", "content": self._system_prompt(session, text)}] + history + [
             {"role": "user", "content": text}
         ]

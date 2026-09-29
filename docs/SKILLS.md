@@ -116,6 +116,7 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | `gestures.py` | gestures | gesture control on/off/status/help (engine in `nova/gestures.py`, camera in `nova/camera.py`) |
 | `presence.py` | presence | presence on/off/status, lock the PC 🔒 (engine in `nova/presence.py`) |
 | `screen_watch.py` | watch | watch screen/window/program/Downloads, list, stop (engine in `nova/watcher.py`) |
+| `missions.py` | missions | start, list, report, pause/resume/run/delete (engine in `nova/missions.py`) |
 | `maintenance.py` | maintenance | updates 🔒, versions, rollback 🔒, restart 🔒, dashboard, extensions status |
 
 After adding or changing tools, regenerate the reference: `python scripts/gen_tool_docs.py`.

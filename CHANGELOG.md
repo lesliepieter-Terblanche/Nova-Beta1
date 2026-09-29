@@ -4,6 +4,19 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-09-29
+### Added
+- **Missions** — goals Nova works on by itself, once or on a schedule:
+  "start a mission every Monday at 8 to research what Juniper Mist competitors did in SADC and brief me".
+  - Each run: Nova plans 3–6 steps (smart model), does them with its tools, writes a report into the 2nd brain
+    (`Missions/` folder, searchable) and sends you the summary on Telegram and out loud (held if you're away).
+  - Recurring runs see the previous report, so they can say what changed. Schedules: once, daily, weekdays,
+    specific days, every N hours. Missions that were due while Nova was off run when it starts.
+  - Safe by design: missions never send, delete or run commands by themselves — they list those as "Needs your OK".
+  - Dashboard: a **Missions** topic; each mission shows live progress, its plan with every step's result, past runs
+    with links to the reports, and ▶ Run now / ⏸ Pause / 🗑 Delete. Running missions appear in the Busy card.
+  - Voice: "list my missions", "what did the Mist mission find?", "pause mission 2".
+
 ## [1.9.0] — 2026-09-29
 ### Added
 - **Screen watcher** — "tell me when…". Nova keeps an eye on the screen, a window, a program or Downloads and

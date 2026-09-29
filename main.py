@@ -239,6 +239,11 @@ def main() -> None:
     if tg and tg.token:
         threading.Thread(target=guarded, args=("Telegram", tg.run), daemon=True, name="telegram").start()
     try:
+        from nova.missions import missions
+        missions().start()               # runs scheduled missions (and any that were due while Nova was off)
+    except Exception as e:
+        print(f"[missions] scheduler not started: {e}")
+    try:
         from nova.watcher import manager
         n = manager().load()
         if n:

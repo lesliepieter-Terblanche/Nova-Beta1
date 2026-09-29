@@ -15,9 +15,9 @@
   version: "1.9.0"
 - id: missions
   title: "Nova upgrade: Missions — long-running goals Nova plans and works on by itself, with progress on the dashboard"
-  status: doing
+  status: done
   version: "2.0.0"
 - id: nightly-dreaming
   title: "Nova upgrade: Nightly dreaming — overnight memory clean-up, linking ideas, a daily journal and encrypted backup"
-  status: todo
+  status: doing
   version: "2.1.0"

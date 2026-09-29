@@ -42,7 +42,7 @@ HUBS = {
     "video": ("Videos", "#ff4d6d"), "ad": ("Ads", "#ff9f1c"), "image": ("Images", "#ffb4a2"),
     "email": ("Email", "#90e0ef"), "doc": ("Google Docs", "#80ed99"), "scrape": ("Web research", "#48cae4"),
     "audio": ("Audio", "#e0aaff"), "meeting": ("Meetings", "#f4a261"),
-    "action": ("Actions", "#ffe066"),
+    "action": ("Actions", "#ffe066"), "mission": ("Missions", "#c77dff"),
 }
 MEMORY_HUBS = ("person", "project", "preference", "fact", "goal", "decision", "routine", "event")
 GROUPS = {"memories": "Memories", "notes": "Notes", "creations": "Creations", "actions": "Actions",
@@ -57,6 +57,12 @@ SKILL_TITLES = {"system": "PC control", "memory": "Second brain", "files": "File
                 "browser": "Browser control", "google_ws": "Google Workspace", "media": "Video & media",
                 "camera_ads": "Webcam & ads", "meetings": "Meeting recorder", "weather": "Weather",
                 "maintenance": "Updates & upkeep", "currency": "Currency", "globe": "God's Eye View globe"}
+
+
+def _how(session: str) -> str:
+    if (session or "").startswith("mission:"):
+        return f"by mission #{session.split(':', 1)[1]}"
+    return SESSION_LABEL.get(session, session)
 
 
 def _json_or(text: str):
@@ -124,6 +130,12 @@ class Dashboard:
             add(f"artifact:{a['id']}", a["title"] or Path(a["location"]).name, _kind_of_artifact(a["kind"]), 4,
                 a["ts"], a["embedding"])
 
+        from ..missions import missions as _missions
+        for ms in _missions().all():
+            add(f"mission:{ms['id']}", ms["title"], "mission", 7, ms["created"], None,
+                {"status": ms["status"], "progress": ms.get("progress", 0)})
+            if ms["status"] == "running":
+                nodes[-1]["hot"] = True
         for t in turns:
             add(f"turn:{t['id']}", t["title"], "action", 3.2, t["ts"], None,
                 {"status": t["status"] or "done", "session": t["session"]})
@@ -211,7 +223,7 @@ class Dashboard:
         if not r:
             return None
         return {"id": f"turn:{tid}", "request": r["detail"] or r["title"], "ts": r["ts"],
-                "how": SESSION_LABEL.get(r["session"], r["session"]), "status": r["status"] or "done", "ms": r["ms"]}
+                "how": _how(r["session"]), "status": r["status"] or "done", "ms": r["ms"]}
 
     def turn(self, tid: int) -> dict:
         s = context.store
@@ -243,11 +255,39 @@ class Dashboard:
         req = r["detail"] or r["title"]
         status = r["status"] or "done"
         return {"id": f"turn:{tid}", "type": "action", "title": req, "created": r["ts"], "status": status,
-                "how": SESSION_LABEL.get(r["session"], r["session"]), "ms": r["ms"], "reply": reply,
+                "how": _how(r["session"]), "ms": r["ms"], "reply": reply,
                 "steps": steps, "made": made, "recalled": [x for x in recalled if x["title"]], "timing": timing,
                 "tracking": s.get_tracking(f"turn:{tid}"),
                 "meta": {"channel": r["session"], "status": status,
                          "took": f"{r['ms'] / 1000:.1f} s" if r["ms"] else "—"}}
+
+    def mission(self, mid: int) -> dict:
+        from ..missions import missions as _missions
+        m = _missions().get(mid)
+        if not m or m["status"] == "deleted":
+            return {"error": "not found"}
+        runs = _missions().runs(mid, 8)
+        cur = runs[0] if runs else None
+        out_runs = []
+        for r in runs:
+            out_runs.append({"started": r["started"], "finished": r["finished"], "status": r["status"],
+                             "summary": r["summary"] or "", "report": f"note:{r['report']}" if r["report"] else "",
+                             "steps": len(r["steps"])})
+        plan = [{"title": p.get("title", ""), "do": p.get("do", ""), "status": "", "result": ""}
+                for p in (cur["plan"] if cur else [])]
+        for i, st in enumerate(cur["steps"] if cur else []):
+            if i < len(plan):
+                plan[i].update(status="ok", result=st.get("result", "")[:1500], ms=st.get("ms"))
+        if m["status"] == "running":
+            nxt = next((p for p in plan if not p["status"]), None)
+            if nxt:
+                nxt["status"] = "running"
+        return {"id": f"mission:{mid}", "type": "mission", "title": m["title"], "body": m["goal"],
+                "created": m["created"], "turn": m.get("turn"), "status": m["status"], "when": m["when"],
+                "next_run": m.get("next_run"), "last_run": m.get("last_run"), "runs_count": m["runs"],
+                "progress": m.get("progress") or 0, "step": m.get("step") or "", "plan": plan, "runs": out_runs,
+                "meta": {"schedule": m["when"], "runs": m["runs"],
+                         "next run": (m.get("next_run") or "—")[:16].replace("T", " ")}}
 
     def title_of(self, nid: str) -> str:
         s = context.store
@@ -261,6 +301,9 @@ class Dashboard:
                 return (r["title"] or Path(r["location"]).name) if r else ""
             if kind == "turn" and key.isdigit():
                 r = s.db.execute("SELECT title FROM activity WHERE id=?", (int(key),)).fetchone()
+                return r["title"] if r else ""
+            if kind == "mission" and key.isdigit():
+                r = s.db.execute("SELECT title FROM missions WHERE id=?", (int(key),)).fetchone()
                 return r["title"] if r else ""
         if kind == "note":
             return Path(key).stem
@@ -296,7 +339,8 @@ class Dashboard:
         tid = s.current_turn
         with s.lock:
             if tid is None:
-                last = s.db.execute("SELECT id FROM activity WHERE kind='user' AND turn=id ORDER BY id DESC LIMIT 1").fetchone()
+                last = s.db.execute("SELECT id FROM activity WHERE kind='user' AND turn=id AND session NOT LIKE 'mission:%' "
+                                    "ORDER BY id DESC LIMIT 1").fetchone()
                 tid_last = last["id"] if last else None
             waiting = s.db.execute("SELECT id,title,ts FROM activity WHERE kind='tool' AND status='waiting' "
                                    "ORDER BY id DESC LIMIT 5").fetchall()
@@ -304,9 +348,13 @@ class Dashboard:
         from ..presence import _presence
         pres = _presence.status() if _presence else {"enabled": False}
         from ..watcher import _mgr
+        from ..missions import _missions
+        running = [{"id": f"mission:{k}", "title": (_missions.get(k) or {}).get("title", ""),
+                    "progress": v.get("progress", 0), "step": v.get("step", "")}
+                   for k, v in (_missions.running.items() if _missions else [])]
         watching = [{"id": w.id, "label": w.label(), "left_min": max(0, int((w.until - time.time()) / 60))}
                     for w in (_mgr.active() if _mgr else [])]
-        out = {"status": s.status, "busy": tid is not None, "presence": pres, "watching": watching,
+        out = {"status": s.status, "busy": tid is not None, "presence": pres, "watching": watching, "missions": running,
                "waiting": [dict(w) for w in waiting],
                "doing": [{"id": d["item"], "title": self.title_of(d["item"]) or d["item"], "note": d["note"]} for d in doing]}
         t = self.turn(tid if tid is not None else tid_last) if (tid is not None or tid_last) else None
@@ -370,7 +418,16 @@ class Dashboard:
                                       (limit,)):
                     push(f"turn:{t['id']}", t["title"], "action", t["ts"],
                          {"status": t["status"] or "done", "ms": t["ms"], "tools": t["tools"],
-                          "sub": SESSION_LABEL.get(t["session"], t["session"])})
+                          "sub": _how(t["session"])})
+        if kind in ("mission", "missions", "tracked", "doing"):
+            from ..missions import missions as _missions
+            for ms in _missions().all():
+                pct = int((ms.get("progress") or 0) * 100)
+                push(f"mission:{ms['id']}", ms["title"], "mission", ms["created"],
+                     {"status": ms["status"], "sub": ms["when"] + (f" · {pct}% {ms.get('step') or ''}"
+                                                                   if ms["status"] == "running" else "")})
+                if ms.get("last_run") and ms["last_run"] > (items[-1]["last"] or ""):
+                    items[-1]["last"] = ms["last_run"]
         if kind == "tracked":
             items = [i for i in items if i["track"] or i["pinned"] or i["note"]]
         if kind == "doing":
@@ -453,6 +510,8 @@ class Dashboard:
         kind, _, key = nid.partition(":")
         if kind == "turn" and key.isdigit():
             return self.turn(int(key))
+        if kind == "mission" and key.isdigit():
+            return self.mission(int(key))
         if kind == "memory":
             with s.lock:
                 r = s.db.execute("SELECT * FROM memories WHERE id=?", (int(key),)).fetchone()
@@ -718,6 +777,12 @@ class Dashboard:
                     if self.path == "/api/restart":
                         settings.restart_soon()
                         return self._json({"message": "Restarting…"})
+                    if self.path == "/api/mission":
+                        from ..missions import missions as _missions
+                        mid, act = int(body.get("id", 0)), str(body.get("action", ""))
+                        fn = {"pause": _missions().pause, "resume": _missions().resume, "run": _missions().run_now,
+                              "delete": _missions().delete}.get(act)
+                        return self._json({"message": fn(mid) if fn else "unknown action"})
                     if self.path == "/api/watch/cancel":
                         from ..watcher import manager
                         n = manager().cancel(int(body["id"]) if body.get("id") else None)
@@ -736,7 +801,7 @@ class Dashboard:
                         return self._json({"message": globe.install()})
                     if self.path == "/api/track":
                         nid = str(body.get("id", ""))
-                        if not re.fullmatch(r"(memory|artifact|turn):\d+|note:.+", nid):
+                        if not re.fullmatch(r"(memory|artifact|turn|mission):\d+|note:.+", nid):
                             return self._json({"error": "unknown item"}, 400)
                         try:
                             return self._json(context.store.set_tracking(

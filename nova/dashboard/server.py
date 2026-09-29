@@ -55,7 +55,7 @@ STEP_LABEL = {"user": "You asked", "reply": "Nova replied", "tool": "Action", "m
 SKILL_TITLES = {"system": "PC control", "memory": "Second brain", "files": "Files & folders", "web": "Web & websites",
                 "browser": "Browser control", "google_ws": "Google Workspace", "media": "Video & media",
                 "camera_ads": "Webcam & ads", "meetings": "Meeting recorder", "weather": "Weather",
-                "maintenance": "Updates & upkeep", "currency": "Currency"}
+                "maintenance": "Updates & upkeep", "currency": "Currency", "globe": "God's Eye View globe"}
 
 
 def _json_or(text: str):
@@ -617,6 +617,11 @@ class Dashboard:
                             return self._json(weather.fetch(""))
                         cached = json.loads(latest.read_text(encoding="utf-8"))
                         return self._json(weather.fetch(cached["place"]) if q.get("refresh") else cached)
+                    if u.path in ("/globe", "/globe.html"):
+                        return self._file(HERE / "globe.html")
+                    if u.path == "/api/globe/status":
+                        from ..skills import globe
+                        return self._json(globe.status())
                     if u.path in ("/settings", "/settings.html"):
                         return self._file(HERE / "settings.html")
                     if u.path == "/api/settings":
@@ -680,6 +685,13 @@ class Dashboard:
                     if self.path == "/api/restart":
                         settings.restart_soon()
                         return self._json({"message": "Restarting…"})
+                    if self.path == "/api/globe/start":
+                        from ..skills import globe
+                        msg = globe.start(wait=90)
+                        return self._json({"message": msg, "running": globe.running()})
+                    if self.path == "/api/globe/install":
+                        from ..skills import globe
+                        return self._json({"message": globe.install()})
                     if self.path == "/api/track":
                         nid = str(body.get("id", ""))
                         if not re.fullmatch(r"(memory|artifact|turn):\d+|note:.+", nid):

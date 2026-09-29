@@ -163,6 +163,19 @@ Offered to the model when you say things like: _weather, temperature, forecast, 
 |---|---|---|
 | `get_weather` | Get the live weather forecast, open the weather page on screen, and return what to say out loud. Use this for ANY weather question (never web_search). Read the returned sentence to the user as your answer. | `place`?, `day`?, `show`? |
 
+## globe
+
+Offered to the model when you say things like: _globe, god's eye, gods eye, god eye, earth view, satellite view, planes, plane, aircraft, flights, flight, overhead_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `show_on_globe` | Open the God's Eye View 3D globe (live planes, ships, satellites, quakes, cameras) flying to a place. Starts the app if needed. Use for "show me X on the globe", "fly me to X", "God's eye view of X". | `place`?, `view`?, `style`?, `hud`? |
+| `planes_overhead` | List live aircraft near a place right now (public ADS-B data from adsb.lol, no key needed), and optionally show them on the 3D globe. | `place`?, `radius_km`?, `show`? |
+| `recent_earthquakes` | Recent earthquakes from USGS (free). Near a place, or worldwide if place is "world". | `place`?, `radius_km`?, `days`?, `min_magnitude`? |
+| `where_is_the_iss` | Where the International Space Station is right now (free live data), optionally shown on the globe. | `show`? |
+| `globe_app` | Manage the God's Eye View app: status, start, stop, open or update. | `action`? |
+| `install_globe` 🔒 | Download and install the God's Eye View 3D globe app (open source, a few hundred MB, needs Node.js 24). | — |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

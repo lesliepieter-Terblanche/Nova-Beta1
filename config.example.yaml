@@ -48,6 +48,13 @@ llm:
   max_tool_rounds: 6
   keep_alive: 24h            # keep the local model loaded so replies start instantly (uses ~2.5 GB VRAM)
 
+# God's Eye View — live 3D globe (planes, ships, satellites, quakes, weather, public cameras).
+# Open source (github.com/bilawalsidhu/gods-eye-view). Needs Node.js 24. Say "install God's Eye View".
+globe:
+  dir: tools/gods-eye-view    # where it's installed
+  port: 4173
+  auto_start: false           # start it together with Nova
+
 voice:
   enabled: true
   wake_word: hey_jarvis      # built-in openWakeWord models: hey_jarvis, alexa, hey_mycroft

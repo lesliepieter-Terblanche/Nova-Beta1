@@ -111,6 +111,8 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | `google_ws.py` | google | Gmail, Calendar, Drive, Docs, Sheets, Tasks |
 | `media.py` | media | explainer videos, slideshows, voice-overs, transcription, trim, convert, local images |
 | `camera_ads.py` | camera | webcam photo/look, product ads (+ video) |
+| `weather.py` | weather | live forecast, spoken + weather page (Open-Meteo, free) |
+| `globe.py` | globe | God's Eye View 3D globe: fly anywhere, styles, planes overhead, earthquakes, ISS, install 🔒/start/stop |
 | `maintenance.py` | maintenance | updates 🔒, versions, rollback 🔒, restart 🔒, dashboard, extensions status |
 
 After adding or changing tools, regenerate the reference: `python scripts/gen_tool_docs.py`.

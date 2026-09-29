@@ -122,6 +122,12 @@ SCHEMA = [
         {"path": "media.broll", "label": "Stock footage in videos (Pexels)", "type": "bool"},
         {"path": "media.image_gen_enabled", "label": "Local image generation", "type": "bool", "help": "Needs requirements-imagegen.txt"},
     ]},
+    {"id": "globe", "title": "God's Eye View", "icon": "globe", "fields": [
+        {"path": "globe.auto_start", "label": "Start the globe with Nova", "type": "bool", "default": False,
+         "help": "Otherwise it starts the first time you ask for it"},
+        {"path": "globe.port", "label": "Port", "type": "number", "min": 1024, "max": 65535, "default": 4173},
+        {"path": "globe.dir", "label": "Install folder", "type": "text", "default": "tools/gods-eye-view"},
+    ]},
     {"id": "appearance", "title": "Appearance", "icon": "palette", "fields": [
         {"path": "dashboard.theme.accent", "label": "Accent colour", "type": "color", "default": "#8b7bff"},
         {"path": "dashboard.theme.accent2", "label": "Second accent", "type": "color", "default": "#4cc9f0"},
@@ -505,6 +511,21 @@ def run_test(kind: str) -> dict:
                           headers={"Authorization": key}, timeout=15)
             return {"ok": r.status_code == 200, "message": "Pexels key works." if r.status_code == 200
                     else f"Pexels said {r.status_code}."}
+        if kind == "globe":
+            from .skills import globe
+            st = globe.status()
+            if not st["node_ok"]:
+                return {"ok": False, "message": st["node"]}
+            if st["installing"]:
+                return {"ok": True, "message": "Installing now — see data/logs/globe.log."}
+            if not st["installed"]:
+                return {"ok": False, "message": f"Node {st['node']} is fine, but God's Eye View isn't installed yet — "
+                        "click Install, or say 'install God's Eye View'."}
+            return {"ok": True, "message": f"Installed (Node {st['node']}), "
+                    + (f"running at {st['url']}." if st["running"] else "not running — it starts when you ask for it.")}
+        if kind == "globe_install":
+            from .skills import globe
+            return {"ok": True, "message": globe.install()}
         if kind == "google":
             ok = (ROOT / "secrets" / "token.json").exists()
             return {"ok": ok, "message": "Google is connected." if ok else

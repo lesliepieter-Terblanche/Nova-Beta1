@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova · God's Eye View</title>
+<style>
+  :root { --bg: #03040a; --text: #e9ecff; --muted: #8f97bf; --line: rgba(160,175,255,.16); --accent: #8b7bff; --accent-2: #4cc9f0; --ok: #52ffa8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 40%, #0d1230, var(--bg) 70%);
+    color: var(--text); font: 15px/1.55 "Inter", "Segoe UI", system-ui, sans-serif; padding: 16px; }
+  .card { width: min(520px, 100%); padding: 28px; border-radius: 20px; background: rgba(14,18,36,.7); border: 1px solid var(--line);
+    backdrop-filter: blur(16px); box-shadow: 0 30px 80px rgba(0,0,0,.5); text-align: center; }
+  .earth { width: 110px; height: 110px; margin: 0 auto 18px; border-radius: 50%; position: relative;
+    background: radial-gradient(circle at 35% 30%, #9fe7ff, #1e6fb8 45%, #06183a 75%); box-shadow: 0 0 60px rgba(76,201,240,.45); overflow: hidden; }
+  .earth::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+    background: repeating-linear-gradient(90deg, transparent 0 17px, rgba(255,255,255,.12) 17px 18px); animation: spin 6s linear infinite; }
+  .earth::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 1px solid rgba(76,201,240,.5); animation: ring 2.4s ease-out infinite; }
+  @keyframes spin { to { transform: translateX(18px); } }
+  @keyframes ring { from { transform: scale(.85); opacity: .8 } to { transform: scale(1.35); opacity: 0 } }
+  h1 { font: 600 22px "Space Grotesk", "Segoe UI", sans-serif; margin: 0 0 6px; }
+  p { color: var(--muted); margin: 8px 0; }
+  .msg { color: var(--text); min-height: 24px; }
+  .btn { display: inline-block; margin: 14px 6px 0; padding: 11px 20px; border-radius: 12px; border: 0; cursor: pointer; font: 600 14px inherit;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; text-decoration: none; }
+  .btn.ghost { background: none; border: 1px solid var(--line); color: var(--text); }
+  .btn[hidden] { display: none; }
+  code { background: rgba(255,255,255,.07); padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+  small { color: var(--muted); display: block; margin-top: 16px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="earth"></div>
+  <h1>God's Eye View</h1>
+  <p>Live planes, ships, satellites, earthquakes and weather on a 3D globe.</p>
+  <p class="msg" id="msg">Checking…</p>
+  <button class="btn" id="go" hidden>Start</button>
+  <button class="btn" id="install" hidden>Install (a few minutes)</button>
+  <a class="btn ghost" href="/">Back to Nova</a>
+  <small>Open source by Bilawal Sidhu · runs on your PC at <span id="url">localhost</span></small>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const api = (p, body) => fetch(p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}).then((r) => r.json());
+const target = () => { const q = new URLSearchParams(location.search); return q.get("to") || ""; };
+let starting = false;
+async function check() {
+  let s;
+  try { s = await api("/api/globe/status"); } catch { $("msg").textContent = "Nova isn't running."; return; }
+  $("url").textContent = s.url.replace("http://", "");
+  $("go").hidden = $("install").hidden = true;
+  if (s.running) { $("msg").textContent = "Opening…"; location.href = target() || s.url; return; }
+  if (s.installing) { $("msg").textContent = "Installing… this page opens the globe when it's ready."; return setTimeout(check, 4000); }
+  if (!s.node_ok) { $("msg").innerHTML = s.node.replace(/`([^`]+)`/g, "<code>$1</code>"); return; }
+  if (!s.installed) { $("msg").textContent = "Not installed yet."; $("install").hidden = false; return; }
+  if (!starting) { starting = true; $("msg").textContent = "Starting the globe…"; api("/api/globe/start", {}).then((r) => { if (!r.running) $("msg").textContent = r.message; }); }
+  setTimeout(check, 1500);
+}
+$("install").onclick = async () => { $("install").hidden = true; const r = await api("/api/globe/install", {}); $("msg").textContent = r.message; setTimeout(check, 3000); };
+$("go").onclick = check;
+check();
+</script>
+</body>
+</html>

@@ -4,6 +4,17 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-09-29
+### Added
+- **God's Eye View globe** ([bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), MIT):
+  a live 3D globe with real aircraft, ships, satellites, earthquakes, weather and public cameras.
+  - Nova installs, starts and stops it for you ("install God's Eye View" — needs Node.js 24).
+  - "Show me Johannesburg on the globe in night vision / thermal", street → globe views, tactical HUD.
+  - Answers by voice from the same free feeds, even without the app: "what planes are overhead?" (adsb.lol),
+    "any earthquakes near Joburg this week?" (USGS), "where's the ISS?".
+  - 🌐 button on the dashboard, and a **God's Eye View** tab in Settings (Check / Install / start with Nova).
+- Settings: **Test Grok** button.
+
 ## [1.5.0] — 2026-09-29
 ### Added
 - **Track everything on the dashboard.** Click any topic (People, Projects, Actions…) or a header number to get a

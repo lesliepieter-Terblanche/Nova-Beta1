@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova · Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #03040a; --accent: #8b7bff; --accent-2: #4cc9f0;
+    --glass: rgba(14, 18, 36, 0.62); --glass-2: rgba(255,255,255,.035);
+    --line: rgba(160, 175, 255, 0.14); --line-strong: rgba(170, 185, 255, 0.3);
+    --text: #e9ecff; --muted: #8f97bf; --ok: #52ffa8; --warn: #ffd166; --bad: #ff6b8a;
+    --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif; --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 14px/1.5 var(--body); }
+  body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(900px 600px at 85% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+                radial-gradient(700px 500px at -10% 110%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 60%); }
+  a { color: var(--accent-2); }
+  .glass { background: var(--glass); border: 1px solid var(--line); border-radius: 18px;
+    backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 20px 60px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05); }
+
+  header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px; padding: 14px 24px;
+    background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); }
+  header h1 { font: 600 18px var(--display); margin: 0; flex: 1; letter-spacing: .01em; }
+  header h1 small { color: var(--muted); font: 400 13px var(--body); margin-left: 10px; }
+  .back { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; padding: 8px 12px;
+    border-radius: 10px; border: 1px solid var(--line); font-size: 13px; }
+  .back:hover { border-color: var(--line-strong); }
+  .btn { padding: 9px 16px; border-radius: 11px; border: 1px solid var(--line-strong); background: var(--glass-2); color: var(--text);
+    font: 600 13px var(--body); cursor: pointer; transition: all .18s; white-space: nowrap; }
+  .btn:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; border: 0; }
+  .btn.small { padding: 6px 11px; font-size: 12px; border-radius: 9px; }
+  .btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+  .dirty-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 10px var(--warn); display: none; }
+  .dirty .dirty-dot { display: inline-block; }
+
+  .layout { position: relative; z-index: 1; display: grid; grid-template-columns: 230px 1fr; gap: 22px;
+    max-width: 1180px; margin: 0 auto; padding: 22px 24px 120px; }
+  nav { position: sticky; top: 84px; align-self: start; padding: 10px; display: flex; flex-direction: column; gap: 2px; }
+  nav button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 11px; border: 0; background: none;
+    color: var(--muted); font: 500 14px var(--body); cursor: pointer; text-align: left; }
+  nav button svg { width: 17px; height: 17px; flex: none; }
+  nav button:hover { color: var(--text); background: var(--glass-2); }
+  nav button.on { color: var(--text); background: color-mix(in srgb, var(--accent) 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+  nav button .badge { margin-left: auto; font-size: 11px; color: var(--warn); }
+
+  main section { display: none; animation: fade .35s ease; }
+  main section.on { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px) } }
+  .sec-title { font: 600 24px var(--display); margin: 4px 0 4px; }
+  .sec-sub { color: var(--muted); margin: 0 0 18px; max-width: 70ch; }
+  .card { padding: 18px 20px; margin-bottom: 16px; }
+  .card h3 { font: 600 12px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+
+  .field { display: grid; grid-template-columns: minmax(180px, 38%) 1fr; gap: 6px 22px; align-items: center; padding: 12px 0;
+    border-top: 1px solid rgba(255,255,255,.05); }
+  .field:first-of-type { border-top: 0; }
+  .field label.name { font-weight: 500; }
+  .field .help { grid-column: 1; color: var(--muted); font-size: 12.5px; margin-top: -4px; }
+  .field .ctl { grid-column: 2; grid-row: 1 / span 2; display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .field .err { grid-column: 2; color: var(--bad); font-size: 12.5px; }
+  .field.changed label.name::after { content: " •"; color: var(--warn); }
+
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    width: 100%; background: rgba(0,0,0,.28); border: 1px solid var(--line); border-radius: 10px; color: var(--text);
+    font: 14px var(--body); padding: 9px 12px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  textarea { min-height: 88px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
+  select option { background: #10142a; }
+  input[type=number] { max-width: 120px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+
+  .switch { position: relative; width: 44px; height: 24px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch span { position: absolute; inset: 0; border-radius: 99px; background: rgba(255,255,255,.12); cursor: pointer; transition: .2s; }
+  .switch span::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: .2s; }
+  .switch input:checked + span { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .switch input:checked + span::before { transform: translateX(20px); }
+  .switch input:disabled + span { opacity: .45; cursor: not-allowed; }
+
+  .color { display: flex; align-items: center; gap: 10px; }
+  .color input[type=color] { width: 44px; height: 34px; border: 1px solid var(--line); border-radius: 10px; background: none; padding: 2px; cursor: pointer; }
+  .color input[type=text] { max-width: 120px; font-family: ui-monospace, Consolas, monospace; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; padding: 6px; border: 1px solid var(--line);
+    border-radius: 10px; background: rgba(0,0,0,.28); }
+  .tags .tag { display: inline-flex; gap: 6px; align-items: center; padding: 4px 6px 4px 10px; border-radius: 8px; background: var(--glass-2);
+    border: 1px solid var(--line); font: 13px ui-monospace, Consolas, monospace; }
+  .tags .tag button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+  .tags input { flex: 1; min-width: 120px; border: 0; background: none; box-shadow: none; padding: 4px; }
+
+  /* keys */
+  .key { display: grid; grid-template-columns: minmax(170px, 30%) 1fr auto; gap: 8px 16px; align-items: center; padding: 14px 0;
+    border-top: 1px solid rgba(255,255,255,.05); }
+  .key:first-of-type { border-top: 0; }
+  .key .meta { display: flex; flex-direction: column; gap: 3px; }
+  .key .meta small { color: var(--muted); font-size: 12.5px; }
+  .key .meta small a { text-decoration: none; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 2px 9px; border-radius: 99px; width: max-content;
+    border: 1px solid var(--line); color: var(--muted); }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+  .pill.pending { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+  .key .in { display: flex; gap: 6px; min-width: 0; }
+  .key .in input { font-family: ui-monospace, Consolas, monospace; }
+  .eye { width: 38px; flex: none; border: 1px solid var(--line); border-radius: 10px; background: none; color: var(--muted); cursor: pointer; }
+  .key .acts { display: flex; gap: 6px; }
+  .result { grid-column: 1 / -1; font-size: 12.5px; padding: 8px 12px; border-radius: 10px; display: none; }
+  .result.show { display: block; }
+  .result.ok { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
+  .result.bad { background: color-mix(in srgb, var(--bad) 12%, transparent); color: var(--bad); }
+
+  /* extensions */
+  .ext { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.05); }
+  .ext:first-of-type { border-top: 0; }
+  .ext .info { flex: 1; min-width: 0; }
+  .ext .info b { font-weight: 600; }
+  .ext .info small { display: block; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+  .ext .lock { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+
+  /* routines */
+  .routine { display: grid; grid-template-columns: 1.1fr 110px 1fr; gap: 10px; padding: 14px; border: 1px solid var(--line);
+    border-radius: 14px; margin-bottom: 10px; background: rgba(0,0,0,.15); }
+  .routine .prompt { grid-column: 1 / -1; }
+  .routine .row { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .days { display: flex; gap: 4px; }
+  .days button { width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: none; color: var(--muted);
+    font: 600 11.5px var(--body); cursor: pointer; }
+  .days button.on { color: #070914; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
+  .mini { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+
+  /* appearance */
+  .presets { display: flex; gap: 10px; flex-wrap: wrap; }
+  .preset { display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 10px; border-radius: 14px; border: 1px solid var(--line);
+    background: none; color: var(--text); cursor: pointer; font: 500 12px var(--body); width: 112px; }
+  .preset:hover { border-color: var(--line-strong); }
+  .preset .sw { width: 88px; height: 52px; border-radius: 10px; position: relative; overflow: hidden; }
+  .preview { height: 220px; border-radius: 16px; position: relative; overflow: hidden; border: 1px solid var(--line); margin-top: 6px; }
+  .preview .orb { position: absolute; border-radius: 50%; }
+  .preview .core { left: 50%; top: 50%; width: 46px; height: 46px; transform: translate(-50%,-50%); background: #fff; }
+  .preview .ring { position: absolute; left: 50%; top: 50%; width: 120px; height: 40px; transform: translate(-50%,-50%) rotate(-12deg); border-radius: 50%; border: 1.5px solid var(--p-accent); }
+  .preview .lbl { position: absolute; font: 600 11px var(--display); padding: 3px 9px; border-radius: 99px; background: rgba(6,8,20,.55); color: #fff; }
+
+  .banner { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 140%); z-index: 20; display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px 12px 18px; transition: transform .45s cubic-bezier(.2,.8,.2,1); max-width: calc(100vw - 32px); }
+  .banner.show { transform: translate(-50%, 0); }
+  .toast { position: fixed; right: 22px; top: 80px; z-index: 30; padding: 12px 16px; border-radius: 12px; display: none; max-width: 360px; }
+  .toast.show { display: block; animation: fade .3s ease; }
+  .toast.ok { border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .toast.bad { border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+  .restarting { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; background: rgba(3,4,10,.85); backdrop-filter: blur(8px);
+    font: 500 16px var(--display); letter-spacing: .1em; }
+  .restarting.show { display: grid; }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; padding: 16px 16px 120px; }
+    nav { position: static; flex-direction: row; overflow-x: auto; }
+    nav button { flex: none; }
+    .field, .key { grid-template-columns: 1fr; }
+    .field .ctl, .field .err { grid-column: 1; grid-row: auto; }
+    .routine { grid-template-columns: 1fr 1fr; }
+    header h1 small { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>Brain</a>
+  <h1>Settings <small id="sub">Changes are saved to config.yaml and .env on this PC</small></h1>
+  <span class="dirty-dot" title="Unsaved changes"></span>
+  <button class="btn" id="discard" disabled>Discard</button>
+  <button class="btn primary" id="save" disabled>Save changes</button>
+</header>
+
+<div class="layout">
+  <nav class="glass" id="nav"></nav>
+  <main id="main"></main>
+</div>
+
+<div class="banner glass" id="banner">
+  <span>Saved. Some changes take effect after Nova restarts.</span>
+  <button class="btn primary small" id="restart">Restart Nova now</button>
+  <button class="btn small" id="later">Later</button>
+</div>
+<div class="toast glass" id="toast"></div>
+<div class="restarting" id="restarting">RESTARTING NOVA…</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const api = (p, body) => fetch(p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}).then((r) => r.json());
+
+const ICONS = {
+  key: '<path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  brain: '<path d="M9 4a3 3 0 0 0-3 3v.5A3 3 0 0 0 4 10.3 3 3 0 0 0 5 16a3 3 0 0 0 4 3.5V4zM15 4a3 3 0 0 1 3 3v.5a3 3 0 0 1 2 2.8A3 3 0 0 1 19 16a3 3 0 0 1-4 3.5V4z"/>',
+  send: '<path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  puzzle: '<path d="M10 3h4v3a2 2 0 1 0 4 0V3h3v7h-3a2 2 0 1 0 0 4h3v7h-7v-3a2 2 0 1 0-4 0v3H3v-7h3a2 2 0 1 0 0-4H3V3h7z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  palette: '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.6-1.7 0-1.3-1.1-1.6-1.1-2.8 0-1 .8-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/>',
+};
+const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ""}</svg>`;
+const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+let S = null;              // snapshot from server
+const changes = { values: {}, secrets: {}, extensions: null, routines: null };
+let routines = [];
+
+// ── build ─────────────────────────────────────────────
+async function load() {
+  S = await api("/api/settings");
+  routines = JSON.parse(JSON.stringify(S.routines || []));
+  applyThemeVars(S.values);
+  const tabs = [
+    { id: "keys", title: "API keys", icon: "key" },
+    ...S.schema.filter((s) => s.id !== "appearance").map((s) => ({ id: s.id, title: s.title, icon: s.icon })),
+    { id: "extensions", title: "Extensions", icon: "puzzle" },
+    { id: "routines", title: "Routines", icon: "clock" },
+    { id: "appearance", title: "Appearance", icon: "palette" },
+  ];
+  $("#nav").innerHTML = tabs.map((t) => `<button data-tab="${t.id}">${icon(t.icon)}<span>${esc(t.title)}</span><span class="badge"></span></button>`).join("");
+  $("#main").innerHTML = tabs.map((t) => `<section id="tab-${t.id}"></section>`).join("");
+  renderKeys();
+  for (const sec of S.schema) renderSection(sec);
+  renderExtensions();
+  renderRoutines();
+  const start = (location.hash || "#keys").slice(1);
+  show(tabs.some((t) => t.id === start) ? start : "keys");
+  initTags();
+  markDirty();
+}
+
+function show(id) {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === id));
+  document.querySelectorAll("main section").forEach((s) => s.classList.toggle("on", s.id === "tab-" + id));
+  history.replaceState(null, "", "#" + id);
+  scrollTo({ top: 0 });
+}
+$("#nav").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) show(b.dataset.tab); });
+
+const INTRO = {
+  general: "Who you are, what the assistant is called, and a few safety switches.",
+  voice: "How Nova listens and how it sounds. Backup voices are used automatically if the main one fails.",
+  brain: "Which AI models think for Nova. Everyday requests stay local; hard ones go to the smart models in order.",
+  telegram: "Control Nova from your phone. Only the user IDs listed here are allowed.",
+  google: "Gmail, Calendar, Drive, Docs, Sheets and Tasks.",
+  files: "Where Nova may read and write, plus web and video options.",
+  appearance: "Colours and motion of the 3D brain. These apply instantly — no restart needed.",
+};
+const TESTS = { voice: [["voice", "Test voice"], ["elevenlabs", "Check ElevenLabs credits"]],
+  brain: [["ollama", "Test local model"], ["gemini", "Test Gemini"], ["groq", "Test Groq"]],
+  telegram: [["telegram", "Send test message"]], google: [["google", "Check connection"]] };
+
+function renderSection(sec) {
+  const el = $("#tab-" + sec.id);
+  let html = `<h2 class="sec-title">${esc(sec.title)}</h2><p class="sec-sub">${esc(INTRO[sec.id] || "")}</p>`;
+  if (sec.id === "appearance") html += appearanceExtras();
+  html += `<div class="card glass">${sec.fields.map(fieldHtml).join("")}</div>`;
+  if (TESTS[sec.id]) html += `<div class="card glass"><h3>Check it works</h3><div style="display:flex;gap:8px;flex-wrap:wrap">${
+    TESTS[sec.id].map(([k, l]) => `<button class="btn small" data-test="${k}">${esc(l)}</button>`).join("")}</div>
+    <div class="result" data-result="${sec.id}"></div><p class="note">Tests use the settings as last saved.</p></div>`;
+  if (sec.id === "google") html += `<div class="card glass"><h3>Connect Google</h3><p style="margin:0">Google status: <b>${S.google_connected ? "connected ✓" : "not connected"}</b>.
+    To connect, follow <a href="https://github.com/lesliepieter-Terblanche/Nova-Beta1/blob/main/docs/INSTALL.md#7-google-workspace" target="_blank">the 10-minute guide</a>,
+    then run <code>run.bat --google-login</code>.</p></div>`;
+  el.innerHTML = html;
+  if (sec.id === "appearance") updatePreview();
+}
+
+function fieldHtml(f) {
+  const v = S.values[f.path];
+  const id = "f-" + f.path.replaceAll(".", "-");
+  let ctl = "";
+  if (f.type === "bool") ctl = `<label class="switch"><input type="checkbox" id="${id}" ${v ? "checked" : ""}><span></span></label>`;
+  else if (f.type === "number") {
+    const slider = f.step && f.step < 1 || (f.max && f.max - (f.min || 0) <= 20000 && f.step);
+    ctl = (slider ? `<input type="range" data-mirror="${id}" min="${f.min ?? 0}" max="${f.max ?? 100}" step="${f.step ?? 1}" value="${v ?? ""}">` : "")
+      + `<input type="number" id="${id}" value="${v ?? ""}" ${f.min != null ? `min="${f.min}"` : ""} ${f.max != null ? `max="${f.max}"` : ""} step="${f.step ?? 1}">`;
+  } else if (f.type === "select") {
+    const opts = [...new Set([...(f.options || []), ...(v != null && v !== "" && !f.options.includes(v) ? [v] : [])])];
+    ctl = f.free ? `<input type="text" id="${id}" list="${id}-l" value="${esc(v ?? "")}"><datalist id="${id}-l">${opts.map((o) => `<option value="${esc(o)}">`).join("")}</datalist>`
+      : `<select id="${id}">${opts.map((o) => `<option ${o === v ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+  } else if (f.type === "list") ctl = `<textarea id="${id}" spellcheck="false">${esc((v || []).join("\n"))}</textarea>`;
+  else if (f.type === "tags") ctl = `<div class="tags" id="${id}" data-tags='${JSON.stringify(v || [])}'></div>`;
+  else if (f.type === "color") ctl = `<div class="color"><input type="color" data-mirror="${id}" value="${esc(v || f.default)}"><input type="text" id="${id}" value="${esc(v || f.default)}" spellcheck="false"></div>`;
+  else ctl = `<input type="text" id="${id}" value="${esc(v ?? "")}" spellcheck="false">`;
+  return `<div class="field" data-path="${esc(f.path)}"><label class="name" for="${id}">${esc(f.label)}</label>
+    ${f.help ? `<div class="help">${esc(f.help)}</div>` : ""}<div class="ctl">${ctl}</div><div class="err"></div></div>`;
+}
+
+function readField(f) {
+  const el = document.getElementById("f-" + f.path.replaceAll(".", "-"));
+  if (f.type === "bool") return el.checked;
+  if (f.type === "number") return el.value === "" ? null : Number(el.value);
+  if (f.type === "list") return el.value.split("\n").map((x) => x.trim()).filter(Boolean);
+  if (f.type === "tags") return JSON.parse(el.dataset.tags || "[]");
+  return el.value;
+}
+const FIELDS = () => Object.fromEntries(S.schema.flatMap((s) => s.fields).map((f) => [f.path, f]));
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+document.addEventListener("input", (e) => {
+  const m = e.target.dataset?.mirror;
+  if (m) { document.getElementById(m).value = e.target.value; }
+  else if (e.target.id?.startsWith("f-")) { const r = e.target.parentElement.querySelector(`[data-mirror="${e.target.id}"]`); if (r) r.value = e.target.value; }
+  onFieldChange(e.target.closest(".field"));
+});
+document.addEventListener("change", (e) => onFieldChange(e.target.closest(".field")));
+
+function onFieldChange(row) {
+  if (!row) return;
+  const f = FIELDS()[row.dataset.path];
+  const v = readField(f);
+  if (same(v, S.values[f.path])) delete changes.values[f.path]; else changes.values[f.path] = v;
+  row.classList.toggle("changed", f.path in changes.values);
+  row.querySelector(".err").textContent = "";
+  if (f.path.startsWith("dashboard.theme.")) updatePreview();
+  markDirty();
+}
+
+// tags widget
+function initTags() {
+  document.querySelectorAll(".tags").forEach((box) => {
+    const draw = () => {
+      const tags = JSON.parse(box.dataset.tags || "[]");
+      box.innerHTML = tags.map((t, i) => `<span class="tag">${esc(t)}<button data-i="${i}" aria-label="Remove">×</button></span>`).join("")
+        + `<input type="text" placeholder="Add ID and press Enter" inputmode="numeric">`;
+    };
+    draw();
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-i]"); if (!b) return;
+      const tags = JSON.parse(box.dataset.tags); tags.splice(+b.dataset.i, 1); box.dataset.tags = JSON.stringify(tags); draw(); onFieldChange(box.closest(".field"));
+    });
+    box.addEventListener("keydown", (e) => {
+      if (e.target.tagName !== "INPUT" || !["Enter", ",", " "].includes(e.key)) return;
+      e.preventDefault();
+      const v = e.target.value.trim(); if (!/^-?\d+$/.test(v)) { toast("Telegram IDs are numbers — message your bot /id to get yours.", false); return; }
+      const tags = JSON.parse(box.dataset.tags); if (!tags.includes(+v)) tags.push(+v); box.dataset.tags = JSON.stringify(tags); draw(); onFieldChange(box.closest(".field"));
+      box.querySelector("input").focus();
+    });
+  });
+}
+
+// ── API keys ──────────────────────────────────────────
+function renderKeys() {
+  const groups = {};
+  S.secrets.forEach((s) => (groups[s.group] ||= []).push(s));
+  $("#tab-keys").innerHTML = `<h2 class="sec-title">API keys</h2>
+    <p class="sec-sub">Stored only in the <code>.env</code> file on this PC — never uploaded to GitHub and never shown in full here.
+    Paste a new value to replace a key, or clear it.</p>` +
+    Object.entries(groups).map(([g, items]) => `<div class="card glass"><h3>${esc(g)}</h3>${items.map(keyHtml).join("")}</div>`).join("");
+}
+function keyHtml(s) {
+  return `<div class="key" data-key="${s.key}">
+    <div class="meta"><b>${esc(s.label)}</b><span class="pill ${s.set ? "on" : ""}">${s.set ? (s.plain ? "Set" : "Saved " + esc(s.hint)) : "Not set"}</span>
+      <small>${esc(s.help || "")}${s.link ? ` · <a href="${esc(s.link)}" target="_blank" rel="noopener">get one ↗</a>` : ""}</small></div>
+    <div class="in"><input type="${s.plain ? "text" : "password"}" placeholder="${s.plain ? esc(s.hint || "Paste value") : s.set ? "Paste a new key to replace" : "Paste key"}" autocomplete="off" spellcheck="false">
+      ${s.plain ? "" : `<button class="eye" title="Show / hide" type="button">👁</button>`}</div>
+    <div class="acts">${s.test ? `<button class="btn small" data-test="${s.test}">Test</button>` : ""}
+      ${s.set ? `<button class="btn small danger" data-clear="${s.key}">Clear</button>` : ""}</div>
+    <div class="result"></div></div>`;
+}
+$("#main").addEventListener("input", (e) => {
+  const row = e.target.closest(".key"); if (!row) return;
+  const v = e.target.value.trim();
+  if (v) changes.secrets[row.dataset.key] = v; else delete changes.secrets[row.dataset.key];
+  const pill = row.querySelector(".pill");
+  pill.className = "pill " + (v ? "pending" : (S.secrets.find((x) => x.key === row.dataset.key).set ? "on" : ""));
+  pill.textContent = v ? "Unsaved" : (S.secrets.find((x) => x.key === row.dataset.key).set ? "Saved " + S.secrets.find((x) => x.key === row.dataset.key).hint : "Not set");
+  markDirty();
+});
+$("#main").addEventListener("click", async (e) => {
+  const eye = e.target.closest(".eye");
+  if (eye) { const i = eye.previousElementSibling; i.type = i.type === "password" ? "text" : "password"; return; }
+  const clr = e.target.closest("[data-clear]");
+  if (clr) { changes.secrets[clr.dataset.clear] = null; const row = clr.closest(".key"); row.querySelector(".pill").className = "pill pending"; row.querySelector(".pill").textContent = "Will be cleared"; markDirty(); return; }
+  const t = e.target.closest("[data-test]");
+  if (t) {
+    if (Object.keys(changes.secrets).length || Object.keys(changes.values).length) { toast("Save your changes first — tests use saved settings.", false); return; }
+    const box = t.closest(".key")?.querySelector(".result") || t.closest(".card").querySelector(".result");
+    t.disabled = true; const old = t.textContent; t.textContent = "Testing…";
+    const r = await api("/api/settings/test", { kind: t.dataset.test }).catch(() => ({ ok: false, message: "Nova didn't answer." }));
+    t.disabled = false; t.textContent = old;
+    box.className = "result show " + (r.ok ? "ok" : "bad"); box.textContent = (r.ok ? "✓ " : "✕ ") + r.message;
+  }
+});
+
+// ── extensions ────────────────────────────────────────
+function renderExtensions() {
+  const x = S.extensions;
+  const row = (kind, item, sub) => `<div class="ext"><div class="info"><b>${esc(item.name)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>
+    ${item.core ? `<span class="lock">core</span>` : ""}
+    <label class="switch"><input type="checkbox" data-ext="${kind}" data-name="${esc(item.name)}" ${item.enabled ? "checked" : ""} ${item.core ? "disabled" : ""}><span></span></label></div>`;
+  const SK = { system: "PC control, apps, reminders, screenshots", memory: "Permanent memory & notes", files: "Files and folders",
+    web: "Search, scraping, website builder", browser: "Controls its own Chrome", google_ws: "Gmail, Calendar, Drive, Docs, Sheets, Tasks",
+    media: "Videos, voice-overs, transcription", camera_ads: "Webcam and product ads", meetings: "Meeting recorder", maintenance: "Updates, rollback, extensions" };
+  $("#tab-extensions").innerHTML = `<h2 class="sec-title">Extensions</h2>
+    <p class="sec-sub">Switch abilities on or off. Fewer abilities = a faster, more focused local model. Changes apply after a restart.</p>
+    <div class="card glass"><h3>Built-in skills</h3>${x.skills.map((s) => row("skills", s, SK[s.name])).join("")}</div>
+    <div class="card glass"><h3>Plugins <small style="text-transform:none;letter-spacing:0">— .py files in the plugins folder</small></h3>${x.plugins.map((p) => row("plugins", p, "plugins/" + p.name + ".py")).join("") || '<p class="note">No plugins yet. See docs/SKILLS.md.</p>'}</div>
+    <div class="card glass"><h3>Playbooks <small style="text-transform:none;letter-spacing:0">— step-by-step procedures</small></h3>${x.playbooks.map((p) => row("playbooks", p, p.description)).join("")}</div>
+    <div class="card glass"><h3>MCP servers</h3>${x.mcp_servers.map((m) => row("mcp_servers", m, m.target + " · confirm: " + m.confirm)).join("") || '<p class="note">None configured.</p>'}
+      <div class="ext"><div class="info"><b>Also load Claude Desktop's MCP servers</b><small>Reads claude_desktop_config.json</small></div>
+      <label class="switch"><input type="checkbox" data-ext="mcp_import_claude_desktop" ${x.mcp_import_claude_desktop ? "checked" : ""}><span></span></label></div>
+      <p class="note">Add new servers in config.yaml (see docs/MCP.md) — they'll appear here.</p></div>`;
+}
+$("#main").addEventListener("change", (e) => {
+  const c = e.target.closest("[data-ext]"); if (!c) return;
+  const x = changes.extensions ||= {};
+  if (c.dataset.ext === "mcp_import_claude_desktop") x.mcp_import_claude_desktop = c.checked;
+  else (x[c.dataset.ext] ||= {})[c.dataset.name] = c.checked;
+  markDirty();
+});
+
+// ── routines ──────────────────────────────────────────
+function renderRoutines() {
+  $("#tab-routines").innerHTML = `<h2 class="sec-title">Routines</h2>
+    <p class="sec-sub">Things Nova does by itself at set times — exactly as if you'd asked. Great with playbooks (e.g. “Give me my morning briefing”).</p>
+    <div id="rlist"></div><button class="btn" id="radd">+ Add routine</button>`;
+  drawRoutines();
+  $("#radd").onclick = () => { routines.push({ name: "", at: "08:00", days: ["mon", "tue", "wed", "thu", "fri"], prompt: "", speak: true, telegram: true }); routinesChanged(); drawRoutines(); };
+}
+function drawRoutines() {
+  $("#rlist").innerHTML = routines.map((r, i) => `<div class="routine glass" data-i="${i}">
+      <input type="text" data-r="name" value="${esc(r.name)}" placeholder="Name, e.g. Morning briefing">
+      <input type="text" data-r="at" value="${esc(r.at)}" placeholder="07:30">
+      <div class="days">${DAYS.map((d) => `<button type="button" data-day="${d}" class="${!r.days || r.days.includes(d) ? "on" : ""}">${d.slice(0, 2)}</button>`).join("")}</div>
+      <input class="prompt" type="text" data-r="prompt" value="${esc(r.prompt)}" placeholder="What should Nova do? e.g. Give me my morning briefing">
+      <div class="row"><label class="mini"><label class="switch"><input type="checkbox" data-r="speak" ${r.speak ? "checked" : ""}><span></span></label>Say it out loud</label>
+        <label class="mini"><label class="switch"><input type="checkbox" data-r="telegram" ${r.telegram !== false ? "checked" : ""}><span></span></label>Send to my phone</label>
+        <span style="flex:1"></span><button class="btn small danger" data-rdel>Delete</button></div></div>`).join("")
+    || `<div class="card glass"><p style="margin:0" class="note">No routines yet.</p></div>`;
+}
+function routinesChanged() { changes.routines = routines; markDirty(); }
+$("#main").addEventListener("input", (e) => {
+  const card = e.target.closest(".routine"); if (!card || !e.target.dataset.r) return;
+  const r = routines[+card.dataset.i]; const k = e.target.dataset.r;
+  r[k] = e.target.type === "checkbox" ? e.target.checked : e.target.value; routinesChanged();
+});
+$("#main").addEventListener("change", (e) => {
+  const card = e.target.closest(".routine"); if (!card || e.target.type !== "checkbox") return;
+  routines[+card.dataset.i][e.target.dataset.r] = e.target.checked; routinesChanged();
+});
+$("#main").addEventListener("click", (e) => {
+  const card = e.target.closest(".routine"); if (!card) return;
+  const r = routines[+card.dataset.i];
+  const d = e.target.closest("[data-day]");
+  if (d) { const days = r.days && r.days.length ? r.days : [...DAYS]; r.days = days.includes(d.dataset.day) ? days.filter((x) => x !== d.dataset.day) : [...days, d.dataset.day]; d.classList.toggle("on"); routinesChanged(); }
+  if (e.target.closest("[data-rdel]")) { routines.splice(+card.dataset.i, 1); drawRoutines(); routinesChanged(); }
+});
+
+// ── appearance ────────────────────────────────────────
+function appearanceExtras() {
+  return `<div class="card glass"><h3>Presets</h3><div class="presets">${Object.entries(S.presets).map(([n, p]) =>
+    `<button class="preset" data-preset="${esc(n)}"><span class="sw" style="background:radial-gradient(circle at 30% 40%, ${p.accent} 0 8%, transparent 9%),radial-gradient(circle at 70% 60%, ${p.accent2} 0 6%, transparent 7%),radial-gradient(ellipse at 50% 50%, ${p.accent}55, ${p.background} 70%)"></span>${esc(n)}</button>`).join("")}</div></div>
+    <div class="card glass"><h3>Preview</h3><div class="preview" id="preview"></div></div>`;
+}
+$("#main").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-preset]"); if (!b) return;
+  const p = S.presets[b.dataset.preset];
+  for (const [k, v] of Object.entries(p)) {
+    const id = "f-dashboard-theme-" + k; const el = document.getElementById(id); if (!el) continue;
+    el.value = v; const m = el.parentElement.querySelector(`[data-mirror="${id}"]`); if (m) m.value = v; onFieldChange(el.closest(".field"));
+  }
+});
+function current(path) { const f = FIELDS()[path]; return path in changes.values ? changes.values[path] : (S.values[path] ?? f.default); }
+function updatePreview() {
+  const el = $("#preview"); if (!el) return;
+  const a = current("dashboard.theme.accent"), a2 = current("dashboard.theme.accent2"), bg = current("dashboard.theme.background");
+  const bloom = Number(current("dashboard.theme.bloom")), labels = current("dashboard.theme.labels");
+  const g = (c, s) => `box-shadow:0 0 ${8 + 18 * bloom}px ${2 + 6 * bloom}px ${c};background:${c};width:${s}px;height:${s}px`;
+  const stars = Array.from({ length: Math.min(160, Math.round(Number(current("dashboard.theme.stars")) / 40)) }, (_, i) =>
+    `<span class="orb" style="left:${(i * 37) % 100}%;top:${(i * 53) % 100}%;width:2px;height:2px;background:#c8d0ff;opacity:.6"></span>`).join("");
+  el.style.cssText = `--p-accent:${a};background:radial-gradient(ellipse at center, ${a}22, ${bg} 70%), ${bg}`;
+  el.innerHTML = stars + `<span class="orb" style="left:22%;top:30%;${g(a2, 12)}"></span><span class="orb" style="left:70%;top:24%;${g("#ffd166", 10)}"></span>
+    <span class="orb" style="left:76%;top:68%;${g("#ff8a5c", 11)}"></span><span class="orb" style="left:30%;top:72%;${g(a, 9)}"></span>
+    <span class="orb core" style="box-shadow:0 0 ${20 + 40 * bloom}px ${6 + 14 * bloom}px ${a}"></span><span class="ring"></span>
+    ${labels ? `<span class="lbl" style="left:14%;top:18%;border:1px solid ${a2}">Websites</span><span class="lbl" style="left:64%;top:78%;border:1px solid #ff8a5c">People</span>` : ""}`;
+  applyThemeVars({ "dashboard.theme.accent": a, "dashboard.theme.accent2": a2, "dashboard.theme.background": bg });
+}
+function applyThemeVars(v) {
+  const r = document.documentElement.style;
+  if (v["dashboard.theme.accent"]) r.setProperty("--accent", v["dashboard.theme.accent"]);
+  if (v["dashboard.theme.accent2"]) r.setProperty("--accent-2", v["dashboard.theme.accent2"]);
+  if (v["dashboard.theme.background"]) r.setProperty("--bg", v["dashboard.theme.background"]);
+}
+
+// ── save / discard / restart ──────────────────────────
+function dirty() { return Object.keys(changes.values).length || Object.keys(changes.secrets).length || changes.extensions || changes.routines; }
+function markDirty() {
+  const d = !!dirty();
+  $("#save").disabled = !d; $("#discard").disabled = !d; document.body.classList.toggle("dirty", d);
+  document.querySelectorAll("nav button").forEach((b) => {
+    const id = b.dataset.tab; let n = 0;
+    if (id === "keys") n = Object.keys(changes.secrets).length;
+    else if (id === "extensions") n = changes.extensions ? 1 : 0;
+    else if (id === "routines") n = changes.routines ? 1 : 0;
+    else { const sec = S.schema.find((s) => s.id === id); n = sec ? sec.fields.filter((f) => f.path in changes.values).length : 0; }
+    b.querySelector(".badge").textContent = n ? "●" : "";
+  });
+}
+addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+$("#discard").onclick = () => { for (const k of Object.keys(changes)) changes[k] = k === "values" || k === "secrets" ? {} : null; load(); toast("Changes discarded.", true); };
+$("#save").onclick = async () => {
+  $("#save").disabled = true; $("#save").textContent = "Saving…";
+  const body = { values: changes.values, secrets: changes.secrets };
+  if (changes.extensions) body.extensions = changes.extensions;
+  if (changes.routines) body.routines = changes.routines;
+  const r = await api("/api/settings", body).catch(() => ({ errors: { _: "Nova didn't answer — is it running?" } }));
+  $("#save").textContent = "Save changes";
+  const errs = Object.entries(r.errors || {});
+  for (const [path, msg] of errs) {
+    const row = document.querySelector(`.field[data-path="${CSS.escape(path)}"]`);
+    if (row) row.querySelector(".err").textContent = msg;
+  }
+  if (errs.length) { toast("Some settings weren't saved: " + errs.map(([p, m]) => `${p.split(".").pop()} — ${m}`).join("; "), false); }
+  const savedAny = (r.saved || []).length;
+  if (savedAny) {
+    try { localStorage.setItem("nova-theme-rev", String(Date.now())); } catch {}
+    for (const p of r.saved) { delete changes.values[p]; delete changes.secrets[p]; }
+    if ((r.saved || []).includes("routines")) changes.routines = null;
+    if (r.saved.some((p) => p.endsWith(".disabled") || p.startsWith("mcp_"))) changes.extensions = null;
+    const keep = { ...changes.values };
+    await load();
+    Object.assign(changes.values, keep);
+    if (!errs.length) toast("Saved ✓", true);
+    if (r.restart) $("#banner").classList.add("show");
+  }
+  markDirty();
+};
+$("#later").onclick = () => $("#banner").classList.remove("show");
+$("#restart").onclick = async () => {
+  $("#banner").classList.remove("show"); $("#restarting").classList.add("show");
+  await api("/api/restart", {}).catch(() => {});
+  await new Promise((r) => setTimeout(r, 3000));
+  for (let i = 0; i < 60; i++) {
+    try { const s = await fetch("/api/stats"); if (s.ok) { location.reload(); return; } } catch {}
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  $("#restarting").textContent = "Nova hasn't come back yet — start it from the desktop shortcut.";
+};
+
+function toast(msg, ok) { const t = $("#toast"); t.textContent = msg; t.className = "toast glass show " + (ok ? "ok" : "bad"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 4500); }
+addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); if (!$("#save").disabled) $("#save").click(); } });
+
+load();
+</script>
+</body>
+</html>

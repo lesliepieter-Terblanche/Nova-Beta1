@@ -7,6 +7,10 @@ Nova reads two files from its folder:
 | `config.yaml` | Settings (created from `config.example.yaml` by setup) | No, it's personal |
 | `.env` | API keys and tokens (created from `.env.example`) | **Never** |
 
+**Easiest:** use the **Settings page**, the gear icon on the dashboard (http://localhost:8765/settings).
+It edits these same files, keeps your comments, validates values, masks keys, and has test buttons and a
+restart button. Appearance changes apply instantly. Everything below can also be edited by hand.
+
 Restart Nova after editing (say *"restart yourself"*, or close and reopen). Values in `config.yaml` can reference
 environment variables from `.env` with `${NAME}` where noted (MCP `args`, `env`, `headers`).
 
@@ -143,6 +147,23 @@ dashboard:
   enabled: true
   port: 8765
   open_on_start: true
+  allowed_hosts: []           # extra host names allowed to reach it, e.g. ["my-pc.tail1234.ts.net"] for Tailscale
+  theme:                      # set from Settings → Appearance (applies live)
+    accent: "#8b7bff"
+    accent2: "#4cc9f0"
+    background: "#03040a"
+    bloom: 0.85               # glow intensity
+    stars: 4500
+    orbit_speed: 1.0
+    labels: true
+```
+
+## skills · plugins · playbooks (switch off)
+
+```yaml
+skills:    { disabled: [browser] }      # system, memory and maintenance can't be disabled
+plugins:   { disabled: [currency] }
+playbooks: { disabled: [weekly-review] }
 ```
 
 The dashboard listens on `127.0.0.1` only. To reach it from your phone, use a private network such as

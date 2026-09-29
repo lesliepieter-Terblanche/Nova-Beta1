@@ -32,6 +32,9 @@ All of these are git-ignored. **Back up `data/`**. It *is* Nova's memory.
 - Sending email, deleting/moving files, shell commands, power actions, browser submissions, updates, rollback
   and write-type MCP tools all require a spoken or typed **yes**.
 - The Nova MCP server never exposes confirmation-gated tools.
+- The Settings page never sends stored keys back to the browser (only the last 4 characters). It answers only
+  requests addressed to `localhost` (DNS-rebinding protection) and only accepts changes from its own page.
+  Anyone who can use your PC's browser can still change settings, so lock your PC.
 
 ## Recommendations
 

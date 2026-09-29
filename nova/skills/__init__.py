@@ -10,8 +10,12 @@ SKILLS = ["system", "memory", "files", "web", "browser", "google_ws", "media", "
 
 
 def load_all() -> list[str]:
+    from ..settings import disabled
+    off = disabled("skills") - {"system", "memory", "maintenance"}
     loaded = []
     for name in SKILLS:
+        if name in off:
+            continue
         try:
             importlib.import_module(f"{__name__}.{name}")
             loaded.append(name)

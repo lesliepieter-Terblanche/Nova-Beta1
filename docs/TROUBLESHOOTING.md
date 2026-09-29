@@ -98,6 +98,15 @@ run.bat --check
 | Update says my edits were stashed | They're safe: `git stash list`, then `git stash pop`. |
 | Want to undo a rollback | Say "update yourself" or run `update.bat`. |
 
+## Settings page
+
+| Problem | Fix |
+|---|---|
+| "Some settings weren't saved" | The message names the field and why (e.g. colour must look like `#8b7bff`, time like `07:30`). |
+| Changes don't take effect | Most need a restart. Use the banner's **Restart Nova now**. Appearance applies instantly. |
+| Messed up `config.yaml` | Each save keeps the previous version as `config.yaml.bak`. Copy it back. |
+| 403 when opening via Tailscale or another name | Add the host name to `dashboard.allowed_hosts`. |
+
 ## Still stuck?
 
 [Open an issue](../../issues/new?template=bug_report.md) with the output of `run.bat --check` and the console

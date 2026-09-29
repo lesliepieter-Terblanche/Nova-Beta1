@@ -46,9 +46,12 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 👁 **Vision** | "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?" · describe photos and scans · Gemini, or fully local with Gemma 3 |
 | ⏰ **Routines** | Reminders · scheduled briefings ("every weekday at 07:30…") |
+| ⚙️ **Settings page** | API keys (masked, with Test buttons), voice, models, Telegram, skills/plugins/MCP on-off, routines, colour themes with live preview |
 | 🔄 **Versions** | GitHub backup · "update yourself" · "roll back" · desktop shortcut · VS Code project |
 
 <img src="docs/images/ads.jpg" width="560" alt="Ads generated from a webcam photo">
+
+<img src="docs/images/settings.jpg" width="720" alt="Settings page">
 
 ## Requirements
 

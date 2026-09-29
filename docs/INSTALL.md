@@ -54,7 +54,9 @@ It's safe to run again: finished steps are skipped.
 
 ## 4. Add your keys
 
-`.env` opens in Notepad at the end of setup. All keys are optional, but more keys means more abilities:
+`.env` opens in Notepad at the end of setup. You can also add keys later in **Settings → API keys**
+(gear icon on the dashboard, or http://localhost:8765/settings), which has a **Test** button for each.
+All keys are optional, but more keys means more abilities:
 
 | Key | What it unlocks | Where | Cost |
 |---|---|---|---|
@@ -90,7 +92,7 @@ Each line shows `OK` or `--` with what's missing.
 ## 6. Telegram remote control
 
 1. Start Nova, open your bot in Telegram, send **`/id`**.
-2. Put the number in `config.yaml`:
+2. Add the number in **Settings → Telegram** (press Enter after typing it, then Save), or put it in `config.yaml`:
    ```yaml
    telegram:
      allowed_user_ids: [123456789]

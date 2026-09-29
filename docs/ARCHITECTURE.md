@@ -104,7 +104,8 @@ The agent is serialised with a lock (one GPU, one conversation at a time). Each 
 
 ## Security model
 
-- Local services (dashboard, Ollama) bind to localhost. The dashboard rejects cross-origin POSTs.
+- Local services (dashboard, Ollama) bind to localhost. The dashboard checks the Host header (DNS rebinding)
+  and rejects cross-origin writes. The Settings page never returns stored secrets.
 - Telegram only answers allow-listed user IDs.
 - File tools are sandboxed to `files.allowed_roots`. Deletes go to the Recycle Bin, and overwrites keep `.bak`.
 - Risky tools need explicit confirmation in the same channel. MCP tools use annotation-aware `confirm: auto`.

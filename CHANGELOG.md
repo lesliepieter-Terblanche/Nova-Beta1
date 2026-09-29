@@ -4,6 +4,20 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-09-29
+### Added
+- **Settings page** (gear icon on the dashboard, or http://localhost:8765/settings):
+  - API keys: add, replace, clear and test (ElevenLabs credits, Gemini, Groq, Telegram, Pexels). Keys are masked and stay in `.env`.
+  - General, Voice, AI brain, Telegram (allowed IDs), Google, Files & web settings.
+  - Extensions: switch built-in skills, plugins, playbooks and MCP servers on/off.
+  - Routines editor with day picker.
+  - Appearance: colour presets, accent/background colours, glow, stars, orbit speed, labels, with live preview.
+    Applied to the 3D dashboard instantly.
+  - One-click restart.
+- Saves keep your `config.yaml` comments (ruamel.yaml round-trip) and keep a `config.yaml.bak`.
+- Dashboard hardening: Host-header check (DNS-rebinding protection) and same-origin check on every write.
+- 6 new tests (35 total).
+
 ## [1.2.0] — 2026-09-29
 ### Added
 - **Meeting recorder:** records your mic + PC audio (Teams/Zoom/Meet), transcribes locally, writes summary,

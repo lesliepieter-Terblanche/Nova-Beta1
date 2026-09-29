@@ -44,8 +44,10 @@ def load_plugins(folder: Path = ROOT / "plugins") -> list[str]:
     loaded = []
     if not folder.is_dir():
         return loaded
+    from .settings import disabled
+    off = disabled("plugins")
     for f in sorted(folder.glob("*.py")):
-        if f.name.startswith("_"):
+        if f.name.startswith("_") or f.stem in off:
             continue
         try:
             spec = importlib.util.spec_from_file_location(f"nova_plugins.{f.stem}", f)
@@ -78,6 +80,9 @@ def load_playbooks(folder: Path = ROOT / "playbooks") -> list[Playbook]:
             body=body.strip(),
             path=f,
         ))
+    from .settings import disabled
+    off = disabled("playbooks")
+    _PLAYBOOKS[:] = [p for p in _PLAYBOOKS if p.name not in off]
     return _PLAYBOOKS
 
 

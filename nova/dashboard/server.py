@@ -25,7 +25,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import numpy as np
 
-from .. import context
+from .. import context, settings
 from ..config import resolve
 
 HERE = Path(__file__).parent
@@ -138,7 +138,7 @@ class Dashboard:
                 "notes": q("SELECT COUNT(DISTINCT path) FROM chunks"),
                 "artifacts": q("SELECT COUNT(*) FROM artifacts"),
                 "actions": q("SELECT COUNT(*) FROM activity WHERE kind='tool'"),
-                "status": s.status, "name": self.cfg.assistant.name, "owner": self.cfg.assistant.owner,
+                "status": s.status, "theme": settings.theme(), "name": self.cfg.assistant.name, "owner": self.cfg.assistant.owner,
                 "models": {"local": self.cfg.llm.providers.ollama.model, "smart": context.llm.smart if context.llm else []},
             }
 
@@ -274,12 +274,27 @@ class Dashboard:
                             return
                         remaining -= len(chunk)
 
+            def _host_ok(self) -> bool:
+                """Blocks DNS-rebinding: only answer requests addressed to this PC's dashboard."""
+                host = (self.headers.get("Host") or "").lower()
+                allowed = {f"localhost:{dash.port}", f"127.0.0.1:{dash.port}", "localhost", "127.0.0.1"}
+                allowed |= {h.lower() for h in (dash.cfg.get("dashboard") or {}).get("allowed_hosts", [])}
+                return host in allowed
+
             def do_GET(self):
                 u = urlparse(self.path)
                 q = {k: v[0] for k, v in parse_qs(u.query).items()}
+                if not self._host_ok():
+                    return self.send_error(403)
                 try:
                     if u.path in ("/", "/index.html"):
                         return self._file(HERE / "index.html")
+                    if u.path in ("/settings", "/settings.html"):
+                        return self._file(HERE / "settings.html")
+                    if u.path == "/api/settings":
+                        return self._json(settings.snapshot())
+                    if u.path == "/api/theme":
+                        return self._json(settings.theme())
                     if u.path.startswith("/vendor/"):
                         return self._file(HERE / "vendor" / Path(u.path).name)
                     if u.path == "/api/graph":
@@ -315,9 +330,17 @@ class Dashboard:
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length) or b"{}")
-                if self.headers.get("Origin", "").split("//")[-1] not in ("", f"localhost:{dash.port}", f"127.0.0.1:{dash.port}"):
+                origin = self.headers.get("Origin", "").split("//")[-1].lower()
+                if not self._host_ok() or origin not in ("", self.headers.get("Host", "").lower()):
                     return self._json({"error": "forbidden"}, 403)
                 try:
+                    if self.path == "/api/settings":
+                        return self._json(settings.apply(body))
+                    if self.path == "/api/settings/test":
+                        return self._json(settings.run_test(str(body.get("kind", ""))))
+                    if self.path == "/api/restart":
+                        settings.restart_soon()
+                        return self._json({"message": "Restarting…"})
                     if self.path == "/api/open":
                         return self._json({"message": dash.open_item(body.get("id", ""))})
                     if self.path == "/api/ask":

@@ -6,6 +6,7 @@ if not exist .venv\Scripts\activate.bat (
   pause & exit /b 1
 )
 call .venv\Scripts\activate.bat
+set "NOVA_LAUNCHER=run.bat"
 rem make sure the local AI engine is running
 tasklist /fi "imagename eq ollama.exe" | find /i "ollama.exe" >nul || start "" /min ollama serve
 :loop

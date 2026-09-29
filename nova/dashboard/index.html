@@ -84,7 +84,7 @@
   .views { display: flex; gap: 6px; }
   .views button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.03);
     color: var(--text); font: 12px var(--body); cursor: pointer; }
-  .views button.on { border-color: var(--accent); background: rgba(139,123,255,.16); }
+  .views button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
 
   /* detail panel */
   .panel { position: fixed; top: 100px; right: 18px; bottom: 110px; width: min(430px, calc(100vw - 36px)); z-index: 6;
@@ -111,7 +111,7 @@
   .panel .actions { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
   .btn { flex: 1; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.04);
     color: var(--text); font: 600 13px var(--body); cursor: pointer; transition: all .2s; }
-  .btn.primary { background: linear-gradient(135deg, #8b7bff, #4cc9f0); border: 0; color: #070914; }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border: 0; color: #070914; }
   .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
   .btn:disabled { opacity: .4; cursor: default; transform: none; }
 
@@ -139,11 +139,15 @@
   .ask input::placeholder { color: var(--muted); }
   .ask .toggle { font: 12px var(--body); color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
   .ask button.send { border: 0; border-radius: 999px; padding: 11px 20px; font: 600 13px var(--body); cursor: pointer;
-    background: linear-gradient(135deg, #8b7bff, #4cc9f0); color: #070914; }
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; }
   .reply { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(720px, calc(100vw - 36px)); z-index: 5;
     padding: 14px 18px; font-size: 14.5px; line-height: 1.55; display: none; max-height: 30vh; overflow: auto; }
   .reply.show { display: block; animation: in .4s ease; }
 
+  .right { display: flex; gap: 10px; align-items: flex-start; }
+  .gear { display: grid; place-items: center; width: 52px; height: 52px; color: var(--text); text-decoration: none; transition: transform .3s; }
+  .gear:hover { transform: rotate(40deg); color: #fff; }
+  .no-labels .hub-label, .no-labels .core-label { display: none; }
   .hub-label { font: 600 12.5px var(--display); letter-spacing: .06em; color: #fff; padding: 4px 10px; border-radius: 999px;
     background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); cursor: pointer;
     text-shadow: 0 0 12px var(--c); white-space: nowrap; pointer-events: auto; transform: translateY(-50%); }
@@ -182,11 +186,14 @@
       <div class="status">Status · <b id="status">connecting</b></div>
     </div>
   </div>
+  <div class="right">
   <div class="stats glass">
     <div class="stat"><div class="n" id="s-mem">0</div><div class="l">Memories</div></div>
     <div class="stat"><div class="n" id="s-notes">0</div><div class="l">Notes</div></div>
     <div class="stat"><div class="n" id="s-art">0</div><div class="l">Creations</div></div>
     <div class="stat"><div class="n" id="s-act">0</div><div class="l">Actions</div></div>
+  </div>
+    <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
   </div>
 </header>
 
@@ -310,8 +317,8 @@ function starfield(count, radius, size, color, opacity) {
   scene.add(pts);
   return pts;
 }
-const stars = starfield(4500, 2600, 7, 0xc8d0ff, 0.9);
-const dust = starfield(1200, 700, 9, 0x7a6cff, 0.35);
+let stars = starfield(4500, 2600, 7, 0xc8d0ff, 0.9);
+let dust = starfield(1200, 700, 9, 0x7a6cff, 0.35);
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
 
@@ -404,6 +411,11 @@ function flyTo(n, dist = 90) {
 const t0 = performance.now();
 function animate() {
   const t = (performance.now() - t0) / 1000;
+  if (coreObj && coreThemed !== themeRev) {
+    coreThemed = themeRev;
+    coreObj.ring2.material.color.set(STATUS_COLORS.listening);
+    coreObj.inner.material.color.set(new THREE.Color("#ffffff").lerp(new THREE.Color(STATUS_COLORS.idle), 0.25));
+  }
   if (coreObj) {
     const c = new THREE.Color(STATUS_COLORS[status] || STATUS_COLORS.idle);
     const speed = status === "thinking" ? 2.2 : status === "listening" ? 1.4 : status === "speaking" ? 3.2 : 0.6;
@@ -420,7 +432,7 @@ function animate() {
   }
   stars.rotation.y += 0.00008; dust.rotation.y -= 0.0002;
   if (orbit && performance.now() - userBusy > 3500 && !selected) {
-    angle += 0.0012;
+    angle += 0.0012 * orbitSpeed;
     const cam = Graph.camera(), r = Math.hypot(cam.position.x, cam.position.z) || 420;
     const target = Math.max(420, Math.min(r, 1000));
     const y = cam.position.y + (60 + Math.sin(t * 0.07) * 80 - cam.position.y) * 0.004;
@@ -428,6 +440,31 @@ function animate() {
   }
   requestAnimationFrame(animate);
 }
+
+// ── theme (Settings → Appearance; applies live) ──────
+let orbitSpeed = 1, themeRev = 0, coreThemed = -1;
+async function applyTheme() {
+  let t;
+  try { t = await api("/api/theme"); } catch { return; }
+  const root = document.documentElement.style;
+  root.setProperty("--accent", t.accent); root.setProperty("--accent-2", t.accent2); root.setProperty("--bg", t.background);
+  document.body.style.background = t.background;
+  STATUS_COLORS.idle = t.accent; STATUS_COLORS.listening = t.accent2;
+  Graph.backgroundColor(t.background);
+  scene.fog.color.set(t.background);
+  bloom.strength = Number(t.bloom);
+  orbitSpeed = Number(t.orbit_speed);
+  document.body.classList.toggle("no-labels", !t.labels);
+  const want = Math.round(Number(t.stars));
+  if (stars.geometry.attributes.position.count !== want) {
+    scene.remove(stars); stars.geometry.dispose();
+    stars = starfield(Math.max(1, want), 2600, 7, 0xc8d0ff, want ? 0.9 : 0);
+  }
+  dust.material.color.set(t.accent);
+  themeRev++;
+}
+addEventListener("storage", (e) => { if (e.key === "nova-theme-rev") applyTheme(); });
+addEventListener("focus", applyTheme);
 
 // ── data ──────────────────────────────────────────────
 async function loadGraph() {
@@ -582,7 +619,7 @@ addEventListener("resize", () => { Graph.width(innerWidth).height(innerHeight); 
 
 // ── start ─────────────────────────────────────────────
 Graph.cameraPosition({ x: 0, y: 120, z: 1400 });
-await Promise.all([loadGraph(), loadStats()]);
+await Promise.all([loadGraph(), loadStats(), applyTheme()]);
 requestAnimationFrame(animate);
 setTimeout(() => {
   $("intro").classList.add("gone");

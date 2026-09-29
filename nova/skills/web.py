@@ -49,19 +49,38 @@ def fetch_text(url: str) -> tuple[str, str]:
     return text, title
 
 
-@tool(group="web")
-def web_search(query: str, max_results: int = 5) -> list:
-    """Search the internet (DuckDuckGo, free) and return titles, links and snippets.
-    Args:
-        query: search terms
-        max_results: number of results
-    """
+def _searxng(url: str, query: str, n: int) -> list:
+    r = httpx.get(url.rstrip("/") + "/search", params={"q": query, "format": "json"}, headers=UA, timeout=20)
+    r.raise_for_status()
+    return [{"title": x.get("title"), "url": x.get("url"), "snippet": x.get("content")}
+            for x in r.json().get("results", [])[:n]]
+
+
+def _duckduckgo(query: str, n: int) -> list:
     try:
         from ddgs import DDGS
     except ImportError:
         from duckduckgo_search import DDGS
-    results = DDGS().text(query, max_results=max_results)
-    return [{"title": r.get("title"), "url": r.get("href"), "snippet": r.get("body")} for r in results] or "No results."
+    return [{"title": r.get("title"), "url": r.get("href"), "snippet": r.get("body")}
+            for r in DDGS().text(query, max_results=n)]
+
+
+@tool(group="web")
+def web_search(query: str, max_results: int = 5) -> list:
+    """Search the internet and return titles, links and snippets (your own SearXNG if configured, else DuckDuckGo).
+    Args:
+        query: search terms
+        max_results: number of results
+    """
+    url = (context.cfg.get("web") or {}).get("searxng_url")
+    if url:
+        try:
+            results = _searxng(url, query, max_results)
+            if results:
+                return results
+        except Exception as e:
+            print(f"[search] SearXNG failed ({e}); falling back to DuckDuckGo")
+    return _duckduckgo(query, max_results) or "No results."
 
 
 @tool(group="web")

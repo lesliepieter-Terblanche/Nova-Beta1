@@ -80,10 +80,19 @@ def draw_wrapped(draw, text, xy, fnt, max_w, fill=(255, 255, 255), spacing=12, a
     return y
 
 
-def render_slide(heading: str, text: str, size, palette, image: str | None, path: Path, index: int, total: int):
+def render_slide(heading: str, text: str, size, palette, image: str | None, path: Path, index: int, total: int,
+                 transparent: bool = False):
+    """Draw a scene. transparent=True draws only the text (with a soft scrim) to lay over B-roll video."""
     from PIL import Image, ImageDraw, ImageFilter
     w, h = size
-    if image and Path(image).exists():
+    if transparent:
+        scrim = Image.new("L", size, 0)
+        sd = ImageDraw.Draw(scrim)
+        for y in range(h):                          # darker at the top and bottom, clear in the middle
+            edge = max(0.0, 1 - min(y, h - y) / (h * 0.45))
+            sd.line([(0, y), (w, y)], fill=int(170 * edge ** 1.4 + 55))
+        bg = Image.merge("RGBA", (*Image.new("RGB", size, (0, 0, 0)).split(), scrim))
+    elif image and Path(image).exists():
         bg = Image.open(image).convert("RGB")
         scale = max(w / bg.width, h / bg.height)
         bg = bg.resize((int(bg.width * scale) + 1, int(bg.height * scale) + 1))
@@ -101,7 +110,7 @@ def render_slide(heading: str, text: str, size, palette, image: str | None, path
     vertical = h > w
     hf = font(int(h * (0.052 if vertical else 0.075)))
     bf = font(int(h * (0.028 if vertical else 0.04)), bold=False)
-    y = int(h * (0.30 if vertical else 0.28))
+    y = int(h * (0.16 if vertical else 0.14)) if transparent else int(h * (0.30 if vertical else 0.28))
     if heading:
         d.rectangle((margin, y - 30, margin + 90, y - 22), fill=(255, 255, 255))
         y = draw_wrapped(d, heading, (margin, y), hf, w - 2 * margin)
@@ -112,15 +121,121 @@ def render_slide(heading: str, text: str, size, palette, image: str | None, path
     bg.save(path)
 
 
-def _clip(img: Path, audio: Path, out: Path, size, pad: float = 0.5):
+# ── captions ──────────────────────────────────────────────
+def caption_chunks(text: str, duration: float, words_per_chunk: int = 5, lead: float = 0.15):
+    """Split narration into short chunks, timed in proportion to their length."""
+    words = text.split()
+    if not words or duration <= 0:
+        return []
+    chunks = [" ".join(words[i:i + words_per_chunk]) for i in range(0, len(words), words_per_chunk)]
+    total = sum(len(c) + 3 for c in chunks)
+    t, out = lead, []
+    usable = max(0.5, duration - lead - 0.1)
+    for c in chunks:
+        span = usable * (len(c) + 3) / total
+        out.append((t, t + span, c))
+        t += span
+    return out
+
+
+def render_caption(text: str, size, path: Path) -> Path:
+    """A transparent full-frame PNG with a bold, outlined caption near the bottom."""
+    from PIL import Image, ImageDraw
+    w, h = size
+    img = Image.new("RGBA", size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    vertical = h > w
+    f = font(int(min(w, h) * (0.062 if vertical else 0.052)))
+    lines, cur = [], ""
+    for word in text.split():
+        test = f"{cur} {word}".strip()
+        if d.textlength(test, font=f) <= w * 0.84:
+            cur = test
+        else:
+            lines.append(cur)
+            cur = word
+    lines.append(cur)
+    y = int(h * (0.70 if vertical else 0.80)) - (len(lines) - 1) * (f.size + 8) // 2
+    for line in lines:
+        x = (w - d.textlength(line, font=f)) / 2
+        d.text((x, y), line, font=f, fill=(255, 255, 255, 255), stroke_width=max(3, f.size // 12),
+               stroke_fill=(0, 0, 0, 235))
+        y += f.size + 8
+    img.save(path)
+    return path
+
+
+# ── free stock footage (Pexels) ───────────────────────────
+def fetch_broll(query: str, fmt: str, min_seconds: float = 4.0) -> Path | None:
+    """Download a matching stock video (or photo) from Pexels. Needs a free PEXELS_API_KEY."""
+    import httpx
+    key = os.environ.get("PEXELS_API_KEY", "").strip()
+    if not key or not query:
+        return None
+    orient = {"landscape": "landscape", "vertical": "portrait", "square": "square"}.get(fmt, "landscape")
+    cache = resolve("workspace/.broll")
+    cache.mkdir(parents=True, exist_ok=True)
+    target_w = SIZES.get(fmt, SIZES["landscape"])[0]
+    headers = {"Authorization": key}
+    try:
+        r = httpx.get("https://api.pexels.com/videos/search", headers=headers, timeout=20,
+                      params={"query": query, "orientation": orient, "per_page": 8, "size": "medium"})
+        r.raise_for_status()
+        vids = [v for v in r.json().get("videos", []) if v.get("duration", 0) >= min_seconds] or \
+            r.json().get("videos", [])
+        for v in vids:
+            files = [f for f in v.get("video_files", []) if f.get("file_type") == "video/mp4" and f.get("width")]
+            if not files:
+                continue
+            best = min(files, key=lambda f: abs(f["width"] - target_w) + (5000 if f["width"] > 2600 else 0))
+            dest = cache / f"pexels_{v['id']}_{best['width']}.mp4"
+            if not dest.exists():
+                with httpx.stream("GET", best["link"], timeout=120, follow_redirects=True) as dl:
+                    dl.raise_for_status()
+                    with open(dest, "wb") as fh:
+                        for chunk in dl.iter_bytes(1 << 16):
+                            fh.write(chunk)
+            return dest
+        r = httpx.get("https://api.pexels.com/v1/search", headers=headers, timeout=20,
+                      params={"query": query, "orientation": orient, "per_page": 1})
+        r.raise_for_status()
+        photos = r.json().get("photos", [])
+        if photos:
+            dest = cache / f"pexels_photo_{photos[0]['id']}.jpg"
+            if not dest.exists():
+                dest.write_bytes(httpx.get(photos[0]["src"]["large2x"], timeout=60, follow_redirects=True).content)
+            return dest
+    except Exception as e:
+        print(f"[broll] '{query}': {e}")
+    return None
+
+
+def _clip(bg: Path, audio: Path, out: Path, size, pad: float = 0.5, overlay: Path | None = None,
+          captions: list | None = None, bg_is_video: bool = False):
+    """One scene: background (still with slow zoom, or looping video) + text overlay + timed captions + audio."""
     w, h = size
     dur = ffmpeg.duration(audio) + pad
     frames = int(dur * 30)
-    vf = (f"scale={w * 2}:-2,zoompan=z='min(zoom+0.0006,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-          f":d={frames}:s={w}x{h}:fps=30,format=yuv420p")
-    ffmpeg.run(["-loop", "1", "-i", img, "-i", audio, "-filter_complex", f"[0:v]{vf}[v];[1:a]apad[a]",
-                "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", "-t", f"{dur:.2f}", out])
+    if bg_is_video:
+        args = ["-stream_loop", "-1", "-i", bg]
+        chain = (f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps=30,"
+                 f"eq=brightness=-0.06:saturation=1.05,setsar=1[b0]")
+    else:
+        args = ["-loop", "1", "-i", bg]
+        chain = (f"[0:v]scale={w * 2}:-2,zoompan=z='min(zoom+0.0006,1.12)':x='iw/2-(iw/zoom/2)':"
+                 f"y='ih/2-(ih/zoom/2)':d={frames}:s={w}x{h}:fps=30,setsar=1[b0]")
+    args += ["-i", audio]
+    idx, last = 2, "b0"
+    layers = ([(overlay, None)] if overlay else []) + [(p, (a, b)) for p, a, b in (captions or [])]
+    for n, (png, window) in enumerate(layers, 1):
+        args += ["-i", png]
+        enable = f":enable='between(t,{window[0]:.2f},{window[1]:.2f})'" if window else ""
+        chain += f";[{last}][{idx}:v]overlay=0:0{enable}[b{n}]"
+        last, idx = f"b{n}", idx + 1
+    chain += f";[{last}]format=yuv420p[v];[1:a]apad[a]"
+    ffmpeg.run([*args, "-filter_complex", chain, "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
+                "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
+                "-t", f"{dur:.2f}", out])
 
 
 def _assemble(clips: list[Path], out: Path, music: str = ""):
@@ -142,53 +257,88 @@ def _assemble(clips: list[Path], out: Path, music: str = ""):
 
 SCRIPT_PROMPT = """Write a short video script about: {topic}
 Audience/style notes: {style}
-Make {n} slides. Each slide has a short on-screen heading (max 7 words), an on-screen line (max 16 words)
-and a spoken narration of 1-3 natural sentences. First slide hooks the viewer; last slide is a call to action.
-Reply with JSON only: {{"title": "...", "slides": [{{"heading": "...", "text": "...", "narration": "..."}}]}}"""
+Make {n} scenes. Each scene has a short on-screen heading (max 7 words), an on-screen line (max 16 words),
+a spoken narration of 1-3 natural sentences, and "broll": a 2-4 word stock-footage search that visually
+fits the scene (concrete things, e.g. "server room lights", "team meeting office", "cape town aerial").
+The first scene hooks the viewer; the last is a call to action.
+Reply with JSON only: {{"title": "...", "slides": [{{"heading": "...", "text": "...", "narration": "...", "broll": "..."}}]}}"""
 
 
 def build_video(title: str, slides: list[dict], fmt: str = "landscape", images: list[str] | None = None,
-                music: str = "") -> Path:
+                music: str = "", captions: bool | None = None, broll: bool | None = None) -> Path:
+    mcfg = context.cfg.get("media") or {}
+    captions = mcfg.get("captions", True) if captions is None else captions
+    broll = mcfg.get("broll", True) if broll is None else broll
     size = SIZES.get(fmt, SIZES["landscape"])
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     name = re.sub(r"[^\w]+", "_", title)[:50].strip("_") or "video"
     work = out_dir() / f".build_{stamp}"
     work.mkdir(parents=True, exist_ok=True)
     palette = PALETTES[hash(title) % len(PALETTES)]
-    clips = []
+    words = 4 if size[1] > size[0] else 6
+    clips, used_broll = [], 0
     for i, s in enumerate(slides, 1):
         img, wav, clip = work / f"s{i}.png", work / f"s{i}.wav", work / f"s{i}.mp4"
+        narration = s.get("narration") or s.get("text") or s.get("heading", "")
+        context.speech.synth_wav(narration, wav)
+        dur = ffmpeg.duration(wav)
         pic = images[i - 1] if images and i - 1 < len(images) else None
-        render_slide(s.get("heading", ""), s.get("text", ""), size, palette, pic, img, i, len(slides))
-        context.speech.synth_wav(s.get("narration") or s.get("text") or s.get("heading", ""), wav)
-        _clip(img, wav, clip, size)
+        media = None if pic else (fetch_broll(s.get("broll") or s.get("heading", ""), fmt, dur) if broll else None)
+        is_video = bool(media and media.suffix == ".mp4")
+        if media and not is_video:
+            pic = str(media)
+        if is_video:
+            used_broll += 1
+            render_slide(s.get("heading", ""), s.get("text", ""), size, palette, None, img, i, len(slides),
+                         transparent=True)
+        else:
+            render_slide(s.get("heading", ""), s.get("text", ""), size, palette, pic, img, i, len(slides))
+        caps = []
+        if captions and narration.strip(" ."):
+            for n, (a, b, text) in enumerate(caption_chunks(narration, dur, words)):
+                caps.append((render_caption(text, size, work / f"s{i}_c{n}.png"), a, b))
+        if is_video:
+            _clip(media, wav, clip, size, overlay=img, captions=caps, bg_is_video=True)
+        else:
+            _clip(img, wav, clip, size, captions=caps)
         clips.append(clip)
     out = out_dir() / f"{name}_{stamp}.mp4"
     _assemble(clips, out, music)
-    (work / "s1.png").replace(out.with_suffix(".jpg"))       # thumbnail
+    try:
+        ffmpeg.run(["-ss", "1", "-i", out, "-frames:v", "1", out.with_suffix(".jpg")])      # thumbnail
+    except Exception:
+        pass
     for f in work.iterdir():
         f.unlink()
     work.rmdir()
-    context.record("video", title, out, f"{len(slides)} slides, {fmt}")
+    extra = (f", {used_broll} stock clips" if used_broll else "") + (", captions" if captions else "")
+    context.record("video", title, out, f"{len(slides)} scenes, {fmt}{extra}")
     return out
 
 
 @tool(group="media")
-def make_video(topic: str, style: str = "", slides: int = 6, format: str = "landscape", music_path: str = "") -> str:
-    """Create a narrated explainer / promo video about a topic (script, designed slides, voice-over, MP4).
+def make_video(topic: str, style: str = "", slides: int = 6, format: str = "landscape", music_path: str = "",
+               captions: bool = True, stock_footage: bool = True) -> str:
+    """Create a narrated explainer / promo video about a topic: script, scenes, voice-over, burned-in captions
+    and (with a free Pexels key) matching stock footage behind each scene.
     Args:
         topic: what the video is about
         style: audience, tone or brand notes
         slides: number of scenes (3-12)
         format: landscape (YouTube), vertical (Reels/TikTok/Shorts) or square
         music_path: optional background music file
+        captions: burn subtitles into the video
+        stock_footage: use Pexels stock video behind scenes (needs PEXELS_API_KEY)
     """
     raw = context.llm.complete(SCRIPT_PROMPT.format(topic=topic, style=style or "clear, friendly, professional",
                                                     n=max(3, min(12, slides))), prefer_smart=True, temperature=0.7)
     data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
-    out = build_video(data.get("title", topic), data["slides"], format, music=music_path)
+    out = build_video(data.get("title", topic), data["slides"], format, music=music_path, captions=captions,
+                      broll=stock_footage)
     context.attach(out)
-    return f"Video ready: {out} ({ffmpeg.duration(out):.0f} seconds)."
+    note = "" if os.environ.get("PEXELS_API_KEY") or not stock_footage else \
+        " (Add a free PEXELS_API_KEY to .env for stock footage.)"
+    return f"Video ready: {out} ({ffmpeg.duration(out):.0f} seconds).{note}"
 
 
 @tool(group="media")

@@ -79,7 +79,7 @@ def check(cfg) -> None:
     ok = lambda b: "OK " if b else "-- "
     print("Python packages:")
     for mod in ["openai", "sounddevice", "openwakeword", "faster_whisper", "piper", "telegram", "googleapiclient",
-                "playwright", "cv2", "PIL", "trafilatura", "ddgs", "imageio_ffmpeg", "rembg", "mcp"]:
+                "playwright", "cv2", "PIL", "trafilatura", "ddgs", "imageio_ffmpeg", "rembg", "mcp", "kokoro_onnx", "soundcard", "pynput"]:
         try:
             importlib.import_module(mod)
             print(f"  {ok(True)}{mod}")
@@ -133,6 +133,8 @@ def main() -> None:
             tg.push(text, files)
 
     context.notify = notify
+    if use_voice:
+        context.announce = lambda text: threading.Thread(target=speech.speak, args=(text,), daemon=True).start()
 
     if cfg.dashboard.get("enabled", True):
         from nova.dashboard.server import Dashboard

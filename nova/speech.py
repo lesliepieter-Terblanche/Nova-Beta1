@@ -1,12 +1,16 @@
 """Speech in and out.
 
 Listening: faster-whisper, fully local on the CPU (keeps the 4 GB GPU for the LLM).
-Speaking:  ElevenLabs (streamed, starts talking within ~300 ms) with local Piper
-           as automatic backup, and Windows' built-in voice as a last resort.
+Speaking:  a chain of engines, tried in order until one works:
+             elevenlabs  – cloud, streamed, starts talking in ~300 ms (your subscription)
+             kokoro      – local neural voice (Kokoro-82M), natural, runs on CPU
+             piper       – local, very fast, more robotic
+             windows     – the built-in Windows voice (always there)
 """
 from __future__ import annotations
 
 import os
+import queue
 import re
 import threading
 import wave
@@ -18,6 +22,7 @@ import numpy as np
 from .config import resolve
 
 EL_RATE = 22050
+ENGINES = ("elevenlabs", "kokoro", "piper", "windows")
 
 
 def clean_for_speech(text: str) -> str:
@@ -36,11 +41,40 @@ def trim_for_speech(text: str, limit: int) -> tuple[str, bool]:
     return (cut[: end + 1] if end > 80 else cut) + " The full answer is on your screen and phone.", True
 
 
+def split_sentences(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", text.strip())
+    out, buf = [], ""
+    for p in parts:                       # merge very short fragments so the voice flows
+        buf = f"{buf} {p}".strip()
+        if len(buf) > (15 if not out else 60):     # short first chunk = voice starts sooner
+            out.append(buf)
+            buf = ""
+    if buf:
+        out.append(buf)
+    return out
+
+
+def to_int16(samples: np.ndarray) -> np.ndarray:
+    if samples.dtype == np.int16:
+        return samples
+    return (np.clip(samples, -1, 1) * 32767).astype(np.int16)
+
+
+def write_wav(path: Path, pcm: np.ndarray, rate: int) -> Path:
+    with wave.open(str(path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(rate)
+        wf.writeframes(to_int16(pcm).tobytes())
+    return Path(path)
+
+
 class Speech:
     def __init__(self, cfg):
         self.cfg = cfg
         self._stt = None
         self._piper = None
+        self._kokoro = None
         self._stop = threading.Event()
         self.speaking = False
         self.el_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
@@ -55,11 +89,39 @@ class Speech:
 
     def transcribe(self, audio) -> str:
         """audio: float32 numpy array at 16 kHz, or a path to an audio file."""
-        lang = self.cfg.voice.get("stt_language") or None
-        segments, _ = self.stt_model().transcribe(audio, language=lang, beam_size=1, vad_filter=True)
-        return " ".join(s.text.strip() for s in segments).strip()
+        return " ".join(t for _, _, t in self.transcribe_segments(audio)).strip()
 
-    # ── TTS: synthesis to a WAV file ───────────────────────
+    def transcribe_segments(self, audio, model=None) -> list[tuple[float, float, str]]:
+        """[(start, end, text), …] — used for meetings and captions."""
+        lang = self.cfg.voice.get("stt_language") or None
+        m = model or self.stt_model()
+        segments, _ = m.transcribe(audio, language=lang, beam_size=1, vad_filter=True)
+        return [(s.start, s.end, s.text.strip()) for s in segments]
+
+    # ── engine order ───────────────────────────────────────
+    def engine_order(self) -> list[str]:
+        t = self.cfg.tts
+        order = [t.get("engine", "elevenlabs")] + list(t.get("fallback", ["kokoro", "piper", "windows"]))
+        seen, out = set(), []
+        for e in order:
+            if e in ENGINES and e not in seen and self._available(e):
+                seen.add(e)
+                out.append(e)
+        return out or ["windows"]
+
+    def _available(self, engine: str) -> bool:
+        t = self.cfg.tts
+        if engine == "elevenlabs":
+            return bool(self.el_key)
+        if engine == "kokoro":
+            k = t.get("kokoro", {})
+            return resolve(k.get("model", "models/kokoro-v1.0.int8.onnx")).exists() and \
+                resolve(k.get("voices", "models/voices-v1.0.bin")).exists()
+        if engine == "piper":
+            return resolve(t.get("piper", {}).get("voice", "voices/en_GB-alan-medium.onnx")).exists()
+        return True
+
+    # ── engines: text -> (int16 pcm, rate) ─────────────────
     def _el_request(self, text: str, stream: bool):
         el = self.cfg.tts.elevenlabs
         voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "").strip() or el.voice_id
@@ -72,67 +134,88 @@ class Speech:
         }
         return url, body, {"xi-api-key": self.el_key}, {"output_format": f"pcm_{EL_RATE}"}
 
-    def _use_elevenlabs(self) -> bool:
-        return self.cfg.tts.engine == "elevenlabs" and bool(self.el_key)
+    def _synth_elevenlabs(self, text):
+        url, body, headers, params = self._el_request(text, stream=False)
+        r = httpx.post(url, json=body, headers=headers, params=params, timeout=120)
+        r.raise_for_status()
+        pcm = r.content[: len(r.content) - (len(r.content) % 2)]
+        return np.frombuffer(pcm, dtype=np.int16), EL_RATE
 
-    def synth_wav(self, text: str, out_path: str | Path) -> Path:
-        out_path = Path(out_path)
-        text = clean_for_speech(text)
-        if self._use_elevenlabs():
-            try:
-                url, body, headers, params = self._el_request(text, stream=False)
-                r = httpx.post(url, json=body, headers=headers, params=params, timeout=120)
-                r.raise_for_status()
-                _write_wav(out_path, r.content, EL_RATE)
-                return out_path
-            except Exception as e:
-                print(f"[tts] ElevenLabs failed ({e}); using Piper")
-        return self._piper_wav(text, out_path)
+    def kokoro(self):
+        if self._kokoro is None:
+            from kokoro_onnx import Kokoro
+            k = self.cfg.tts.get("kokoro", {})
+            self._kokoro = Kokoro(str(resolve(k.get("model", "models/kokoro-v1.0.int8.onnx"))),
+                                  str(resolve(k.get("voices", "models/voices-v1.0.bin"))))
+        return self._kokoro
 
-    def _piper_voice(self):
+    def _synth_kokoro(self, text):
+        k = self.cfg.tts.get("kokoro", {})
+        samples, rate = self.kokoro().create(text, voice=k.get("voice", "bm_george"),
+                                             speed=float(k.get("speed", 1.0)), lang=k.get("lang", "en-gb"))
+        return to_int16(samples), rate
+
+    def _synth_piper(self, text):
         if self._piper is None:
             from piper import PiperVoice
             self._piper = PiperVoice.load(str(resolve(self.cfg.tts.piper.voice)))
-        return self._piper
+        tmp = resolve("workspace/.piper_tmp.wav")
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(tmp), "wb") as wf:
+            if hasattr(self._piper, "synthesize_wav"):     # piper-tts >= 1.3
+                self._piper.synthesize_wav(text, wf)
+            else:                                          # piper-tts 1.2
+                self._piper.synthesize(text, wf)
+        return _read_wav(tmp)
 
-    def _piper_wav(self, text: str, out_path: Path) -> Path:
-        try:
-            voice = self._piper_voice()
-            with wave.open(str(out_path), "wb") as wf:
-                if hasattr(voice, "synthesize_wav"):      # piper-tts >= 1.3
-                    voice.synthesize_wav(text, wf)
-                else:                                     # piper-tts 1.2
-                    voice.synthesize(text, wf)
-            return out_path
-        except Exception as e:
-            print(f"[tts] Piper failed ({e}); using Windows voice")
-            import pyttsx3
-            eng = pyttsx3.init()
-            eng.save_to_file(text, str(out_path))
-            eng.runAndWait()
-            return out_path
+    def _synth_windows(self, text):
+        import pyttsx3
+        tmp = resolve("workspace/.sapi_tmp.wav")
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        eng = pyttsx3.init()
+        eng.save_to_file(text, str(tmp))
+        eng.runAndWait()
+        return _read_wav(tmp)
 
-    # ── TTS: speak out loud ────────────────────────────────
+    def synth(self, text: str, engines: list[str] | None = None):
+        errors = []
+        for e in engines or self.engine_order():
+            try:
+                return (*getattr(self, f"_synth_{e}")(text), e)
+            except Exception as ex:
+                errors.append(f"{e}: {ex}")
+                print(f"[tts] {e} failed ({ex}); trying next voice")
+        raise RuntimeError("No voice engine worked: " + " | ".join(errors))
+
+    def synth_wav(self, text: str, out_path: str | Path) -> Path:
+        pcm, rate, _ = self.synth(clean_for_speech(text))
+        return write_wav(Path(out_path), pcm, rate)
+
+    # ── speaking out loud ──────────────────────────────────
     def stop(self) -> None:
+        """Interrupt whatever is being said (barge-in)."""
         self._stop.set()
 
-    def speak(self, text: str) -> None:
+    def speak(self, text: str) -> bool:
+        """Say text. Returns False if it was interrupted."""
         text = clean_for_speech(text)
         if not text:
-            return
+            return True
         self._stop.clear()
         self.speaking = True
         try:
-            if self._use_elevenlabs():
+            for engine in self.engine_order():
                 try:
-                    self._speak_elevenlabs_stream(text)
-                    return
+                    if engine == "elevenlabs":
+                        self._speak_elevenlabs_stream(text)
+                    else:
+                        self._speak_pipelined(text, engine)
+                    return not self._stop.is_set()
                 except Exception as e:
-                    print(f"[tts] ElevenLabs stream failed ({e}); using Piper")
-            tmp = resolve("workspace/.tts_tmp.wav")
-            tmp.parent.mkdir(parents=True, exist_ok=True)
-            self._piper_wav(text, tmp)
-            self.play_wav(tmp)
+                    if self._stop.is_set():
+                        return False
+                    print(f"[tts] {engine} failed ({e}); trying next voice")
+            return True
         finally:
             self.speaking = False
 
@@ -153,18 +236,46 @@ class Speech:
                     out.write(chunk[:usable])
                     leftover = chunk[usable:]
 
-    def play_wav(self, path: str | Path) -> None:
+    def _speak_pipelined(self, text: str, engine: str) -> None:
+        """Synthesise sentence N+1 while sentence N plays, so local voices start quickly."""
+        q: queue.Queue = queue.Queue(maxsize=2)
+        synth = getattr(self, f"_synth_{engine}")
+        error: list[Exception] = []
+
+        def producer():
+            try:
+                for sentence in split_sentences(text):
+                    if self._stop.is_set():
+                        break
+                    q.put(synth(sentence))
+            except Exception as e:
+                error.append(e)
+            finally:
+                q.put(None)
+
+        threading.Thread(target=producer, daemon=True).start()
+        played = False
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            if self._stop.is_set():
+                continue
+            self.play_pcm(*item)
+            played = True
+        if error and not played:
+            raise error[0]
+
+    def play_pcm(self, pcm: np.ndarray, rate: int) -> None:
         import sounddevice as sd
-        with wave.open(str(path), "rb") as wf:
-            rate, ch = wf.getframerate(), wf.getnchannels()
-            data = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
-        if ch > 1:
-            data = data.reshape(-1, ch)
-        sd.play(data, rate)
+        sd.play(pcm, rate)
         while sd.get_stream().active:
-            if self._stop.wait(0.05):
+            if self._stop.wait(0.03):
                 sd.stop()
                 break
+
+    def play_wav(self, path: str | Path) -> None:
+        self.play_pcm(*_read_wav(Path(path)))
 
     def beep(self, freq: int = 880, ms: int = 120) -> None:
         try:
@@ -176,9 +287,10 @@ class Speech:
             pass
 
 
-def _write_wav(path: Path, pcm: bytes, rate: int) -> None:
-    with wave.open(str(path), "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(rate)
-        wf.writeframes(pcm[: len(pcm) - (len(pcm) % 2)])
+def _read_wav(path: Path):
+    with wave.open(str(path), "rb") as wf:
+        rate, ch = wf.getframerate(), wf.getnchannels()
+        data = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
+    if ch > 1:
+        data = data.reshape(-1, ch).mean(axis=1).astype(np.int16)
+    return data, rate

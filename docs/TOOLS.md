@@ -66,7 +66,7 @@ Offered to the model when you say things like: _search, google it, look up, look
 
 | Tool | What it does | Parameters |
 |---|---|---|
-| `web_search` | Search the internet (DuckDuckGo, free) and return titles, links and snippets. | `query`, `max_results`? |
+| `web_search` | Search the internet and return titles, links and snippets (your own SearXNG if configured, else DuckDuckGo). | `query`, `max_results`? |
 | `scrape_page` | Read the main text of a web page. Optionally save it to the workspace. | `url`, `save`? |
 | `scrape_links` | List the links on a web page. | `url`, `contains`? |
 | `scrape_tables` | Extract all tables from a web page into CSV files in the workspace. | `url` |
@@ -126,7 +126,7 @@ Offered to the model when you say things like: _video, clip, reel, tiktok, short
 
 | Tool | What it does | Parameters |
 |---|---|---|
-| `make_video` | Create a narrated explainer / promo video about a topic (script, designed slides, voice-over, MP4). | `topic`, `style`?, `slides`?, `format`?, `music_path`? |
+| `make_video` | Create a narrated explainer / promo video about a topic: script, scenes, voice-over, burned-in captions and (with a free Pexels key) matching stock footage behind each scene. | `topic`, `style`?, `slides`?, `format`?, `music_path`?, `captions`?, `stock_footage`? |
 | `photos_to_video` | Turn a folder of photos into a video slideshow with optional voice-over. | `folder`, `narration`?, `seconds_per_photo`?, `format`?, `music_path`? |
 | `make_voiceover` | Create an MP3 voice-over from text in Nova's (ElevenLabs) voice. | `text`, `name`? |
 | `transcribe_file` | Transcribe an audio or video file (meeting recording, voice memo) to text, saved next to it. | `path` |
@@ -143,6 +143,17 @@ Offered to the model when you say things like: _camera, webcam, photo of, pictur
 | `webcam_photo` | Take a photo with the webcam. | `send_to_phone`? |
 | `webcam_look` | Look through the webcam and answer a question about what's in front of it (uses Gemini vision). | `question`? |
 | `make_ad` | Create social-media ads for a product. Takes a webcam photo unless an image path is given. Produces a square feed ad, a vertical story ad, a caption with hashtags, and optionally a short ad video. | `notes`?, `price`?, `brand`?, `image_path`?, `make_video`? |
+
+## Meeting recorder
+
+Offered to the model when you say things like: _record, recording, meeting notes, minutes, transcribe, transcript, teams call, zoom, google meet, this call, this meeting, summarise the call_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `start_meeting_recording` | Start recording a meeting or call: your microphone plus the PC's sound (Teams, Zoom, Meet…). | `title`?, `include_pc_audio`? |
+| `stop_meeting_recording` | Stop the meeting recording, then transcribe and write up the notes in the background. | — |
+| `meeting_recording_status` | Is a meeting being recorded, and for how long. | — |
+| `summarise_recording` | Transcribe and summarise an existing recording (audio or video file, e.g. a Teams recording). Runs in the background; notes arrive when done. | `path`, `title`? |
 
 ## Updates, rollback & extensions
 

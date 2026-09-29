@@ -11,7 +11,7 @@ Nova can read your email, control your browser and run commands on your PC. Trea
 | Browser logins (Nova's own profile) | `data/browser_profile/` |
 | Google OAuth token | `secrets/token.json` |
 | API keys | `.env` |
-| Everything Nova creates | `workspace/` |
+| Everything Nova creates, incl. meeting recordings | `workspace/` |
 
 All of these are git-ignored. **Back up `data/`**. It *is* Nova's memory.
 
@@ -35,6 +35,8 @@ All of these are git-ignored. **Back up `data/`**. It *is* Nova's memory.
 
 ## Recommendations
 
+- **Meeting recordings:** tell participants before recording. Laws differ by country. Delete recordings you no
+  longer need from `workspace/meetings` (the notes stay in your brain).
 - Keep `allowed_user_ids` to yourself, and keep `system.allow_shell: false` if you don't need remote commands.
 - Install only MCP servers you trust. They run with your Windows user's permissions.
 - Use a separate Google Cloud project for Nova and revoke it at myaccount.google.com/permissions if the PC is lost.

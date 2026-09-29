@@ -1,0 +1,8 @@
+# Minimal SearXNG settings for Nova (JSON output enabled). See docs/ENHANCEMENTS.md.
+use_default_settings: true
+server:
+  secret_key: "change-this-to-any-random-text"
+  limiter: false
+  image_proxy: false
+search:
+  formats: [html, json]

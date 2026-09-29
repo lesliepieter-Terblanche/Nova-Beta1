@@ -31,6 +31,11 @@ class FakeLLM:
         return r(messages) if callable(r) else r
 
     def complete(self, prompt, system="", prefer_smart=True, temperature=0.5):
+        if "executive assistant" in prompt:
+            return json.dumps({"summary": "We agreed the Q4 plan.", "decisions": ["Push Mist bundle in Q4"],
+                               "action_items": [{"owner": "me", "task": "Send pricing to Axiz", "due": "Friday"},
+                                                {"owner": "Sam", "task": "Book demo", "due": ""}],
+                               "people": ["Sam – Axiz"], "open_questions": [], "follow_up_email": "Hi all…"})
         if "long-term memory" in prompt:
             return '{"memories": []}'
         if "video script" in prompt:
@@ -62,6 +67,9 @@ class FakeSpeech:
 
     def speak(self, text):
         pass
+
+    def transcribe_segments(self, audio, model=None):
+        return [(0.0, 2.0, "Welcome to the QBR."), (2.0, 5.0, "Pieter will send pricing to Axiz by Friday.")]
 
 
 @pytest.fixture()

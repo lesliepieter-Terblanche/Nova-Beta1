@@ -45,9 +45,10 @@ Double-click **`setup.bat`**. It will:
 2. install the Python packages in `requirements.txt` (the long step)
 3. install the Chromium browser that Nova controls
 4. install **Ollama**, download `qwen2.5:3b` + `nomic-embed-text` and build `nova-qwen` (8k context window)
-5. download the offline backup voice (Piper, `en_GB-alan-medium`)
-6. ask your **name**, **time zone** and **city** and create `config.yaml`
-7. create `.env` and the **Nova** and **Nova Brain** desktop shortcuts
+5. optionally download the local vision model (Gemma 3 4B, 3.3 GB). It asks first.
+6. download the local voices: Kokoro-82M (natural) and Piper (fast)
+7. ask your **name**, **time zone** and **city** and create `config.yaml`
+8. create `.env` and the **Nova** and **Nova Brain** desktop shortcuts
 
 It's safe to run again: finished steps are skipped.
 
@@ -62,6 +63,7 @@ It's safe to run again: finished steps are skipped.
 | `GEMINI_API_KEY` | Smart model for hard tasks + vision (screen, photos, webcam, ads) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free tier |
 | `GROQ_API_KEY` | Backup smart model | [console.groq.com/keys](https://console.groq.com/keys) | Free tier |
 | `TELEGRAM_BOT_TOKEN` | Phone remote control | Telegram → @BotFather → `/newbot` | Free |
+| `PEXELS_API_KEY` | Stock footage behind video scenes | [pexels.com/api](https://www.pexels.com/api/) | Free |
 
 > A Gemini *app* subscription (Google AI Pro/Ultra) doesn't include API access. The AI Studio key is separate and free.
 
@@ -138,6 +140,7 @@ Test by saying: *"What's on my calendar today?"*
 |---|---|
 | **"Hey Nova" wake word** | [HEY_NOVA.md](HEY_NOVA.md) (free Colab training, ~1 hour) |
 | **Start with Windows** | `powershell -ExecutionPolicy Bypass -File scripts\autostart.ps1 on` |
+| **Private search** (SearXNG) | Docker Desktop, then `docker run -d --name searxng --restart unless-stopped -p 8888:8080 -v "%cd%\scripts\searxng:/etc/searxng" searxng/searxng` and set `web.searxng_url: http://localhost:8888` |
 | **Local AI images** (Stable Diffusion 1.5) | `.venv\Scripts\pip install -r requirements-imagegen.txt`, then `media.image_gen_enabled: true` |
 | **MCP servers** (Home Assistant, GitHub, Windows apps…) | [MCP.md](MCP.md) |
 | **Use Nova's memory from Claude Desktop** | [MCP.md → Nova as an MCP server](MCP.md#nova-as-an-mcp-server) |

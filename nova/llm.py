@@ -87,7 +87,8 @@ class LLM:
             self.providers[name] = Provider(name, p["base_url"], p["model"], key, p.get("timeout", 60))
         self.primary = c.primary
         self.smart = [n for n in c.get("smart", []) if n in self.providers]
-        self.vision = c.get("vision_provider")
+        vp = c.get("vision_providers") or ([c["vision_provider"]] if c.get("vision_provider") else [])
+        self.vision_order = [v for v in vp if v in self.providers]
         self.escalate_keywords = [k.lower() for k in c.get("escalate_keywords", [])]
         print(f"[llm] primary={self.primary} smart={self.smart or 'none (add GEMINI_API_KEY / GROQ_API_KEY)'}")
 
@@ -123,16 +124,33 @@ class LLM:
         return self.chat(msgs, None, prefer_smart, temperature).content
 
     def see(self, image_path: str, question: str) -> str:
-        """Ask the vision model (Gemini) about an image."""
+        """Ask a vision model about an image. Tries each provider in `vision_providers` in order
+        (e.g. Gemini first, then local Gemma 3 via Ollama), so vision keeps working offline."""
         import base64
-        import mimetypes
-        p = self.providers.get(self.vision)
-        if not p:
-            return "Vision needs a GEMINI_API_KEY in .env."
-        mime = mimetypes.guess_type(image_path)[0] or "image/png"
-        b64 = base64.b64encode(open(image_path, "rb").read()).decode()
+        import io
+        from PIL import Image
+        img = Image.open(image_path).convert("RGB")
+        img.thumbnail((1280, 1280))              # smaller = faster, and plenty for understanding
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=88)
+        b64 = base64.b64encode(buf.getvalue()).decode()
         msgs = [{"role": "user", "content": [
             {"type": "text", "text": question},
-            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
         ]}]
-        return p.chat(msgs).content
+        errors = []
+        for name in self.vision_order:
+            p = self.providers.get(name)
+            if not p:
+                continue
+            try:
+                reply = p.chat(msgs)
+                if reply.content:
+                    return reply.content
+            except Exception as e:
+                errors.append(f"{name}: {e}")
+                print(f"[vision] {name} failed -> {e}")
+        if not errors:
+            return ("No vision model available. Add GEMINI_API_KEY to .env, or run `ollama pull gemma3:4b` "
+                    "for local vision.")
+        return "Vision failed: " + " | ".join(errors)

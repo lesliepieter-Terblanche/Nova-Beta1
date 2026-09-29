@@ -29,6 +29,19 @@ run.bat --check
 | No sound at all | Check the default output device. `pip install --force-reinstall sounddevice`. |
 | `PortAudio library not found` | `pip install --force-reinstall sounddevice` (the Windows wheel bundles PortAudio). |
 
+| Hotkey does nothing | Another app may own Ctrl+Alt+Space. Change `voice.hotkey` (e.g. `"<ctrl>+<shift>+n"`). Some games/admin windows block global hotkeys. |
+| Nova interrupts itself | Its own voice is triggering the wake word through the speakers. Use a headset, lower the volume, or set `voice.barge_in: false`. |
+| Kokoro voice not used | Run `python scripts\download_voice.py`. Check `tts.fallback` includes `kokoro`. |
+
+## Meetings
+
+| Problem | Fix |
+|---|---|
+| Only my side of the call was recorded | PC-audio capture uses the **default playback device**. Make sure the call plays through it (not a separate headset device), or set that headset as default. |
+| "PC audio capture unavailable" | `pip install --force-reinstall soundcard`. Mic-only recording still works. |
+| Notes take long | A 1-hour meeting takes a few minutes to transcribe on CPU. Use `meetings.stt_model: base.en` for speed. |
+| No Google Tasks created | Google must be connected, and the action item must be yours ("me"/your name). |
+
 ## Brain
 
 | Problem | Fix |

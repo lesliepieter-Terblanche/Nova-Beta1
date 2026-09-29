@@ -4,6 +4,20 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-09-29
+### Added
+- **Meeting recorder:** records your mic + PC audio (Teams/Zoom/Meet), transcribes locally, writes summary,
+  decisions, action items, people and a follow-up email draft to `Meetings/`, teaches memory, and adds your actions
+  to Google Tasks. Also summarises existing recordings.
+- **Kokoro-82M** natural local voice; configurable voice chain `elevenlabs → kokoro → piper → windows`;
+  sentence-pipelined playback so local voices start speaking sooner.
+- **Barge-in:** say the wake word while Nova is talking to interrupt it. **Push-to-talk hotkey** (Ctrl+Alt+Space).
+- **Videos:** burned-in captions and free Pexels stock footage behind each scene (`PEXELS_API_KEY`).
+- **Local vision fallback:** `vision_providers: [gemini, ollama_vision]` with Gemma 3 4B; images are downscaled first.
+- **SearXNG** private search (`web.searxng_url`) with DuckDuckGo fallback.
+- Morning-briefing playbook now includes the weather.
+- 11 new tests (29 total).
+
 ## [1.1.0] — 2026-09-29
 ### Added
 - **MCP client:** connect any MCP server (stdio, streamable HTTP, SSE) via `mcp_servers`; annotation-aware

@@ -11,6 +11,7 @@ voices/*.onnx
 voices/*.json
 models/*.onnx
 models/*.tflite
+models/*.bin
 
 # python
 .venv/

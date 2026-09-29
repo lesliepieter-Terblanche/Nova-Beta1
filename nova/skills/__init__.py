@@ -6,7 +6,7 @@ and add the module name to SKILLS below.
 """
 import importlib
 
-SKILLS = ["system", "memory", "files", "web", "browser", "google_ws", "media", "camera_ads", "maintenance"]
+SKILLS = ["system", "memory", "files", "web", "browser", "google_ws", "media", "camera_ads", "meetings", "maintenance"]
 
 
 def load_all() -> list[str]:

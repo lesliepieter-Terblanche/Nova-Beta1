@@ -1,6 +1,7 @@
 """The always-on voice loop: wake word -> record -> transcribe -> agent -> speak."""
 from __future__ import annotations
 
+import threading
 import time
 from collections import deque
 
@@ -20,6 +21,7 @@ class VoiceLoop:
         self.v = cfg.voice
         self.noise = deque([300.0] * 20, maxlen=60)
         self.running = True
+        self.hotkey = threading.Event()
 
     def _load_wakeword(self):
         import openwakeword
@@ -77,7 +79,8 @@ class VoiceLoop:
         import sounddevice as sd
         oww = self._load_wakeword()
         name = self.cfg.assistant.name
-        print(f"[voice] {name} is listening for '{self.v.wake_word}'…")
+        hk = self._start_hotkey()
+        print(f"[voice] {name} is listening for '{self.v.wake_word}'" + (f" (or press {hk})" if hk else "") + "…")
         self.speech.speak(f"{name} is online.")
         with sd.InputStream(samplerate=RATE, channels=1, dtype="int16", blocksize=BLOCK) as stream:
             self._drain(stream)
@@ -85,13 +88,52 @@ class VoiceLoop:
                 block = stream.read(BLOCK)[0][:, 0]
                 self.noise.append(self._rms(block))
                 scores = oww.predict(block)
-                if max(scores.values(), default=0) >= self.v.wake_threshold:
+                if max(scores.values(), default=0) >= self.v.wake_threshold or self.hotkey.is_set():
+                    self.hotkey.clear()
                     oww.reset()
-                    self._conversation(stream)
+                    self._conversation(stream, oww)
                     self._drain(stream)
                     oww.reset()
 
-    def _conversation(self, stream) -> None:
+    # ── push-to-talk ──────────────────────────────────────
+    def _start_hotkey(self) -> str:
+        combo = str(self.v.get("hotkey") or "").strip()
+        if not combo:
+            return ""
+        try:
+            from pynput import keyboard
+            listener = keyboard.GlobalHotKeys({combo: self.hotkey.set})
+            listener.daemon = True
+            listener.start()
+            return combo.replace("<", "").replace(">", "").title()
+        except Exception as e:
+            print(f"[voice] hotkey {combo} unavailable: {e}")
+            return ""
+
+    # ── barge-in: keep listening while speaking ───────────
+    def _speak(self, stream, oww, text: str) -> bool:
+        """Speak, but stop as soon as the wake word or hotkey is heard. Returns True if interrupted."""
+        if not self.v.get("barge_in", True):
+            self.speech.speak(text)
+            return False
+        t = threading.Thread(target=self.speech.speak, args=(text,), daemon=True)
+        t.start()
+        self.hotkey.clear()
+        oww.reset()
+        threshold = min(0.95, float(self.v.wake_threshold) + 0.1)   # a bit stricter: the speaker echoes
+        interrupted = False
+        while t.is_alive():
+            block = stream.read(BLOCK)[0][:, 0]
+            if self.hotkey.is_set() or max(oww.predict(block).values(), default=0) >= threshold:
+                interrupted = True
+                self.hotkey.clear()
+                self.speech.stop()
+                break
+        t.join(timeout=3)
+        oww.reset()
+        return interrupted
+
+    def _conversation(self, stream, oww) -> None:
         store = context.store
         if self.v.get("chime", True):
             self.speech.beep()
@@ -114,8 +156,12 @@ class VoiceLoop:
                 context.push(reply.text, reply.files)       # full answer + files to Telegram
             if store:
                 store.set_status("speaking")
-            self.speech.speak(spoken)
+            interrupted = self._speak(stream, oww, spoken)
             self._drain(stream)
+            if interrupted:                                 # you cut in: listen straight away
+                self.speech.beep(660)
+                timeout = 5.0
+                continue
             if re_goodbye(text):
                 break
             timeout = float(self.v.get("follow_up_seconds", 6))   # follow-up without wake word

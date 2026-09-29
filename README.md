@@ -16,8 +16,8 @@ It remembers everything permanently and shows its whole second brain as an inter
 
 ## Why Nova
 
-- **Voice first.** Wake word → local Whisper transcription → answers in a natural ElevenLabs voice,
-  streamed so it starts talking almost instantly. Offline backup voice included.
+- **Voice first.** Wake word or hotkey → local Whisper transcription → answers in a natural ElevenLabs voice,
+  streamed so it starts talking almost instantly. Interrupt it any time. The natural Kokoro voice takes over offline.
 - **Local first.** Everyday thinking runs on your own GPU with [Ollama](https://ollama.com). Hard tasks
   hand off to free cloud tiers (Gemini, Groq) only when needed. Your memory, notes and files stay on your PC.
 - **Never forgets.** After every conversation Nova files new facts, people, projects, preferences and
@@ -32,7 +32,8 @@ It remembers everything permanently and shows its whole second brain as an inter
 
 | Area | Examples |
 |---|---|
-| 🎙 **Voice** | "Hey Jarvis, what's on tomorrow?" · follow-up questions without the wake word · custom "Hey Nova" |
+| 🎙 **Voice** | "Hey Jarvis, what's on tomorrow?" · follow-ups without the wake word · interrupt it mid-sentence · Ctrl+Alt+Space push-to-talk · custom "Hey Nova" |
+| 📝 **Meetings** | "Record this meeting" → mic + Teams/Zoom audio → transcript, summary, decisions, your action items (to Google Tasks) |
 | 🧠 **Memory & 2nd brain** | "Remember that…" · "What do you know about…?" · research saved as notes (Obsidian-compatible Markdown) |
 | 🌌 **3D dashboard** | Every memory, note and creation as a star; click to open; live activity feed; ask box |
 | 📱 **Remote control** | Private Telegram bot: text or voice notes in; text, voice notes and files out |
@@ -41,8 +42,9 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 🌐 **Web** | Search · scrape pages, links and tables · build and edit websites with live preview |
 | 🖱 **Browser** | Drives its own Chrome: open, read, click, type, stay logged in, screenshot |
 | 📷 **Webcam → ads** | Photo → product identified → background removed → feed/story ads + caption + ad video |
-| 🎬 **Media** | Narrated explainer videos · photo slideshows · voice-overs · transcription · trims and conversions |
-| 👁 **Vision** | "Look at my screen — what's this error?" · describe photos and scans |
+| 🎬 **Media** | Narrated videos with burned-in captions and free stock footage · photo slideshows · voice-overs · transcription · trims and conversions |
+| 👁 **Vision** | "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
+"Look at my screen — what's this error?" · describe photos and scans · Gemini, or fully local with Gemma 3 |
 | ⏰ **Routines** | Reminders · scheduled briefings ("every weekday at 07:30…") |
 | 🔄 **Versions** | GitHub backup · "update yourself" · "roll back" · desktop shortcut · VS Code project |
 
@@ -87,6 +89,7 @@ Full walkthrough, including Telegram, Google and GitHub: **[docs/INSTALL.md](doc
 "Take a photo of this and make an ad, price R349, and a video too."
 "Open Gumtree in the browser and search for bass boats."
 "Make a 60-second vertical video explaining Wi-Fi 7 to small businesses."
+"Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?"
 "Remind me at 4 to call Sam."
 "Thanks."                                             → ends the conversation

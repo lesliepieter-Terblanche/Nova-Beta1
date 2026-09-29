@@ -37,7 +37,7 @@ HUBS = {
     "note": ("Notes", "#9b8cff"), "file": ("Files", "#8ecae6"), "site": ("Websites", "#4cc9f0"),
     "video": ("Videos", "#ff4d6d"), "ad": ("Ads", "#ff9f1c"), "image": ("Images", "#ffb4a2"),
     "email": ("Email", "#90e0ef"), "doc": ("Google Docs", "#80ed99"), "scrape": ("Web research", "#48cae4"),
-    "audio": ("Audio", "#e0aaff"),
+    "audio": ("Audio", "#e0aaff"), "meeting": ("Meetings", "#f4a261"),
 }
 
 

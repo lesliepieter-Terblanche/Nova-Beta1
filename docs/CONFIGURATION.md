@@ -33,7 +33,8 @@ llm:
     ollama: { base_url: http://localhost:11434/v1, model: nova-qwen, timeout: 90 }
     gemini: { base_url: https://generativelanguage.googleapis.com/v1beta/openai/, model: gemini-2.5-flash, key_env: GEMINI_API_KEY }
     groq:   { base_url: https://api.groq.com/openai/v1, model: llama-3.3-70b-versatile, key_env: GROQ_API_KEY }
-  vision_provider: gemini
+    ollama_vision: { base_url: http://localhost:11434/v1, model: gemma3:4b, timeout: 180 }
+  vision_providers: [gemini, ollama_vision]   # tried in order; local keeps vision working offline
   escalate_keywords: ["think hard", "in detail", "write a", "draft", "analyse", "compare", ...]
   max_tool_rounds: 6
 ```
@@ -61,13 +62,16 @@ voice:
   follow_up_seconds: 6      # keep listening this long after answering, without the wake word
   max_spoken_chars: 450     # longer answers: the start is spoken, the rest goes to screen/Telegram
   chime: true
+  barge_in: true            # say the wake word (or press the hotkey) while Nova talks to interrupt it
+  hotkey: "<ctrl>+<alt>+<space>"   # push-to-talk from anywhere; "" to disable (pynput format)
 ```
 
 ## tts
 
 ```yaml
 tts:
-  engine: elevenlabs        # elevenlabs | piper. Piper is also the automatic fallback.
+  engine: elevenlabs        # first choice: elevenlabs | kokoro | piper | windows
+  fallback: [kokoro, piper, windows]   # tried in order when the first choice fails
   elevenlabs:
     voice_id: JBFqnCBsd6RMkjVDRZzb   # overridden by ELEVENLABS_VOICE_ID in .env
     model: eleven_flash_v2_5         # fastest; eleven_multilingual_v2 = richer
@@ -75,9 +79,18 @@ tts:
     similarity_boost: 0.8
     style: 0.15
     speed: 1.0
+  kokoro:                   # natural local voice (Kokoro-82M on CPU), downloaded by setup
+    model: models/kokoro-v1.0.int8.onnx
+    voices: models/voices-v1.0.bin
+    voice: bm_george        # British: bm_george bm_lewis bm_daniel bf_emma bf_isabella · US: am_adam af_heart af_bella
+    lang: en-gb
+    speed: 1.0
   piper:
     voice: voices/en_GB-alan-medium.onnx   # any voice from huggingface.co/rhasspy/piper-voices
 ```
+
+Engines without their key/model files are skipped automatically. Local voices are generated sentence by sentence
+while the previous sentence plays, so they start talking quickly.
 
 ## telegram
 
@@ -110,6 +123,19 @@ brain:
 The file `data/brain/_Nova Memory.md` is a readable mirror of everything Nova knows. To change a memory,
 tell Nova ("that's wrong, Sam moved to Globex"). The old version is kept as history.
 
+## meetings
+
+```yaml
+meetings:
+  folder: workspace/meetings   # the recordings (notes go to data/brain/Meetings/)
+  stt_model: small.en          # transcription model for recordings (more accurate than live voice)
+  create_tasks: true           # add *your* action items to Google Tasks
+```
+
+Say *"record this meeting"* / *"stop recording"*, or *"summarise the recording C:\…\call.mp4"*.
+Nova records the default microphone **and** whatever the PC plays (WASAPI loopback), so both sides of a
+Teams/Zoom/Meet call are captured. Let participants know you're recording.
+
 ## dashboard
 
 ```yaml
@@ -136,8 +162,11 @@ Nova refuses any path outside these folders. Deletes go to the Recycle Bin, and 
 ```yaml
 web:
   sites_dir: workspace/sites         # websites Nova builds (preview at http://localhost:8765/sites/<name>/)
+  searxng_url: ""                    # e.g. http://localhost:8888 — private search (falls back to DuckDuckGo)
 media:
   output_dir: workspace/videos
+  captions: true                     # burned-in subtitles
+  broll: true                        # Pexels stock footage per scene (needs PEXELS_API_KEY)
   image_gen_enabled: false           # local Stable Diffusion (requirements-imagegen.txt)
   image_model: runwayml/stable-diffusion-v1-5
 system:

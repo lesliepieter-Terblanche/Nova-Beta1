@@ -31,11 +31,12 @@ llm:
       model: llama-3.3-70b-versatile
       key_env: GROQ_API_KEY
       timeout: 60
-    # ollama_vision:         # fully local vision: `ollama pull gemma3:4b`, then set vision_provider: ollama_vision
-    #   base_url: http://localhost:11434/v1
-    #   model: gemma3:4b
-    #   timeout: 120
-  vision_provider: gemini    # used to look at screenshots, photos and webcam images
+    ollama_vision:           # fully local vision (setup offers to download it: `ollama pull gemma3:4b`, ~3.3 GB)
+      base_url: http://localhost:11434/v1
+      model: gemma3:4b
+      timeout: 180
+  # Vision (screen, photos, webcam, ads): tried in order. Gemini is sharper; local keeps working offline.
+  vision_providers: [gemini, ollama_vision]
   # Requests containing these go straight to the smarter cloud model.
   escalate_keywords: ["think hard", "in detail", "plan ", "write a", "write me", "build a website", "analyse", "analyze",
                       "compare", "summarise", "summarize", "draft", "explain why", "strategy"]
@@ -52,15 +53,24 @@ voice:
   follow_up_seconds: 6       # after replying, keep listening this long without needing the wake word
   max_spoken_chars: 450      # longer answers: speak the start, send the full text to Telegram
   chime: true                # little beep when Nova starts listening
+  barge_in: true             # say the wake word (or press the hotkey) while Nova talks to interrupt it
+  hotkey: "<ctrl>+<alt>+<space>"   # push-to-talk from anywhere in Windows; "" to disable
 
 tts:
-  engine: elevenlabs         # elevenlabs | piper   (piper is the offline backup, used automatically on failure)
+  engine: elevenlabs         # first choice: elevenlabs | kokoro | piper | windows
+  fallback: [kokoro, piper, windows]   # tried in order if the first choice fails (no internet, no credits…)
   elevenlabs:
     voice_id: JBFqnCBsd6RMkjVDRZzb   # replace with your own voice ID from elevenlabs.io -> Voices
     model: eleven_flash_v2_5         # fastest; use eleven_multilingual_v2 for richer quality
     stability: 0.45
     similarity_boost: 0.8
     style: 0.15
+    speed: 1.0
+  kokoro:                    # natural local voice (Kokoro-82M, runs on CPU) — downloaded by setup
+    model: models/kokoro-v1.0.int8.onnx
+    voices: models/voices-v1.0.bin
+    voice: bm_george         # British: bm_george bm_lewis bm_daniel bf_emma bf_isabella · American: am_adam af_heart af_bella
+    lang: en-gb              # en-gb | en-us
     speed: 1.0
   piper:
     voice: voices/en_GB-alan-medium.onnx
@@ -82,6 +92,11 @@ brain:
   embed_model: nomic-embed-text
   learn_automatically: true  # extract new memories after every conversation
 
+meetings:
+  folder: workspace/meetings   # recordings (the notes go to the brain's Meetings folder)
+  stt_model: small.en          # more accurate than the live-voice model; runs in the background
+  create_tasks: true           # add YOUR action items to Google Tasks
+
 dashboard:
   enabled: true
   port: 8765                 # http://localhost:8765
@@ -99,10 +114,13 @@ files:
 
 web:
   sites_dir: workspace/sites
+  searxng_url: ""            # your private search engine, e.g. http://localhost:8888 (docs/ENHANCEMENTS.md)
 
 media:
   output_dir: workspace/videos
   # Optional local AI images (Stable Diffusion 1.5, ~3 GB VRAM). Needs requirements-imagegen.txt
+  captions: true             # burn subtitles into videos
+  broll: true                # stock footage behind scenes when PEXELS_API_KEY is set (free at pexels.com/api)
   image_gen_enabled: false
   image_model: runwayml/stable-diffusion-v1-5
 

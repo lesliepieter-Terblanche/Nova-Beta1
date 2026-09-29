@@ -12,14 +12,14 @@ Everything here is **free** and runs **locally** unless marked otherwise. "Fits 
 | # | Upgrade | Why | Status | Fits 4 GB |
 |---|---|---|---|---|
 | 1 | **Windows-MCP** | Nova can operate any desktop app (Excel, Outlook, settings), not just the browser | ⚙ | ✅ (no GPU) |
-| 2 | **Local vision: Gemma 3 4B** | Screen, photo and webcam understanding without the cloud | ⚙ `ollama pull gemma3:4b` → `vision_provider: ollama_vision` | ✅ (swaps with the chat model) |
-| 3 | **Kokoro-82M offline voice** | Much more natural than Piper as the offline/backup voice, runs on CPU | 🧩 [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) | ✅ CPU |
-| 4 | **Meeting recorder** | Record mic + PC audio → Whisper transcript → summary, actions and people filed into memory | 🛠 | ✅ CPU |
-| 5 | **Burned-in captions + free B-roll** | Word-timed subtitles on videos (Whisper timestamps) and stock footage from the free Pexels API | 🧩 | ✅ |
-| 6 | **Morning briefing routine** | Spoken daily rundown at 07:30 + copy on your phone | ⚙ `routines:` + included playbook | ✅ |
+| 2 | **Local vision: Gemma 3 4B** | Screen, photo and webcam understanding without the cloud | ✅ v1.2 (auto-fallback after Gemini) | ✅ (swaps with the chat model) |
+| 3 | **Kokoro-82M offline voice** | Much more natural than Piper as the offline/backup voice, runs on CPU | ✅ v1.2 | ✅ CPU |
+| 4 | **Meeting recorder** | Record mic + PC audio → Whisper transcript → summary, actions and people filed into memory | ✅ v1.2 | ✅ CPU |
+| 5 | **Burned-in captions + free B-roll** | Subtitles on videos and stock footage from the free Pexels API | ✅ v1.2 | ✅ |
+| 6 | **Morning briefing routine** | Spoken daily rundown at 07:30 + copy on your phone | ✅ v1.2 (with weather) — enable in `routines:` | ✅ |
 | 7 | **Home Assistant** | Lights, geyser, gate, alarm, load-shedding automations by voice | ⚙ | ✅ |
-| 8 | **Barge-in + push-to-talk hotkey** | Interrupt Nova mid-sentence; talk with a hotkey in noisy places | 🛠 | ✅ |
-| 9 | **SearXNG private search** | Unlimited, private meta-search instead of DuckDuckGo rate limits | 🧩 (Docker) | ✅ |
+| 8 | **Barge-in + push-to-talk hotkey** | Interrupt Nova mid-sentence; talk with a hotkey in noisy places | ✅ v1.2 | ✅ |
+| 9 | **SearXNG private search** | Unlimited, private meta-search instead of DuckDuckGo rate limits | ✅ v1.2 (run it in Docker, see INSTALL) | ✅ |
 | 10 | **Tailscale for the dashboard** | Open the 3D brain on your phone securely, anywhere | ⚙ `tailscale serve 8765` | ✅ |
 
 ---
@@ -39,6 +39,8 @@ Everything here is **free** and runs **locally** unless marked otherwise. "Fits 
 
 ## 👂 Ears (listening)
 
+_Barge-in and push-to-talk shipped in v1.2._
+
 | Option | Notes | Status |
 |---|---|---|
 | faster-whisper `base.en` (current) | Fast on CPU | ✅ |
@@ -55,9 +57,10 @@ Everything here is **free** and runs **locally** unless marked otherwise. "Fits 
 |---|---|---|
 | ElevenLabs Flash v2.5, streamed (current) | Lowest latency | ✅ |
 | Piper (current fallback) | Fully offline | ✅ |
-| **Kokoro-82M** | Best free CPU voice today, Apache-2.0 | 🧩 |
+| **Kokoro-82M** | Best free CPU voice today, Apache-2.0 | ✅ |
 | **Local voice cloning** (XTTS-v2, F5-TTS) | Your own voice offline. Check licences (XTTS weights are non-commercial). ~4 GB VRAM. | 🛠 |
-| **Sentence streaming** | Start speaking the first sentence while the model is still writing | 🛠 |
+| **Sentence pipelining** (local voices) | Speak sentence 1 while sentence 2 is generated | ✅ |
+| **LLM token streaming** | Start speaking before the model has finished writing | 🛠 |
 
 ## ♾ Memory and second brain
 
@@ -86,7 +89,7 @@ Everything here is **free** and runs **locally** unless marked otherwise. "Fits 
 | Option | Notes | Status |
 |---|---|---|
 | DuckDuckGo search, trafilatura scraping, Playwright browser (current) | | ✅ |
-| **SearXNG** (self-hosted) | Private, no rate limits | 🧩 |
+| **SearXNG** (self-hosted) | Private, no rate limits | ✅ |
 | **Crawl4AI** | JavaScript-heavy sites, multi-page crawls → Markdown | 🧩 |
 | **Price / page watchers** | "Tell me when this drops below R5,000" (routine + scrape) | 🧩 |
 | **Website deploy** | Publish built sites to Netlify/Cloudflare Pages/GitHub Pages (free tiers) | 🧩 |
@@ -97,8 +100,8 @@ Everything here is **free** and runs **locally** unless marked otherwise. "Fits 
 | Option | Notes | Fits 4 GB | Status |
 |---|---|---|---|
 | Slide/photo videos + narration (current) | | ✅ | ✅ |
-| **Burned-in captions** | Whisper word timestamps → ASS subtitles → ffmpeg | ✅ | 🧩 |
-| **Pexels / Pixabay B-roll** | Free stock video APIs for scene backgrounds | ✅ | 🧩 |
+| **Burned-in captions** | Timed caption overlays | ✅ | ✅ |
+| **Pexels B-roll** | Free stock video behind scenes (Pixabay could be added) | ✅ | ✅ |
 | **ComfyUI** | Best local image workflows. SD 1.5 / SDXL-Turbo in `--lowvram` mode. | ✅ (slow) | 🛠 |
 | **Real-ESRGAN upscaling** | Sharpen product photos for ads | ✅ | 🧩 |
 | **Local text-to-video** (Wan 2.1 1.3B, LTX-Video) | Real AI video clips | ❌ needs ~8 GB+ | 🛠 |

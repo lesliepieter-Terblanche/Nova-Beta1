@@ -67,10 +67,18 @@ class _Browser:
         profile = resolve("data/browser_profile")
         profile.mkdir(parents=True, exist_ok=True)
         opts = dict(headless=False, viewport=None, args=["--start-maximized"])
-        try:   # prefer the real Chrome if installed, else Playwright's Chromium
-            self.ctx = pw.chromium.launch_persistent_context(str(profile), channel="chrome", **opts)
-        except Exception:
-            self.ctx = pw.chromium.launch_persistent_context(str(profile), **opts)
+        self.ctx, errors = None, []
+        # Prefer the browser you already have (Chrome, then Edge), then Playwright's own Chromium.
+        for channel in ("chrome", "msedge", None):
+            try:
+                kw = dict(opts, channel=channel) if channel else opts
+                self.ctx = pw.chromium.launch_persistent_context(str(profile), **kw)
+                break
+            except Exception as e:
+                errors.append(f"{channel or 'chromium'}: {str(e).splitlines()[0]}")
+        if self.ctx is None:
+            raise RuntimeError("No browser available for Nova to control. Install Chrome or Edge, or run: "
+                               ".venv\\Scripts\\python -m playwright install chromium  (" + "; ".join(errors) + ")")
         self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
         while True:
             fn, args, done = self.q.get()

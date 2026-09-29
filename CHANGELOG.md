@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-09-29
+### Fixed
+- `setup.bat` is now fully resumable: it skips Ollama models that are already downloaded, retries interrupted
+  downloads up to 3 times, and warns not to click inside the window (Windows pauses it).
+- Setup no longer downloads Playwright's Chromium when Chrome or Edge is installed (that download often times out);
+  browser control now tries Chrome, then Edge, then Chromium.
+- Setup and `run.bat` could hang forever when Ollama was frozen (e.g. after an interrupted download). They now check
+  Ollama over HTTP with short timeouts and restart it automatically.
+
 ## [1.3.0] — 2026-09-29
 ### Added
 - **Settings page** (gear icon on the dashboard, or http://localhost:8765/settings):

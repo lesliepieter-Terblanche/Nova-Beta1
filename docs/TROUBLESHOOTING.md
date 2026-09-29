@@ -14,6 +14,8 @@ run.bat --check
 | `pip install` fails on a package with "Microsoft Visual C++ 14.0 is required" | Install [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/) ("Desktop development with C++"), rerun setup. Usually caused by using Python 3.13. Use 3.11. |
 | `winget` not recognised | Windows 10: install **App Installer** from the Microsoft Store, or install [Ollama](https://ollama.com/download) and [Git](https://git-scm.com) manually. |
 | `ollama pull` hangs or fails | Check your internet, then run the three `ollama` lines from INSTALL.md manually. The model is ~2.5 GB. |
+| Setup looks frozen | Press **Enter** once (clicking inside a console window pauses it). Ollama also pauses at 100% while it verifies a download. If it's still stuck after 5 minutes, press Ctrl+C and run `setup.bat` again — finished steps are skipped and downloads resume. |
+| "Failed to install browsers" | Harmless if you have Chrome or Edge — Nova uses those. Otherwise retry later: `.venv\Scripts\python -m playwright install chromium`. |
 | Setup window closes instantly | Run it from a terminal (`cd` to the folder, type `setup.bat`) to see the error. |
 
 ## Voice

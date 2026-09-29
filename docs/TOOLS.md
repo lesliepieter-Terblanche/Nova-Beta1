@@ -193,6 +193,16 @@ Offered to the model when you say things like: _presence, away, at my desk, walk
 | `presence_awareness` | Turn presence awareness on/off (webcam notices when you sit down or walk away), or report its status. | `action`? |
 | `lock_computer` 🔒 | Lock the Windows PC now (like Windows+L). | — |
 
+## watch
+
+Offered to the model when you say things like: _tell me when, let me know when, notify me when, watch the screen, watch my screen, keep an eye, watch for, when it's done, when it finishes, when the download, when the render, when the upload_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `watch_screen` | Keep an eye on the screen / a window / a program / Downloads, and tell the user when something happens. | `until`, `what`?, `window`?, `check_every_seconds`?, `give_up_after_minutes`?, `then`? |
+| `list_watchers` | What Nova is currently watching the screen for. | — |
+| `stop_watching` | Stop one screen watch by its number, or all of them (0). | `watch_id`? |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

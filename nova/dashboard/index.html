@@ -653,7 +653,7 @@ function setStatus(s) {
 // ── live activity ─────────────────────────────────────
 let lastId = 0;
 const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2",
-  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166", presence: "#52ffa8" };
+  timing: "#8f97bf", track: "#f78fb3", open: "#ff9f1c", gesture: "#ffd166", presence: "#52ffa8", watch: "#4cc9f0" };
 async function poll() {
   try {
     const r = await api(`/api/activity?since=${lastId}`);
@@ -962,6 +962,8 @@ async function loadNow() {
       <div class="meta">${esc(t.how)} · ${ago(t.created)}${t.ms ? ` · ${secs(t.ms)}` : ""}${t.status === "error" ? ` · <span style="color:#ff6b81">failed</span>` : ""}</div>`;
     if (t.steps?.length) h += `<ul>${t.steps.map((x) => `<li data-go="${esc(t.id)}">${mark(x.status || "ok")}<span>${esc(x.title)}</span></li>`).join("")}</ul>`;
   } else h += `<div class="meta">Nothing yet — ask Nova something.</div>`;
+  if (r.watching?.length) h += `<div class="sec">👀 Watching (${r.watching.length})</div><ul>${r.watching.map((w) =>
+    `<li title="gives up in ${w.left_min} min">${mark("running")}<span>${esc(w.label)}</span><a href="#" data-unwatch="${w.id}" style="margin-left:auto;color:var(--muted);text-decoration:none" title="Stop watching">✕</a></li>`).join("")}</ul>`;
   if (r.waiting?.length) h += `<div class="sec">Waiting for your yes / no</div><ul>${r.waiting.map((w) => `<li>${mark("waiting")}<span>${esc(w.title.replace(" (waiting for your yes/no)", ""))}</span></li>`).join("")}</ul>`;
   if (r.doing?.length) h += `<div class="sec">In progress (${r.doing.length})</div><ul>${r.doing.map((d) => `<li data-go="${esc(d.id)}">${mark("running")}<span title="${esc(d.note || "")}">${esc(d.title)}</span></li>`).join("")}</ul>`;
   const p = r.presence || {};
@@ -972,7 +974,11 @@ async function loadNow() {
   }
   $("busy-b").className = ""; $("busy-b").innerHTML = h;
 }
-$("busy").addEventListener("click", (e) => { const g = e.target.closest("[data-go]"); if (g) openItem(g.dataset.go); });
+$("busy").addEventListener("click", async (e) => {
+  const u = e.target.closest("[data-unwatch]");
+  if (u) { e.preventDefault(); await api("/api/watch/cancel", { id: +u.dataset.unwatch }); return loadNow(); }
+  const g = e.target.closest("[data-go]"); if (g) openItem(g.dataset.go);
+});
 
 function flash(msg) { const r = $("reply"); r.textContent = msg; r.classList.add("show"); clearTimeout(flash.t); flash.t = setTimeout(() => r.classList.remove("show"), 4000); }
 

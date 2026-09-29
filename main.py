@@ -238,6 +238,13 @@ def main() -> None:
         threading.Thread(target=guarded, args=("Voice", loop.run), daemon=True, name="voice").start()
     if tg and tg.token:
         threading.Thread(target=guarded, args=("Telegram", tg.run), daemon=True, name="telegram").start()
+    try:
+        from nova.watcher import manager
+        n = manager().load()
+        if n:
+            print(f"[watch] still watching {n} thing(s) from before the restart")
+    except Exception as e:
+        print(f"[watch] couldn't restore watches: {e}")
     if (cfg.get("presence") or {}).get("enabled"):
         threading.Thread(target=lambda: print(f"[presence] {presence().start()}"), daemon=True, name="presence").start()
     if (cfg.get("gestures") or {}).get("enabled"):

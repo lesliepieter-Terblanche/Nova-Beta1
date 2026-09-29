@@ -4,6 +4,18 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-09-29
+### Added
+- **Screen watcher** — "tell me when…". Nova keeps an eye on the screen, a window, a program or Downloads and
+  tells you (spoken — held if you're away — and on Telegram with a screenshot or the file):
+  - text appears / disappears ("tell me when *Export complete* shows", "…when *Uploading* is gone") — local OCR
+  - a window or the screen stops changing (progress finished) or changes (new message)
+  - a window opens / closes, a program finishes ("tell me when ffmpeg is done")
+  - a download finishes (new file in Downloads, size settled)
+  - a yes/no question about the screen, answered by the vision model ("has the build failed?")
+  - optional follow-up: "…then email it to Sam". Watches survive a restart and give up after 2 h by default.
+  - The dashboard's Busy card lists what Nova is watching, with ✕ to stop one.
+
 ## [1.8.0] — 2026-09-29
 ### Added
 - **Presence awareness** — the webcam notices when you sit down and when you walk away (face detection on the CPU,

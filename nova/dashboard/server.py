@@ -21,6 +21,7 @@ import platform
 import re
 import subprocess
 import threading
+import time
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -302,7 +303,10 @@ class Dashboard:
             doing = s.db.execute("SELECT item, note FROM tracking WHERE status='doing' ORDER BY updated DESC LIMIT 8").fetchall()
         from ..presence import _presence
         pres = _presence.status() if _presence else {"enabled": False}
-        out = {"status": s.status, "busy": tid is not None, "presence": pres,
+        from ..watcher import _mgr
+        watching = [{"id": w.id, "label": w.label(), "left_min": max(0, int((w.until - time.time()) / 60))}
+                    for w in (_mgr.active() if _mgr else [])]
+        out = {"status": s.status, "busy": tid is not None, "presence": pres, "watching": watching,
                "waiting": [dict(w) for w in waiting],
                "doing": [{"id": d["item"], "title": self.title_of(d["item"]) or d["item"], "note": d["note"]} for d in doing]}
         t = self.turn(tid if tid is not None else tid_last) if (tid is not None or tid_last) else None
@@ -714,6 +718,10 @@ class Dashboard:
                     if self.path == "/api/restart":
                         settings.restart_soon()
                         return self._json({"message": "Restarting…"})
+                    if self.path == "/api/watch/cancel":
+                        from ..watcher import manager
+                        n = manager().cancel(int(body["id"]) if body.get("id") else None)
+                        return self._json({"stopped": n})
                     if self.path == "/api/gesture":
                         from ..gestures import engine
                         on = body.get("on")

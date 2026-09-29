@@ -11,11 +11,11 @@
   version: "1.8.0"
 - id: screen-watcher
   title: "Nova upgrade: Screen watcher — watch the screen and tell me when something finishes, appears or changes"
-  status: doing
+  status: done
   version: "1.9.0"
 - id: missions
   title: "Nova upgrade: Missions — long-running goals Nova plans and works on by itself, with progress on the dashboard"
-  status: todo
+  status: doing
   version: "2.0.0"
 - id: nightly-dreaming
   title: "Nova upgrade: Nightly dreaming — overnight memory clean-up, linking ideas, a daily journal and encrypted backup"

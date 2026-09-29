@@ -167,9 +167,16 @@ class TelegramBot:
         except Exception as e:
             print(f"[telegram] couldn't reach Telegram yet: {e}")
         if self.cfg.telegram.get("announce_online", True):
+            link = ""
+            try:
+                from .remote import status as ts_status
+                url = (await asyncio.to_thread(ts_status))["url"]
+                link = f"\n📱 Dashboard: {url}" if url else ""
+            except Exception:
+                pass
             for uid in self.allowed:
                 try:
-                    await app.bot.send_message(uid, f"🟢 {self.cfg.assistant.name} is online.")
+                    await app.bot.send_message(uid, f"🟢 {self.cfg.assistant.name} is online.{link}")
                 except Exception as e:
                     print(f"[telegram] couldn't message {uid}: {e}")
 

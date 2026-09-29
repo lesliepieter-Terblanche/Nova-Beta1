@@ -164,9 +164,48 @@ def enable(globe_too: bool = True) -> dict:
     st = status(fresh=True)
     if context.store:
         context.store.log("remote", "system", "📱 Remote access on (Tailscale)", st["url"], turn=0)
+    if st["url"]:
+        _remember(True)
     return {**st, "ok": bool(st["url"]),
             "message": f"Done — open {st['url']} on your phone (Tailscale must be on there too)."
             if st["url"] else "Tailscale accepted it, but I can't see the address yet — try Check in a moment."}
+
+
+def _remember(on: bool) -> None:
+    """Remember that remote access should come back every time Nova starts."""
+    try:
+        from . import settings
+        settings.apply({"values": {"remote.enabled": on}})
+    except Exception as e:
+        print(f"[remote] couldn't save setting: {e}")
+
+
+def ensure() -> dict:
+    """Called when Nova starts: make sure Tailscale is connected and Nova is shared on it (if you set it up)."""
+    if not exe():
+        return status(fresh=True)
+    st = status(fresh=True)
+    if not st["running"]:
+        gui = Path(exe()).with_name("tailscale-ipn.exe")
+        if platform.system() == "Windows" and gui.exists():          # the tray app starts/reconnects Tailscale
+            try:
+                subprocess.Popen([str(gui)], creationflags=0x00000008)   # DETACHED_PROCESS
+            except Exception:
+                pass
+        _run(["up"], timeout=25)                                     # reconnect (no-op if already up)
+        for _ in range(10):
+            st = status(fresh=True)
+            if st["running"]:
+                break
+            time.sleep(2)
+    if st["running"] and not st["serving"]:
+        state, text = _serve(["serve", "--bg", f"http://127.0.0.1:{_port()}"], wait=15)
+        if state == "approve":
+            context.push("📱 Tailscale needs a one-time approval to share Nova with your phone — open this on the PC "
+                         f"and click Enable: {text}", [])
+    if st["running"]:
+        st = finish_setup()
+    return st
 
 
 def finish_setup() -> dict:
@@ -181,6 +220,7 @@ def finish_setup() -> dict:
 def disable() -> dict:
     _run(["serve", "--https=443", "off"])
     _run(["serve", f"--https={GLOBE_HTTPS_PORT}", "off"])
+    _remember(False)
     st = status(fresh=True)
     return {**st, "ok": True, "message": "Remote access is off. Nova only answers on this PC again."}
 

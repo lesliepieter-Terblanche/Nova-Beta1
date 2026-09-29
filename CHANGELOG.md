@@ -4,6 +4,16 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-09-29
+### Added
+- **Everything starts with run.bat**:
+  - **Phone access (Tailscale)**: once Set up has worked, Nova remembers it (`remote.enabled`), and on every start it
+    reconnects Tailscale (starts the Tailscale app / `tailscale up` if needed) and re-shares the dashboard and
+    globe. If Tailscale ever needs a one-time approval again, the link is sent to your Telegram.
+  - **Telegram** already started with Nova; the 🟢 online message now includes your phone dashboard link.
+  - A **"Nova is ready"** summary in Nova's window shows Dashboard, Voice, Telegram and Phone — and exactly what to
+    fix if one of them isn't running (e.g. "add your bot token in Settings → API keys").
+
 ## [2.2.1] — 2026-09-29
 ### Fixed
 - Remote access **Set up** timed out the first time: Tailscale prints an approval link and then waits for you.

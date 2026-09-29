@@ -58,6 +58,33 @@ def build():
     return cfg, agent
 
 
+def startup_summary(cfg, use_voice, tg, remote_state) -> None:
+    """One clear block in Nova's window: what's running, and what to fix if something isn't."""
+    import time
+    time.sleep(8)
+    port = cfg.dashboard.get("port", 8765)
+    if not cfg.telegram.enabled:
+        tg_line = "off (switched off in Settings → Telegram)"
+    elif not (tg and tg.token):
+        tg_line = "OFF — add your bot token in Settings → API keys, then restart"
+    elif not tg.allowed:
+        tg_line = "running, but no allowed user yet — message your bot /id, add it in Settings → Telegram"
+    else:
+        tg_line = "running ✓" if tg.app else "starting… (check the lines above if it doesn't connect)"
+    if not (cfg.get("remote") or {}).get("enabled"):
+        ph_line = "not set up — click 📱 on the dashboard"
+    elif remote_state.get("url"):
+        ph_line = f"{remote_state['url']} ✓"
+    else:
+        ph_line = remote_state.get("message") or "Tailscale isn't connected — open the Tailscale app"
+    print("\n[nova] ───────────────── Nova is ready ─────────────────")
+    print(f"  Dashboard   http://localhost:{port}")
+    print(f"  Voice       {'on — say the wake word or press the hotkey' if use_voice else 'off'}")
+    print(f"  Telegram    {tg_line}")
+    print(f"  Phone       {ph_line}")
+    print("[nova] ─────────────────────────────────────────────────\n")
+
+
 def keep_warm() -> None:
     """Load the local model + embeddings at start-up and keep them in memory, so typed and spoken
     commands answer straight away instead of waiting for the model to load (can take 10-30 s)."""
@@ -236,8 +263,21 @@ def main() -> None:
         loop = VoiceLoop(cfg, agent, speech)
         context.voice = loop
         threading.Thread(target=guarded, args=("Voice", loop.run), daemon=True, name="voice").start()
+    remote_state: dict = {}
+    if (cfg.get("remote") or {}).get("enabled"):
+        from nova import remote
+
+        def _remote():
+            try:
+                remote_state.update(remote.ensure())      # reconnect Tailscale + share Nova on it
+            except Exception as e:
+                print(f"[remote] {e}")
+        rt = threading.Thread(target=_remote, daemon=True, name="remote")
+        rt.start()
+        rt.join(timeout=15)                             # so Telegram's 🟢 message can include the phone link
     if tg and tg.token:
         threading.Thread(target=guarded, args=("Telegram", tg.run), daemon=True, name="telegram").start()
+    threading.Thread(target=startup_summary, args=(cfg, use_voice, tg, remote_state), daemon=True).start()
     try:
         from nova.dreaming import dreamer
         dreamer().start()                # nightly memory clean-up, journal and encrypted backup

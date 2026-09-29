@@ -143,6 +143,8 @@ SCHEMA = [
         {"path": "gestures.actions.swipe_right", "label": "👉 Swipe right", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
     ]},
     {"id": "remote", "title": "Remote access", "icon": "phone", "fields": [
+        {"path": "remote.enabled", "label": "Start phone access with Nova", "type": "bool", "default": False,
+         "help": "Switched on automatically after Set up works. Reconnects Tailscale and re-shares Nova on every start"},
         {"path": "dashboard.allowed_hosts", "label": "Extra allowed addresses", "type": "list",
          "help": "Not needed for Tailscale — your PC's Tailscale name is allowed automatically"},
     ]},

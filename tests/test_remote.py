@@ -40,6 +40,8 @@ def ts(monkeypatch):
         link = remote._https_link(text)
         return ("approve", link) if link else ("ok", text) if code == 0 else ("error", text)
     monkeypatch.setattr(remote, "_serve", serve)
+    state["remembered"] = []
+    monkeypatch.setattr(remote, "_remember", lambda on: state["remembered"].append(on))
     remote._cache.update(t=0.0, status=None)
     return state
 
@@ -149,3 +151,48 @@ def test_globe_allows_the_tailscale_host(nova, ts):
 
 
 _ = threading
+
+
+def test_setup_is_remembered_and_restored_on_start(nova, ts):
+    r = remote.enable()
+    assert r["ok"] and ts["remembered"] == [True]
+    ts["served"].clear()                                   # e.g. after a reboot the share is gone
+    ts["backend"] = "Stopped"
+    calls_before = len(ts["calls"])
+
+    def up_then_running(args, timeout=20, _orig=remote._run):
+        if args == ["up"]:
+            ts["backend"] = "Running"
+        return _orig(args, timeout)
+    import pytest as _p
+    mp = _p.MonkeyPatch()
+    mp.setattr(remote, "_run", up_then_running)
+    try:
+        st = remote.ensure()
+    finally:
+        mp.undo()
+    assert ["up"] in ts["calls"][calls_before:]
+    assert st["url"] == "https://pieter-pc.tail1234.ts.net/" and "8443" in ts["served"]
+    remote.disable()
+    assert ts["remembered"] == [True, False]
+
+
+def test_startup_summary_lines(nova, capsys):
+    import main
+    cfg = nova[0]
+    cfg["remote"] = {"enabled": True}
+
+    class TG:
+        token, allowed, app = "x", {1}, object()
+    import time as _t
+    orig = _t.sleep
+    _t.sleep = lambda s: None
+    try:
+        main.startup_summary(cfg, False, TG(), {"url": "https://pc.tail1.ts.net/"})
+    finally:
+        _t.sleep = orig
+    out = capsys.readouterr().out
+    assert "Telegram    running ✓" in out and "Phone       https://pc.tail1.ts.net/ ✓" in out
+    main.startup_summary(cfg, False, None, {})
+    out = capsys.readouterr().out
+    assert "Telegram    OFF — add your bot token" in out

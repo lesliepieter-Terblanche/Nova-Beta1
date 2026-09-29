@@ -55,6 +55,10 @@ globe:
   port: 4173
   auto_start: false           # start it together with Nova
 
+# Phone access with Tailscale (Settings → Remote access → Set up turns this on)
+remote:
+  enabled: false              # true = reconnect Tailscale and share Nova every time run.bat starts it
+
 # Nightly dreaming — memory clean-up, connections, journal and an encrypted backup while you sleep.
 dreaming:
   enabled: true

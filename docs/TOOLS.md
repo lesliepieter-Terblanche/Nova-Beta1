@@ -155,6 +155,14 @@ Offered to the model when you say things like: _record, recording, meeting notes
 | `meeting_recording_status` | Is a meeting being recorded, and for how long. | — |
 | `summarise_recording` | Transcribe and summarise an existing recording (audio or video file, e.g. a Teams recording). Runs in the background; notes arrive when done. | `path`, `title`? |
 
+## weather
+
+Offered to the model when you say things like: _weather, temperature, forecast, rain, raining, umbrella, sunny, cloudy, storm, thunder, wind, windy_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `get_weather` | Get the live weather forecast, open the weather page on screen, and return what to say out loud. Use this for ANY weather question (never web_search). Read the returned sentence to the user as your answer. | `place`?, `day`?, `show`? |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

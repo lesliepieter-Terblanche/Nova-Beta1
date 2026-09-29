@@ -9,7 +9,7 @@ tool_groups: [google, system, brain, web]
 3. Call gmail_search with "is:unread in:inbox newer_than:1d -category:promotions -category:social" (max 8).
    Pick at most three that look important (from real people, deadlines, money, customers).
 4. Call tasks_list and list_reminders.
-   If you know the user's home city, web_search "weather today <city>" and keep one line (high, rain chance).
+   Call get_weather (show: false) and use its first two sentences.
 5. Speak the briefing in under 45 seconds: greeting, weather, number of meetings and the first one, the top emails
    (sender + one-line gist), tasks due today, then ask "Anything you want me to handle first?"
 If Google isn't connected, skip those steps and say so once.

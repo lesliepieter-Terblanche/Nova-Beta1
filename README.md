@@ -45,6 +45,7 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 🎬 **Media** | Narrated videos with burned-in captions and free stock footage · photo slideshows · voice-overs · transcription · trims and conversions |
 | 👁 **Vision** | "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?" · describe photos and scans · Gemini, or fully local with Gemma 3 |
+| 🌦 **Weather** | "What's the weather?" → spoken forecast + animated weather page (free, no key) |
 | ⏰ **Routines** | Reminders · scheduled briefings ("every weekday at 07:30…") |
 | ⚙️ **Settings page** | API keys (masked, with Test buttons), voice, models, Telegram, skills/plugins/MCP on-off, routines, colour themes with live preview |
 | 🔄 **Versions** | GitHub backup · "update yourself" · "roll back" · desktop shortcut · VS Code project |

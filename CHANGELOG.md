@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-09-29
+### Added
+- **Weather skill:** live forecast from Open-Meteo (free, no key) for your home city or anywhere, today or any day
+  this week. Nova reads it out and opens a new animated **weather page** (current conditions, 24-hour chart with rain
+  chance, 7-day outlook, city search). The morning briefing uses it too.
+### Fixed
+- Nova no longer answers with just a link — it reads out what it found.
+- Dashboard pages are no longer cached by the browser, so new features show up right after an update.
+
 ## [1.3.1] — 2026-09-29
 ### Fixed
 - `setup.bat` is now fully resumable: it skips Ollama models that are already downloaded, retries interrupted

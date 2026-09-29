@@ -406,7 +406,7 @@ function renderExtensions() {
     <label class="switch"><input type="checkbox" data-ext="${kind}" data-name="${esc(item.name)}" ${item.enabled ? "checked" : ""} ${item.core ? "disabled" : ""}><span></span></label></div>`;
   const SK = { system: "PC control, apps, reminders, screenshots", memory: "Permanent memory & notes", files: "Files and folders",
     web: "Search, scraping, website builder", browser: "Controls its own Chrome", google_ws: "Gmail, Calendar, Drive, Docs, Sheets, Tasks",
-    media: "Videos, voice-overs, transcription", camera_ads: "Webcam and product ads", meetings: "Meeting recorder", maintenance: "Updates, rollback, extensions" };
+    media: "Videos, voice-overs, transcription", camera_ads: "Webcam and product ads", meetings: "Meeting recorder", weather: "Live forecast, weather page", maintenance: "Updates, rollback, extensions" };
   $("#tab-extensions").innerHTML = `<h2 class="sec-title">Extensions</h2>
     <p class="sec-sub">Switch abilities on or off. Fewer abilities = a faster, more focused local model. Changes apply after a restart.</p>
     <div class="card glass"><h3>Built-in skills</h3>${x.skills.map((s) => row("skills", s, SK[s.name])).join("")}</div>

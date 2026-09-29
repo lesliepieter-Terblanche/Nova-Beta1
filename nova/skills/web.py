@@ -15,8 +15,9 @@ from ..config import resolve
 from ..tools import register_group, tool
 
 register_group("web", ["search", "google it", "look up", "look it up", "website", "web site", "site", "scrape",
-                       "url", "http", "www", ".co", "news", "price", "weather", "latest", "online", "internet",
+                       "url", "http", "www", ".co", "news", "price", "latest", "online", "internet",
                        "landing page", "web page", "webpage", "html", "who is", "what is"])
+# (weather has its own skill: nova/skills/weather.py)
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"}
 

@@ -259,6 +259,8 @@ class Dashboard:
                     self.send_response(200)
                 self.send_header("Content-Type", ctype)
                 self.send_header("Accept-Ranges", "bytes")
+                if ctype.startswith("text/html"):
+                    self.send_header("Cache-Control", "no-cache")      # always show the newest dashboard/settings
                 self.send_header("Content-Length", str(end - start + 1))
                 self.end_headers()
                 with open(path, "rb") as f:
@@ -289,6 +291,17 @@ class Dashboard:
                 try:
                     if u.path in ("/", "/index.html"):
                         return self._file(HERE / "index.html")
+                    if u.path in ("/weather", "/weather.html"):
+                        return self._file(HERE / "weather.html")
+                    if u.path == "/api/weather":
+                        from ..skills import weather
+                        if q.get("place"):
+                            return self._json(weather.fetch(q["place"]))
+                        latest = resolve("workspace/weather/latest.json")
+                        if not latest.exists():
+                            return self._json(weather.fetch(""))
+                        cached = json.loads(latest.read_text(encoding="utf-8"))
+                        return self._json(weather.fetch(cached["place"]) if q.get("refresh") else cached)
                     if u.path in ("/settings", "/settings.html"):
                         return self._file(HERE / "settings.html")
                     if u.path == "/api/settings":

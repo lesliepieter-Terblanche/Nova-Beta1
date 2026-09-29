@@ -53,6 +53,7 @@ rembg[cpu]>=2.0.57
 
 # system
 cryptography>=42          # encrypted nightly backups
+segno>=1.6               # QR code to open Nova on your phone
 psutil>=5.9
 mss>=9.0
 pyperclip>=1.8

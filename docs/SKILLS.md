@@ -118,6 +118,7 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | `screen_watch.py` | watch | watch screen/window/program/Downloads, list, stop (engine in `nova/watcher.py`) |
 | `missions.py` | missions | start, list, report, pause/resume/run/delete (engine in `nova/missions.py`) |
 | `dreaming.py` | dreaming | dream now, last dream, back up now (engine in `nova/dreaming.py`) |
+| `remote.py` | remote | Tailscale remote access status/on/off (engine in `nova/remote.py`) |
 | `maintenance.py` | maintenance | updates 🔒, versions, rollback 🔒, restart 🔒, dashboard, extensions status |
 
 After adding or changing tools, regenerate the reference: `python scripts/gen_tool_docs.py`.

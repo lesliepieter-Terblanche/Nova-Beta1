@@ -688,7 +688,10 @@ class Dashboard:
                 host = (self.headers.get("Host") or "").lower()
                 allowed = {f"localhost:{dash.port}", f"127.0.0.1:{dash.port}", "localhost", "127.0.0.1"}
                 allowed |= {h.lower() for h in (dash.cfg.get("dashboard") or {}).get("allowed_hosts", [])}
-                return host in allowed
+                if host in allowed:
+                    return True
+                from .. import remote                  # your PC's own Tailscale name (phone access)
+                return remote.allowed_host(host)
 
             def do_GET(self):
                 u = urlparse(self.path)
@@ -717,6 +720,11 @@ class Dashboard:
                         return self._json({**e.status(), "events": e.recent(int(q.get("since", 0) or 0))})
                     if u.path == "/api/camera.mjpg":
                         return self._mjpeg()
+                    if u.path == "/api/remote":
+                        from .. import remote
+                        st = remote.status(fresh=bool(q.get("fresh")))
+                        return self._json({**st, "qr": remote.qr_svg(st["url"]) if st["url"] else "",
+                                           "here": self.headers.get("Host", "")})
                     if u.path == "/api/globe/status":
                         from ..skills import globe
                         return self._json(globe.status())
@@ -768,7 +776,8 @@ class Dashboard:
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length) or b"{}")
                 origin = self.headers.get("Origin", "").split("//")[-1].lower()
-                if not self._host_ok() or origin not in ("", self.headers.get("Host", "").lower()):
+                host = self.headers.get("Host", "").lower()
+                if not self._host_ok() or origin not in ("", host, host.split(":")[0]):
                     return self._json({"error": "forbidden"}, 403)
                 try:
                     if self.path == "/api/settings":
@@ -798,6 +807,11 @@ class Dashboard:
                         on = body.get("on")
                         msg = engine().start() if on else engine().stop()
                         return self._json({"message": msg, **engine().status()})
+                    if self.path == "/api/remote":
+                        from .. import remote
+                        if not self.headers.get("Host", "").lower().startswith(("localhost", "127.0.0.1")):
+                            return self._json({"ok": False, "message": "Change remote access from the PC itself."}, 403)
+                        return self._json(remote.enable() if body.get("on") else remote.disable())
                     if self.path == "/api/globe/start":
                         from ..skills import globe
                         msg = globe.start(wait=90)

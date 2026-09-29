@@ -50,7 +50,9 @@ async function check() {
   try { s = await api("/api/globe/status"); } catch { $("msg").textContent = "Nova isn't running."; return; }
   $("url").textContent = s.url.replace("http://", "");
   $("go").hidden = $("install").hidden = true;
-  if (s.running) { $("msg").textContent = "Opening…"; location.href = target() || s.url; return; }
+  const remote = !["localhost", "127.0.0.1"].includes(location.hostname);
+  const url = remote ? `https://${location.hostname}:8443/` : s.url;
+  if (s.running) { $("msg").textContent = "Opening…"; location.href = target() || url; return; }
   if (s.installing) { $("msg").textContent = "Installing… this page opens the globe when it's ready."; return setTimeout(check, 4000); }
   if (!s.node_ok) { $("msg").innerHTML = s.node.replace(/`([^`]+)`/g, "<code>$1</code>"); return; }
   if (!s.installed) { $("msg").textContent = "Not installed yet."; $("install").hidden = false; return; }

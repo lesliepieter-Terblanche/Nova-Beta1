@@ -224,6 +224,14 @@ Offered to the model when you say things like: _dream, dreaming, backup, back up
 | `last_dream` | What Nova did during its last nightly dream (memories merged, connections, journal, backup). | — |
 | `backup_now` | Make an encrypted backup of Nova's brain, notes, settings and keys right now. | — |
 
+## remote
+
+Offered to the model when you say things like: _tailscale, remote access, on my phone, from my phone, phone access, access nova remotely, outside the house, away from home_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `remote_access` | Tailscale remote access to Nova's dashboard (and the globe) from the user's phone. | `action`? |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

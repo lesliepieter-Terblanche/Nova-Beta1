@@ -284,9 +284,38 @@
   .gtoast.show { opacity: 1; transform: translateX(-50%) translateY(6px); }
   body.gest .rail { max-height: calc(100vh - 250px); }
 
+  .pmodal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(0,0,0,.55); padding: 16px; }
+  .pmodal.show { display: grid; }
+  .pcard { width: min(420px, 100%); padding: 24px; position: relative; text-align: center; background: var(--glass-strong); }
+  .pcard h3 { font: 600 18px var(--display); margin: 0 0 12px; }
+  .pcard .qr svg { width: 220px; height: 220px; margin: 8px auto; display: block; }
+  .pcard code { display: block; margin: 10px 0; font-size: 13px; word-break: break-all; color: var(--accent-2); }
+  .pcard ol { text-align: left; font-size: 13px; line-height: 1.6; color: #cfd5f5; padding-left: 20px; }
+  .pcard .btn { margin-top: 10px; }
+
+  .pcard .close { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 9px;
+    border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
+  .pcard .close:hover { color: var(--text); border-color: var(--line-strong); }
+
+  /* phone layout */
   @media (max-width: 900px) {
-    .rail, .feed { display: none; }
-    .stats .stat:nth-child(n+3) { display: none; }
+    header { top: 10px; left: 10px; right: 10px; gap: 8px; flex-wrap: wrap; }
+    .brand { padding: 8px 12px 8px 10px; gap: 10px; }
+    .brand h1 { font-size: 14px; } .orb { width: 26px; height: 26px; }
+    .right { gap: 6px; }
+    .stats { display: none; }
+    .gear { width: 42px; height: 42px; }
+    .feed { display: none; }
+    .rail { top: auto; bottom: 86px; left: 10px; right: 10px; width: auto; max-height: 36vh; padding: 10px; }
+    .rail .search, .rail .results, .rail .views, .rail #chips, .rail h3:not(.keep) { display: none; }
+    .rail .busy { margin-bottom: 8px; }
+    .ask { bottom: 14px; width: calc(100vw - 20px); padding: 6px 6px 6px 14px; }
+    .ask input { font-size: 16px; }                     /* stops iPhones zooming in */
+    .ask .toggle { display: none; }
+    .reply { bottom: 80px; width: calc(100vw - 20px); }
+    .panel { top: 122px; right: 10px; left: 10px; bottom: 80px; width: auto; }
+    .gchip, .gcam { display: none !important; }
+    .gtoast { top: 70px; }
   }
 </style>
 </head>
@@ -312,6 +341,7 @@
     <div class="stat" data-open="creations" title="Files, sites, videos, ads… Nova made"><div class="n" id="s-art">0</div><div class="l">Creations</div><div class="sub"></div></div>
     <div class="stat" data-open="actions" title="Every request and the steps Nova took"><div class="n" id="s-act">0</div><div class="l">Actions</div><div class="sub"></div></div>
   </div>
+    <button class="gear glass" id="phone-btn" title="Open Nova on your phone (Tailscale)" aria-label="Open on phone" style="border:1px solid var(--line);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
     <a class="gear glass" href="/globe" target="_blank" title="God's Eye View — live 3D globe" aria-label="God's Eye View"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></a>
     <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
   </div>
@@ -333,7 +363,7 @@
   </div>
   <h3>Layers</h3>
   <div class="chips" id="chips"></div>
-  <h3>Track</h3>
+  <h3 class="keep">Track</h3>
   <div class="quick">
     <button data-open="doing">In progress</button>
     <button data-open="tracked">All tracked</button>
@@ -377,6 +407,11 @@
   <button id="g-cam" title="Show what the camera sees">Camera</button><button id="g-off" title="Turn gesture control off">Off</button></div>
 <div class="gcam" id="gcam"><img id="g-img" alt="Webcam preview"></div>
 <div class="gtoast glass" id="gtoast"></div>
+<div class="pmodal" id="pmodal"><div class="pcard glass">
+  <button class="close" id="p-close" aria-label="Close">✕</button>
+  <h3>📱 Nova on your phone</h3>
+  <div id="p-bodyr" class="muted">Checking Tailscale…</div>
+</div></div>
 <div class="empty" id="empty"><strong>The brain is waiting</strong>Talk to Nova — every memory, note and creation will appear here as a star.</div>
 <div class="intro" id="intro"><span>Nova</span></div>
 
@@ -977,6 +1012,39 @@ $("g-cam").onclick = () => {
   if (on) $("g-img").src = "/api/camera.mjpg?" + Date.now(); else $("g-img").removeAttribute("src");
 };
 $("g-off").onclick = async () => { await api("/api/gesture", { on: false }); gSeq = -1; };
+
+// ── open on phone (Tailscale) ─────────────────────────
+async function showPhone(fresh = false) {
+  $("pmodal").classList.add("show");
+  let r;
+  try { r = await api(`/api/remote${fresh ? "?fresh=1" : ""}`); } catch { $("p-bodyr").textContent = "Nova isn't answering."; return; }
+  const onPC = ["localhost", "127.0.0.1"].includes(location.hostname);
+  let h = "";
+  if (r.url) {
+    h = `<div class="qr">${r.qr}</div><code>${esc(r.url)}</code>
+      <p class="muted">Scan with your phone camera (Tailscale switched on). Only your own devices can open this.${r.globe_url ? `<br>Globe: <b>${esc(r.globe_url)}</b>` : ""}</p>
+      ${onPC ? `<button class="btn" data-remote="off">Turn remote access off</button>` : ""}`;
+  } else if (!r.installed) {
+    h = `<ol><li>Install <b>Tailscale</b> on this PC and on your phone — <a href="https://tailscale.com/download" target="_blank" style="color:var(--accent-2)">tailscale.com/download</a> (free).</li>
+      <li>Sign in with the <b>same account</b> on both.</li><li>Come back here and click <b>Set up</b>.</li></ol>
+      <button class="btn primary" data-remote="check">I've installed it — check again</button>`;
+  } else {
+    h = `<p>${esc(r.message || "Tailscale is connected.")}</p>` +
+      (r.running && onPC ? `<button class="btn primary" data-remote="on">Set up</button>` : `<button class="btn" data-remote="check">Check again</button>`);
+  }
+  $("p-bodyr").className = ""; $("p-bodyr").innerHTML = h;
+}
+$("phone-btn").onclick = () => showPhone(true);
+$("p-close").onclick = () => $("pmodal").classList.remove("show");
+$("pmodal").addEventListener("click", async (e) => {
+  if (e.target.id === "pmodal") return $("pmodal").classList.remove("show");
+  const b = e.target.closest("[data-remote]"); if (!b) return;
+  if (b.dataset.remote === "check") return showPhone(true);
+  b.disabled = true; b.textContent = "Working…";
+  const r = await api("/api/remote", { on: b.dataset.remote === "on" });
+  if (!r.ok) { $("p-bodyr").innerHTML = `<p>${esc(r.message).replace(/(https:\/\/\S+)/g, '<a href="$1" target="_blank" style="color:var(--accent-2)">$1</a>')}</p><button class="btn" data-remote="check">Check again</button>`; return; }
+  showPhone(true);
+});
 
 // "Busy with" card
 async function loadNow() {

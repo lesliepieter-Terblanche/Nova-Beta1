@@ -177,7 +177,7 @@ def start(wait: float = 60) -> str:
     flags = subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0   # type: ignore[attr-defined]
     _proc = subprocess.Popen([npm, "run", "dev", "--", "--host", "127.0.0.1", "--port", str(port()), "--strictPort"],
                              cwd=app_dir(), stdout=log, stderr=subprocess.STDOUT, creationflags=flags,
-                             env={**os.environ, "BROWSER": "none"})
+                             env={**os.environ, "BROWSER": "none", **_remote_env()})
     atexit.register(stop)          # don't leave the globe running after Nova closes
     end = time.time() + wait
     while time.time() < end:
@@ -187,6 +187,16 @@ def start(wait: float = 60) -> str:
             return "God's Eye View stopped straight away — see data/logs/globe.log for why."
         time.sleep(1)
     return "God's Eye View is still starting; give it a few more seconds."
+
+
+def _remote_env() -> dict:
+    """Let the globe answer on this PC's Tailscale address too (Vite blocks unknown host names)."""
+    try:
+        from ..remote import status as ts_status
+        name = ts_status()["dns_name"]
+        return {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": name} if name else {}
+    except Exception:
+        return {}
 
 
 def stop() -> str:

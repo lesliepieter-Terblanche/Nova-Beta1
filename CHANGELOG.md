@@ -4,6 +4,17 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-09-29
+### Added
+- **Nova on your phone with Tailscale** — private access to the dashboard (and the God's Eye globe) from anywhere:
+  - Settings → **Remote access** (Check / Set up / Turn off), the new 📱 button on the dashboard (with a QR code
+    to scan), or say "set up remote access".
+  - Uses Tailscale Serve: an HTTPS address like `https://your-pc.tailXXXX.ts.net` that only your own devices can
+    open. Nova still only listens on the PC; nothing is public. Remote access can only be switched on/off from the PC.
+  - The globe is served at `…ts.net:8443`.
+- **Phone layout** for the dashboard: compact header, the Busy card and Track buttons above the ask box,
+  full-width panels.
+
 ## [2.1.0] — 2026-09-29
 ### Added
 - **Nightly dreaming** (every night at 02:30; if the PC was off it catches up once Nova has been running and quiet

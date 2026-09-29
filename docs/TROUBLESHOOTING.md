@@ -119,6 +119,16 @@ run.bat --check
 | Pointer jumps / wrong gesture | Good light, hand 40–80 cm from the camera, palm facing it. Lower **Checks per second** if the PC is busy. |
 | Don't want the mouse moved | Untick **Point to move the mouse** in Settings → Gestures. |
 
+## Phone access (Tailscale)
+
+| Problem | Fix |
+|---|---|
+| "Tailscale isn't installed" | Install it from tailscale.com/download on the PC **and** the phone; sign in with the same account. |
+| Set up asks to enable HTTPS | Click the link it shows (Tailscale admin → DNS → enable MagicDNS + HTTPS Certificates), then Set up again. |
+| Phone can't open the address | Tailscale must be switched **on** in the phone app, and Nova running on the PC. |
+| 403 on the phone | Update Nova (the PC's Tailscale name is allowed automatically since 2.2). |
+| Globe doesn't open on the phone | Start it once on the PC (🌐), then use the `:8443` address. |
+
 ## Backups & dreaming
 
 | Problem | Fix |

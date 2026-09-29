@@ -142,6 +142,10 @@ SCHEMA = [
         {"path": "gestures.actions.swipe_left", "label": "👈 Swipe left", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
         {"path": "gestures.actions.swipe_right", "label": "👉 Swipe right", "type": "select", "default": "dashboard", "options": ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"], "free": True},
     ]},
+    {"id": "remote", "title": "Remote access", "icon": "phone", "fields": [
+        {"path": "dashboard.allowed_hosts", "label": "Extra allowed addresses", "type": "list",
+         "help": "Not needed for Tailscale — your PC's Tailscale name is allowed automatically"},
+    ]},
     {"id": "dreaming", "title": "Dreaming", "icon": "moon", "fields": [
         {"path": "dreaming.enabled", "label": "Dream every night", "type": "bool", "default": True},
         {"path": "dreaming.at", "label": "At", "type": "text", "default": "02:30",
@@ -558,6 +562,18 @@ def run_test(kind: str) -> dict:
                           headers={"Authorization": key}, timeout=15)
             return {"ok": r.status_code == 200, "message": "Pexels key works." if r.status_code == 200
                     else f"Pexels said {r.status_code}."}
+        if kind in ("remote", "remote_on", "remote_off"):
+            from . import remote
+            if kind == "remote_on":
+                r = remote.enable()
+                return {"ok": r["ok"], "message": r["message"]}
+            if kind == "remote_off":
+                return {"ok": True, "message": remote.disable()["message"]}
+            st = remote.status(fresh=True)
+            if st["url"]:
+                return {"ok": True, "message": f"On — open {st['url']} on your phone (Tailscale on)."
+                        + (f" Globe: {st['globe_url']}" if st["globe_url"] else "")}
+            return {"ok": st["running"], "message": st["message"] or "Tailscale is connected but not serving Nova yet."}
         if kind in ("dream", "backup"):
             import threading as _t
 

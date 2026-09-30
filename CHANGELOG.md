@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.8.1] — 2026-09-30
+### Changed
+- The main categories (Goals, Decisions, People, Projects…) have a small permanent label on the brain again; single
+  items stay tag-free.
+- Hovering is much easier: every shape has a generous invisible hover area, so pointing near a star shows what it is —
+  its type, its name, and the project it belongs to (categories show how many items they hold).
+
 ## [2.8.0] — 2026-09-30
 ### Added
 - **🎨 Canva (official connector)** — first in Settings → Extensions → *Add an MCP server*. Nova can create and edit

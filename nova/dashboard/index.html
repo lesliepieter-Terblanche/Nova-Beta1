@@ -148,7 +148,7 @@
   .gear { display: grid; place-items: center; width: 52px; height: 52px; color: var(--text); text-decoration: none; transition: transform .3s; }
   .gear:hover { transform: rotate(40deg); color: #fff; }
   .gear[href='/globe']:hover { transform: scale(1.08); }
-  .no-labels .hub-label, .no-labels .proj-label, .no-labels .person-label { display: none !important; }
+  .no-labels .proj-label, .no-labels .person-label { display: none !important; }
   .hub-label { font: 600 12.5px var(--display); letter-spacing: .06em; color: #fff; padding: 4px 10px; border-radius: 999px;
     background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); cursor: pointer;
     text-shadow: 0 0 12px var(--c); white-space: nowrap; pointer-events: auto; transform: translateY(-50%); }
@@ -162,7 +162,8 @@
   .no-labels .proj-label.sub { display: none; }
   body.far .proj-label.sub { display: none; }
   body[data-layout="categories"] .proj-label, body[data-layout="web"] .proj-label.sub { display: none; }
-  body[data-layout="projects"] .hub-label { opacity: .55; font-size: 11px; }
+  body[data-layout="projects"] .hub-label { opacity: .8; }
+  .hub-label { font-size: 10.5px !important; padding: 2px 8px !important; letter-spacing: .04em !important; }
   .projsel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12.5px; }
   .projsel select { background: rgba(0,0,0,.3); color: var(--text); border: 1px solid var(--line); border-radius: 9px;
     padding: 6px 8px; font: 12.5px var(--body); max-width: 100%; }
@@ -666,6 +667,7 @@ const Graph = ForceGraph3D({ controlType: "orbit", extraRenderers: [labelRendere
   .warmupTicks(40)
   .cooldownTime(8000);
 
+window.novaGraph = Graph;
 // ── layouts: Projects (clusters) · Categories (sectors) · Web (free) ──
 let layout = "projects", focusSet = null;
 const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 1000) / 1000; };
@@ -825,7 +827,18 @@ function shapeGeo(fam, r) {
   if (fam === "pyramid") return new THREE.TetrahedronGeometry(r * 1.45);
   return new THREE.SphereGeometry(r, 18, 18);
 }
+const HIT_MAT = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+function withHit(group, r) {
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(Math.max(r, 5.5), 8, 8), HIT_MAT);   // easy to hover, never drawn
+  group.add(hit);
+  return group;
+}
 function makeNode(n) {
+  const group = makeNodeInner(n);
+  if (n.kind === "core") return group;
+  return withHit(group, n.kind === "hub" ? 9 : n.isProject ? 11 : (Math.cbrt(n.val || 4) * 1.35) * 3);
+}
+function makeNodeInner(n) {
   const group = new THREE.Group();
   const color = new THREE.Color(colorOf(n));
   if (n.kind === "core") {
@@ -906,7 +919,13 @@ function onHover(n) {
   $("graph").style.cursor = n ? "pointer" : "grab";
   if (!n || n.kind === "core") { tip.style.display = "none"; return; }
   tip.style.setProperty("--c", n.color);
-  tip.innerHTML = `<b>${esc(n.kind === "hub" ? "Category" : labelFor(n.kind))}</b>${esc(n.label)}${n.isPerson && n.company ? `<br><span style="color:var(--muted)">${esc(n.company)} · ${n.mentions || 0} mention${n.mentions === 1 ? "" : "s"}</span>` : ""}`;
+  const proj = n.project && nodeById.get(n.project);
+  const count = n.kind === "hub" ? data.nodes.filter((x) => x.kind === n.hubKind).length : 0;
+  const sub = n.kind === "hub" ? `${count} item${count === 1 ? "" : "s"} · click to list them`
+    : n.isPerson ? [n.company, `${n.mentions || 0} mention${n.mentions === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
+    : n.isProject ? "Project · click to light up everything in it"
+    : proj ? `in ${proj.short || proj.label}` : "";
+  tip.innerHTML = `<b>${esc(n.kind === "hub" ? "Category" : n.isProject ? "Project" : labelFor(n.kind))}</b>${esc(n.label.length > 140 ? n.label.slice(0, 140) + "…" : n.label)}${sub ? `<br><span style="color:var(--muted)">${esc(sub)}</span>` : ""}`;
   tip.style.display = "block"; placeTip();
 }
 

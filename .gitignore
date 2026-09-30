@@ -26,3 +26,5 @@ tools/gods-eye-view/
 models/vision/
 backups/
 restore/
+config.yaml.bak
+config.yaml.tmp

@@ -446,3 +446,31 @@ def test_thumbs_up_says_yes_when_nova_is_asking(nova, monkeypatch):
     monkeypatch.setattr(context, "announce", lambda t: None)
     e = GestureEngine(cfg)
     assert e.do("enter") == "answered yes" and e.do("delete") == "answered no" and pressed == []
+
+
+def test_camera_falls_back_to_another_webcam_and_explains_problems(monkeypatch):
+    from nova.camera import CameraHub
+    h = CameraHub(index=0)
+    tried = []
+
+    def fake_try(index, backend):
+        tried.append(index)
+        return object() if index == 1 else None
+    monkeypatch.setattr(h, "_try", fake_try)
+    assert h._open() is not None and h.using == 1 and tried[0] == 0
+    monkeypatch.setattr(h, "_try", lambda i, b: None)
+    assert h._open() is None
+    assert "Turn on gestures" in CameraHub().message()
+    h.error = "Couldn't get a picture from webcam 0."
+    assert h.message() == h.error
+    jpg = h.placeholder_jpeg()
+    assert jpg[:2] == b"\xff\xd8"
+
+
+def test_hub_is_rebuilt_when_the_webcam_number_changes(nova):
+    from nova import camera
+    camera._hub = None
+    a = camera.hub({"gestures": {"camera": 0}})
+    b = camera.hub({"gestures": {"camera": 1}})
+    assert a is not b and b.index == 1
+    camera._hub = None

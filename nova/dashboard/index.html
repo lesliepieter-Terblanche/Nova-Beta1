@@ -293,7 +293,9 @@
   .gchip.hand .dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
   .gcam { position: fixed; left: 18px; bottom: 84px; z-index: 6; width: 300px; border-radius: 14px; overflow: hidden; display: none;
     border: 1px solid var(--line-strong); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
-  .gcam.show { display: block; } .gcam img { width: 100%; display: block; }
+  .gcam.show { display: block; } .gcam img { width: 100%; display: block; min-height: 120px; background: #181818; }
+  .gcam .gmsg { padding: 8px 12px; font-size: 12px; background: rgba(0,0,0,.72); color: #fff; display: none; }
+  .gcam .gmsg.show { display: block; }
   .gtoast { position: fixed; left: 50%; top: 110px; transform: translateX(-50%); z-index: 9; padding: 10px 18px; border-radius: 999px;
     font: 600 15px var(--display); opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; }
   .gtoast.show { opacity: 1; transform: translateX(-50%) translateY(6px); }
@@ -615,7 +617,7 @@
 <div class="gchip glass" id="gchip" style="display:none"><span class="dot"></span><span class="gi" id="g-emoji">✋</span>
   <span><b>Gestures</b><small id="g-label">show your hand</small></span>
   <button id="g-cam" title="Show what the camera sees">Camera</button><button id="g-off" title="Turn gesture control off">Off</button></div>
-<div class="gcam" id="gcam"><img id="g-img" alt="Webcam preview"></div>
+<div class="gcam" id="gcam"><img id="g-img" alt="Webcam preview"><div class="gmsg" id="g-msg"></div></div>
 <div class="gtoast glass" id="gtoast"></div>
 <div class="pmodal" id="pmodal"><div class="pcard glass">
   <button class="close" id="p-close" aria-label="Close">✕</button>
@@ -1708,6 +1710,9 @@ async function pollGestures() {
   if (!gOn) { $("gcam").classList.remove("show"); $("g-img").removeAttribute("src"); }
   $("gchip").classList.toggle("hand", r.hand);
   $("g-emoji").textContent = r.hand ? (r.emoji || "🖐") : "✋";
+  const cm = (r.camera || {}).message || "";
+  $("g-msg").textContent = cm; $("g-msg").classList.toggle("show", !!cm);
+  if (cm && !r.error && !r.hand) $("g-label").textContent = cm; else
   $("g-label").textContent = r.error ? r.error : r.hand ? (r.hover ? r.hover.split("\n")[0] : (r.label || "hand seen") + (r.pinching ? (r.style === "hand" ? " · grabbing" : " · pinching") : "")) : "show your hand";
   if (gSeq >= 0) for (const e of r.events) onGesture(e);
   gSeq = r.seq;
@@ -1732,6 +1737,9 @@ $("g-cam").onclick = () => {
   const c = $("gcam"), on = !c.classList.contains("show");
   c.classList.toggle("show", on);
   if (on) $("g-img").src = "/api/camera.mjpg?" + Date.now(); else $("g-img").removeAttribute("src");
+};
+$("g-img").onerror = () => {                       // stream dropped (Nova restarted, camera re-opened) — try again
+  if ($("gcam").classList.contains("show")) setTimeout(() => { if ($("gcam").classList.contains("show")) $("g-img").src = "/api/camera.mjpg?" + Date.now(); }, 1500);
 };
 $("g-off").onclick = async () => { await api("/api/gesture", { on: false }); gSeq = -1; };
 

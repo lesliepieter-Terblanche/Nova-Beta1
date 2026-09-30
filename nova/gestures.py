@@ -554,8 +554,7 @@ class GestureEngine:
         h.subscribe("gestures", self.on_frame)
         h.overlays["gestures"] = self.draw
         self.enabled, self.error = True, ""
-        time.sleep(1.5)
-        if h.error:
+        if not h.wait_ready() and (h.error or not h.running):
             self.stop()
             self.error = h.error
             return h.error
@@ -585,7 +584,10 @@ class GestureEngine:
 
     def status(self) -> dict:
         from .camera import _hub
-        return {"enabled": self.enabled, "hand": self.hand, "gesture": self.gesture,
+        cam = _hub.state() if _hub else {"running": False, "error": "", "status": "", "dark": False}
+        if _hub and self.enabled and (cam["error"] or cam["status"] or cam["dark"] or not cam["running"]):
+            cam["message"] = _hub.message()
+        return {"enabled": self.enabled, "camera": cam, "hand": self.hand, "gesture": self.gesture,
                 "emoji": EMOJI.get(self.gesture, ""), "label": LABEL.get(self.gesture, ""),
                 "fps": round(self.fps, 1), "error": self.error or (_hub.error if _hub else ""),
                 "seq": self._seq, "mouse": bool(self._g().get("mouse", True)), "style": self.style(),

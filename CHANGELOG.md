@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.11.1] — 2026-09-30
+### Fixed — 📷 Camera preview on the dashboard
+- The **Camera** button on the ✋ chip no longer shows an empty box: if there's no picture it says why
+  (starting up, webcam busy in another app, Windows camera privacy, black picture / privacy cover, camera off).
+- The webcam is opened more reliably: tries DirectShow, then Media Foundation, waits for the first real picture,
+  falls back to another webcam on the PC if the chosen one doesn't work, and re-opens after a USB hiccup.
+- Changing **Webcam number** in Settings now takes effect the next time gestures start.
+
 ## [2.11.0] — 2026-09-30
 ### Changed — 🖐 Whole-hand control (new default "hand" mode)
 - **The cursor follows your whole hand** — move it left, right, up or down (no more pointing with one finger).

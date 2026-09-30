@@ -118,6 +118,7 @@ run.bat --check
 | "Couldn't open webcam" | Close Teams/Zoom/Camera app, or set another **Webcam number** in Settings → Gestures. |
 | Model download fails | The first start downloads two small models (`models/vision/`) from Google — check the internet connection. |
 | Pointer jumps / wrong gesture | Good light, hand 40–80 cm from the camera, palm facing it. Lower **Checks per second** if the PC is busy. |
+| Camera preview is empty / shows a message | Read the message in the preview. Usual fixes: close Teams, Zoom and the Camera app; open the webcam's privacy cover; Windows Settings → Privacy & security → Camera → turn on **Camera access** and **Let desktop apps access your camera**; try another **Webcam number**. |
 | Cursor doesn't move | Update to 2.11+ (the cursor now follows your whole hand). Check the ✋ chip on the dashboard says "hand seen"; click **Camera** to see the hand box — keep your hand inside it. |
 | Have to stretch to reach the screen edges | Make **Hand area** smaller in Settings → Gestures. |
 | Clicks when I don't want | Keep your fingers loosely open while moving — a curled, fist-like hand counts as a click. |

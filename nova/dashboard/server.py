@@ -819,24 +819,34 @@ class Dashboard:
                         remaining -= len(chunk)
 
             def _mjpeg(self):
-                """Live webcam preview with the hand skeleton drawn on (only while gestures/presence run)."""
+                """Live webcam preview with the hand skeleton drawn on. When there's no picture it shows why
+                (camera off, starting, blocked, black) instead of a blank box."""
                 import time as _t
 
-                from ..camera import _hub
-                if _hub is None or not _hub.running:
-                    return self.send_error(404, "camera is off")
+                from .. import camera
                 self.send_response(200)
                 self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
+                off_since = None
                 try:
-                    while _hub.running:
-                        jpg = _hub.preview_jpeg()
+                    while True:
+                        h = camera._hub
+                        jpg = h.preview_jpeg() if h is not None and h.running else None
+                        if jpg is None:
+                            h = h or camera.CameraHub()
+                            jpg = h.placeholder_jpeg()
+                            off_since = off_since or _t.time()
+                            if not h.running and _t.time() - off_since > 60:
+                                break
+                        else:
+                            off_since = None
                         if jpg:
                             self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
                                              + str(len(jpg)).encode() + b"\r\n\r\n" + jpg + b"\r\n")
-                        _t.sleep(0.12)
-                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                            self.wfile.flush()
+                        _t.sleep(0.12 if off_since is None else 0.5)
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
                     pass
 
             def _host_ok(self) -> bool:

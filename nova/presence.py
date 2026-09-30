@@ -90,8 +90,7 @@ class Presence:
         h.subscribe("presence", self.on_frame)
         self.enabled, self.error = True, ""
         self.present, self.since, self.last_seen = None, time.time(), time.time()
-        time.sleep(1.5)
-        if h.error:
+        if not h.wait_ready() and (h.error or not h.running):
             self.stop()
             self.error = h.error
             return h.error

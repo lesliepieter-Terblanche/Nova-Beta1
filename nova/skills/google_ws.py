@@ -1,6 +1,9 @@
-"""Google Workspace: Gmail, Calendar, Drive, Docs, Sheets and Tasks (free Google APIs).
+"""Google Workspace: Gmail, Calendar, Drive, Docs, Sheets, Slides and Tasks (free Google APIs).
 
-One-time setup: see README -> "Connect Google". Then run  python main.py --google-login
+Connect once: Settings → Google → Connect Google (or  python main.py --google-login). Nova keeps a refreshable
+sign-in token in secrets/token.json — your Google password is never stored (Google doesn't allow apps to use it).
+If Google keeps asking you to sign in again after about a week, your Google Cloud project is in "Testing" mode:
+Google Cloud Console → APIs & Services → OAuth consent screen → Publish app ("In production"). Once is enough.
 """
 from __future__ import annotations
 
@@ -18,7 +21,8 @@ from .system import parse_when
 
 register_group("google", ["email", "e-mail", "mail", "inbox", "gmail", "unread", "reply", "calendar", "meeting",
                           "appointment", "event", "schedule", "diary", "free time", "busy", "drive", "google doc",
-                          "doc ", "docs", "sheet", "spreadsheet", "task", "to-do", "todo", "to do"])
+                          "doc ", "docs", "sheet", "spreadsheet", "task", "to-do", "todo", "to do", "slides",
+                          "presentation", "deck", "powerpoint", "pptx", "google slides"])
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
@@ -27,8 +31,16 @@ SCOPES = [
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/presentations",
 ]
 _services: dict = {}
+TESTING_HINT = ("Google signed Nova out. This happens every 7 days while your Google Cloud project is in 'Testing' "
+                "mode. Fix it once: Google Cloud Console → APIs & Services → OAuth consent screen → Publish app. "
+                "Then click Connect Google in Settings → Google.")
+
+
+class NeedsReconnect(RuntimeError):
+    pass
 
 
 def login(interactive: bool = True):
@@ -36,16 +48,30 @@ def login(interactive: bool = True):
     from google.oauth2.credentials import Credentials
     g = context.cfg.google
     token, secret = resolve(g.token_file), resolve(g.credentials_file)
-    creds = Credentials.from_authorized_user_file(str(token), SCOPES) if token.exists() else None
-    if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-    if not creds or not creds.valid:
+    creds = Credentials.from_authorized_user_file(str(token)) if token.exists() else None
+    missing = creds is not None and not creds.has_scopes(SCOPES)        # e.g. Slides was added in v2.8
+    if creds and creds.expired and creds.refresh_token and not missing:
+        from google.auth.exceptions import RefreshError
+        try:
+            creds.refresh(Request())
+        except RefreshError as e:
+            if not interactive:
+                raise NeedsReconnect(TESTING_HINT if "invalid_grant" in str(e) else f"Google sign-in failed ({e}). "
+                                     "Click Connect Google in Settings → Google.") from None
+            creds = None
+    if missing or not creds or not creds.valid:
         if not interactive:
-            raise RuntimeError("Google isn't connected yet. Run 'python main.py --google-login' once.")
+            raise NeedsReconnect("Google needs a one-time reconnect for new permissions (Slides). Click Connect Google "
+                                 "in Settings → Google." if missing else
+                                 "Google isn't connected yet. Click Connect Google in Settings → Google.")
         if not secret.exists():
             raise RuntimeError(f"Missing {secret}. See README -> Connect Google.")
         from google_auth_oauthlib.flow import InstalledAppFlow
-        creds = InstalledAppFlow.from_client_secrets_file(str(secret), SCOPES).run_local_server(port=0)
+        # offline + consent = Google always hands back a long-lived refresh token, so you sign in once
+        creds = InstalledAppFlow.from_client_secrets_file(str(secret), SCOPES).run_local_server(
+            port=0, access_type="offline", prompt="consent",
+            success_message="Nova is connected to Google. You can close this tab.")
+        _services.clear()
     token.parent.mkdir(parents=True, exist_ok=True)
     token.write_text(creds.to_json(), encoding="utf-8")
     return creds
@@ -369,6 +395,121 @@ def sheets_create(title: str, header: list[str]) -> str:
     sheets_append_row(s["spreadsheetId"], header)
     context.record("doc", title, s["spreadsheetUrl"], "Google Sheet")
     return f"Created: {s['spreadsheetUrl']} (id {s['spreadsheetId']})"
+
+
+@tool(group="google")
+def sheets_create_table(title: str, header: list[str], rows: str = "", currency_columns: list[str] | None = None) -> str:
+    """Create a ready-to-use, nicely formatted Google Sheet (bold coloured header, frozen top row, filters, sized
+    columns, rand formatting) from a header and rows.
+    Args:
+        title: sheet title
+        header: column names
+        rows: the data, one row per line, cells separated by | (e.g. "Axiz | Juniper | 1200000")
+        currency_columns: header names to format as rand amounts
+    """
+    data = [[c.strip() for c in line.split("|")] for line in (rows or "").splitlines() if line.strip()]
+    sh = svc("sheets", "v4").spreadsheets()
+    s = sh.create(body={"properties": {"title": title, "locale": "en_ZA"}}).execute()
+    sid, tab = s["spreadsheetId"], s["sheets"][0]["properties"]["sheetId"]
+    sh.values().update(spreadsheetId=sid, range="A1", valueInputOption="USER_ENTERED",
+                       body={"values": [header] + data}).execute()
+    n = len(header)
+    reqs = [
+        {"repeatCell": {"range": {"sheetId": tab, "startRowIndex": 0, "endRowIndex": 1},
+                        "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.16, "green": 0.2, "blue": 0.45},
+                                                       "textFormat": {"bold": True, "foregroundColor":
+                                                                      {"red": 1, "green": 1, "blue": 1}}}},
+                        "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+        {"updateSheetProperties": {"properties": {"sheetId": tab, "gridProperties": {"frozenRowCount": 1}},
+                                   "fields": "gridProperties.frozenRowCount"}},
+        {"setBasicFilter": {"filter": {"range": {"sheetId": tab, "startRowIndex": 0, "endRowIndex": len(data) + 1,
+                                                 "startColumnIndex": 0, "endColumnIndex": n}}}},
+        {"autoResizeDimensions": {"dimensions": {"sheetId": tab, "dimension": "COLUMNS", "startIndex": 0, "endIndex": n}}},
+    ]
+    for name in currency_columns or []:
+        if name in header:
+            i = header.index(name)
+            reqs.append({"repeatCell": {"range": {"sheetId": tab, "startRowIndex": 1, "startColumnIndex": i,
+                                                  "endColumnIndex": i + 1},
+                                        "cell": {"userEnteredFormat": {"numberFormat": {"type": "CURRENCY",
+                                                                                        "pattern": "\"R\" #,##0"}}},
+                                        "fields": "userEnteredFormat.numberFormat"}})
+    sh.batchUpdate(spreadsheetId=sid, body={"requests": reqs}).execute()
+    context.record("doc", title, s["spreadsheetUrl"], f"Google Sheet · {len(data)} rows")
+    return f"Created '{title}' with {len(data)} rows: {s['spreadsheetUrl']}"
+
+
+def _outline(text: str) -> list[dict]:
+    """'# Slide title' lines start a slide; '- ' lines (or plain lines) are its bullets."""
+    slides: list[dict] = []
+    for line in (text or "").splitlines():
+        t = line.strip()
+        if not t:
+            continue
+        if t.startswith("#"):
+            slides.append({"title": t.lstrip("# ").strip(), "bullets": []})
+        else:
+            if not slides:
+                slides.append({"title": "", "bullets": []})
+            slides[-1]["bullets"].append(t.lstrip("-•* ").strip())
+    return slides
+
+
+@tool(group="google")
+def slides_create(title: str, outline: str, subtitle: str = "", export_pptx: bool = True) -> str:
+    """Create a Google Slides presentation (and a PowerPoint .pptx copy) from an outline.
+    Args:
+        title: presentation title (also the title slide)
+        outline: one slide per "# Slide title" line, followed by "- bullet" lines, e.g.
+                 "# Q3 results\n- Revenue R6.2m\n- GP 17.4%\n# Next steps\n- Mist refresh with Axiz"
+        subtitle: text under the title on the first slide (e.g. "Avaya QBR · Axiz · October 2026")
+        export_pptx: also save a PowerPoint copy on the PC and send it with the reply
+    """
+    import uuid
+    slides = _outline(outline)
+    api = svc("slides", "v1").presentations()
+    pres = api.create(body={"title": title}).execute()
+    pid = pres["presentationId"]
+    first = pres["slides"][0]["objectId"]
+    reqs: list[dict] = []
+    t_id, s_id = f"t_{uuid.uuid4().hex[:8]}", f"s_{uuid.uuid4().hex[:8]}"
+    reqs.append({"createSlide": {"objectId": f"cover_{uuid.uuid4().hex[:6]}", "insertionIndex": 0,
+                                 "slideLayoutReference": {"predefinedLayout": "TITLE"},
+                                 "placeholderIdMappings": [
+                                     {"layoutPlaceholder": {"type": "CENTERED_TITLE"}, "objectId": t_id},
+                                     {"layoutPlaceholder": {"type": "SUBTITLE"}, "objectId": s_id}]}})
+    reqs.append({"insertText": {"objectId": t_id, "text": title}})
+    if subtitle:
+        reqs.append({"insertText": {"objectId": s_id, "text": subtitle}})
+    for i, sl in enumerate(slides, 1):
+        a, b = f"h_{uuid.uuid4().hex[:8]}", f"b_{uuid.uuid4().hex[:8]}"
+        reqs.append({"createSlide": {"insertionIndex": i, "slideLayoutReference": {"predefinedLayout": "TITLE_AND_BODY"},
+                                     "placeholderIdMappings": [
+                                         {"layoutPlaceholder": {"type": "TITLE"}, "objectId": a},
+                                         {"layoutPlaceholder": {"type": "BODY"}, "objectId": b}]}})
+        if sl["title"]:
+            reqs.append({"insertText": {"objectId": a, "text": sl["title"]}})
+        if sl["bullets"]:
+            reqs.append({"insertText": {"objectId": b, "text": "\n".join(sl["bullets"])}})
+    reqs.append({"deleteObject": {"objectId": first}})
+    api.batchUpdate(presentationId=pid, body={"requests": reqs}).execute()
+    url = f"https://docs.google.com/presentation/d/{pid}/edit"
+    context.record("doc", title, url, f"Google Slides · {len(slides) + 1} slides")
+    out = f"Created '{title}' ({len(slides) + 1} slides): {url}"
+    if export_pptx:
+        try:
+            data = svc("drive", "v3").files().export(
+                fileId=pid, mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation").execute()
+            name = re.sub(r"[^\w\- ]", "", title)[:60] or "Presentation"
+            dest = resolve("workspace/docs") / f"{name}.pptx"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(data)
+            context.attach(dest)
+            context.record("file", dest.name, dest, "PowerPoint copy of the Google Slides deck")
+            out += f" · PowerPoint copy: {dest}"
+        except Exception as e:
+            out += f" (PowerPoint copy failed: {e})"
+    return out
 
 
 # ── Tasks ─────────────────────────────────────────────────

@@ -108,7 +108,7 @@ One-time, ~10 minutes. Google's APIs are free for personal use.
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → **New project** → name it `Nova`.
 2. **APIs & Services → Library**, enable: **Gmail API, Google Calendar API, Google Drive API,
-   Google Docs API, Google Sheets API, Google Tasks API**.
+   Google Docs API, Google Sheets API, Google Slides API, Google Tasks API**.
 3. **APIs & Services → OAuth consent screen** (Google Auth Platform):
    - User type **External**, app name `Nova`, your email as support and developer contact.
    - **Audience / Test users:** add your Gmail address.
@@ -116,11 +116,9 @@ One-time, ~10 minutes. Google's APIs are free for personal use.
      see an "unverified app" warning when you sign in. Click *Advanced → Go to Nova*.
 4. **Credentials → Create credentials → OAuth client ID → Application type: Desktop app** → **Download JSON**.
 5. Save it as **`secrets\credentials.json`** in the Nova folder.
-6. Run:
-   ```bat
-   run.bat --google-login
-   ```
-   Approve in the browser. The token is saved to `secrets\token.json`.
+6. In Nova: **Settings → Google → Connect Google** (or `run.bat --google-login`).
+   Approve in the browser once. Nova keeps a refreshable token in `secrets\token.json`, so you never log in
+   again, and your Google password is never stored.
 
 Test by saying: *"What's on my calendar today?"*
 

@@ -4,6 +4,20 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-09-30
+### Added
+- **🎨 Canva (official connector)** — first in Settings → Extensions → *Add an MCP server*. Nova can create and edit
+  posters, social posts, presentations, thumbnails and flyers in your Canva account, find, resize and export designs.
+  The first start opens a Canva sign-in in your browser; after that it stays signed in.
+- **Google Slides:** "Make a 6-slide Avaya QBR deck for Axiz" → a Google Slides presentation **plus a PowerPoint
+  (.pptx) copy** on your PC (sent with the reply on Telegram).
+- **Ready-to-use Google Sheets:** coloured bold header, frozen top row, filters, sized columns and rand formatting.
+### Changed
+- **Google stays signed in:** Settings → Google → **Connect Google** (no more command line). Nova asks Google for a
+  long-lived refresh token, so you sign in once. If Google ever signs Nova out, the message now says exactly why and
+  how to fix it (the 7-day "Testing mode" limit → *Publish app* once). Your Google password is never stored.
+- Slow-to-start MCP servers (like Canva's first sign-in) no longer hold up the others.
+
 ## [2.7.0] — 2026-09-30
 ### Added — Focus & wellbeing (made for ADHD and bipolar II)
 - **◎ Focus mode** (button top right, or press **F**): one screen with the time, your next meeting countdown, the **one

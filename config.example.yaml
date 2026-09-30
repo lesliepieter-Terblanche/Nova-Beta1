@@ -225,6 +225,14 @@ system:
 mcp_import_claude_desktop: false   # true = also load servers from Claude Desktop's config
 
 mcp_servers:
+  canva:                     # official Canva connector — designs, presentations, social posts (Settings → Extensions → Add)
+    enabled: false
+    command: npx
+    args: ["-y", "mcp-remote@latest", "https://mcp.canva.com/mcp"]   # first start opens a Canva sign-in in your browser
+    timeout: 300
+    keywords: [canva, design, poster, flyer, social post, thumbnail, banner, brochure, presentation design, brand kit]
+    confirm: auto
+
   windows:                   # control any Windows app: click, type, read the screen (CursorTouch/Windows-MCP)
     enabled: false
     command: uvx

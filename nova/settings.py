@@ -395,6 +395,12 @@ def write_env(updates: dict[str, str | None]) -> None:
 # ── extensions ────────────────────────────────────────────
 # One-click MCP servers (Settings → Extensions → Add). All free; they run on this PC through uv (uvx).
 MCP_CATALOG = [
+    {"name": "canva", "title": "Canva", "desc": "Design posters, social posts, presentations, thumbnails and flyers "
+     "in your Canva account; find, edit, resize and export designs. Signs in once in your browser (needs Node.js)",
+     "spec": {"command": "npx", "args": ["-y", "mcp-remote@latest", "https://mcp.canva.com/mcp"], "timeout": 300,
+              "confirm": "auto", "keywords": ["canva", "design", "poster", "flyer", "social post", "instagram post",
+                                              "thumbnail", "banner", "brochure", "presentation design", "brand kit",
+                                              "infographic", "invitation", "resize design", "logo"]}},
     {"name": "windows", "title": "Windows control", "desc": "Open apps, click, type, read windows — full PC control",
      "spec": {"command": "uvx", "args": ["windows-mcp"], "confirm": "auto",
               "keywords": ["window", "app", "desktop", "click on", "type into", "outlook app", "settings app"]}},
@@ -740,9 +746,26 @@ def run_test(kind: str) -> dict:
             from .skills import globe
             return {"ok": True, "message": globe.install()}
         if kind == "google":
-            ok = (ROOT / "secrets" / "token.json").exists()
-            return {"ok": ok, "message": "Google is connected." if ok else
-                    "Not connected yet — run: run.bat --google-login"}
+            from .skills import google_ws
+            if not (ROOT / "secrets" / "token.json").exists():
+                return {"ok": False, "message": "Not connected yet — click Connect Google."}
+            try:
+                google_ws.login(interactive=False)
+                google_ws._services.clear()
+                me = google_ws.svc("gmail", "v1").users().getProfile(userId="me").execute().get("emailAddress", "")
+                return {"ok": True, "message": f"Connected as {me} — Nova stays signed in (no need to log in again)."}
+            except Exception as e:
+                return {"ok": False, "message": str(e)}
+        if kind == "google_connect":
+            import threading as _t
+
+            from .skills import google_ws
+            if not (ROOT / "secrets" / "credentials.json").exists():
+                return {"ok": False, "message": "First put your Google OAuth client file in secrets/credentials.json "
+                        "(README → Connect Google)."}
+            _t.Thread(target=google_ws.login, kwargs={"interactive": True}, daemon=True).start()
+            return {"ok": True, "message": "A Google sign-in page is opening in your browser on this PC — pick your "
+                    "account and allow everything once. Then click Check."}
         return {"ok": False, "message": f"Unknown test '{kind}'."}
     except Exception as e:
         return {"ok": False, "message": f"{type(e).__name__}: {e}"}

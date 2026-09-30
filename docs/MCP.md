@@ -65,6 +65,7 @@ one click in **Settings → Extensions → Add an MCP server** (then restart Nov
 
 | Server | What Nova gains | Runs | Setup |
 |---|---|---|---|
+| ⚙➕ [Canva](https://www.canva.dev/docs/connect/mcp-server/) (official) | Create and edit designs, presentations, social posts; resize, export | Cloud (your Canva account) | `npx -y mcp-remote https://mcp.canva.com/mcp` — signs in once in the browser |
 | ⚙➕ [Excel MCP](https://github.com/haris-musa/excel-mcp-server) | Read/write .xlsx: sheets, formulas, formatting, charts, pivots | Local | `uvx excel-mcp-server stdio` |
 | ⚙➕ [ElevenLabs MCP](https://github.com/elevenlabs/elevenlabs-mcp) | Sound effects, voice design, voice cloning, transcription | Cloud (your key/credits) | `uvx elevenlabs-mcp`, `ELEVENLABS_API_KEY` |
 | ⚙➕ [YouTube transcript](https://github.com/jkawamoto/mcp-youtube-transcript) | "Summarise this video" — any YouTube transcript | Local | `uvx mcp-youtube-transcript` |

@@ -5,6 +5,7 @@ import datetime as dt
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import threading
@@ -28,7 +29,33 @@ APPS = {
     "vscode": "code", "vs code": "code", "visual studio code": "code", "terminal": "wt", "cmd": "cmd",
     "spotify": "spotify:", "settings": "ms-settings:", "task manager": "taskmgr", "whatsapp": "whatsapp:",
     "paint": "mspaint", "obsidian": "obsidian:",
+    "camera": "microsoft.windows.camera:", "webcam": "microsoft.windows.camera:", "photos": "ms-photos:",
+    "calendar": "outlookcal:", "mail": "outlookmail:", "clock": "ms-clock:", "alarms": "ms-clock:",
+    "snipping tool": "ms-screenclip:", "screen snip": "ms-screenclip:", "store": "ms-windows-store:",
+    "onedrive": "onedrive", "downloads": "shell:Downloads", "documents": "shell:Personal",
+    "desktop": "shell:Desktop", "pictures": "shell:My Pictures", "control panel": "control",
+    "zoom": "zoommtg:", "telegram": "tg:", "canva": "https://www.canva.com", "linkedin": "https://www.linkedin.com",
+    "facebook": "https://www.facebook.com", "tiktok": "https://www.tiktok.com",
 }
+
+
+def _start_menu_app(name: str) -> str | None:
+    """Find any installed app by its Start-menu name, e.g. "Avaya Workplace", "Adobe Acrobat"."""
+    import os
+    roots = [Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "Microsoft/Windows/Start Menu/Programs",
+             Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
+             Path.home() / "Desktop"]
+    want = re.sub(r"[^a-z0-9]", "", name.lower())
+    best = None
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for f in root.rglob("*.lnk"):
+            stem = re.sub(r"[^a-z0-9]", "", f.stem.lower())
+            if want and want in stem and "uninstall" not in stem:
+                if best is None or len(stem) < len(re.sub(r"[^a-z0-9]", "", best.stem.lower())):
+                    best = f
+    return str(best) if best else None
 
 
 def _tz():
@@ -54,9 +81,13 @@ def get_time() -> str:
 def open_app(name: str) -> str:
     """Open an application on the PC.
     Args:
-        name: app name, e.g. chrome, excel, word, outlook, vscode, spotify, calculator, explorer
+        name: app name, e.g. chrome, excel, word, outlook, teams, camera (webcam), explorer, downloads, or any
+              installed app by its Start-menu name
     """
-    target = APPS.get(name.lower().strip(), name)
+    target = APPS.get(name.lower().strip())
+    if target is None and WINDOWS:
+        target = _start_menu_app(name) or name
+    target = target or name
     if WINDOWS:
         subprocess.Popen(f'start "" "{target}"', shell=True)
     else:

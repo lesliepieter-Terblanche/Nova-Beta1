@@ -52,6 +52,7 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 👤 **Presence awareness** | Greets you (and briefs you) when you sit down; pauses, holds messages and can lock the PC when you walk away |
 | ✋ **Gesture control** | Webcam hand gestures: ✋ stop · 👍/👎 yes/no · ✌️ listen · 👉 point = mouse · 🤏 pinch = click/drag the brain or globe (MediaPipe, local) |
 | 🌐 **God's Eye View** | Live 3D globe with real planes, ships, satellites, quakes and weather — "show me Cape Town in night vision", "what planes are overhead?" ([gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), needs Node 24) |
+| 🖐 **PC hands** | Opens apps, webcam and folders, manages windows, clicks and types in any app — "do it for me" step by step, stops before sending/paying/deleting, Esc to take over |
 | ◎ **Focus & wellbeing** | Made for ADHD and bipolar II: one thing at a time, "I'm stuck" first steps, brain dump, calm visuals, routine anchors, night guardrails, private encrypted check-ins and a summary for your doctor |
 | 📥 **Forward to file** | Forward links, PDFs, photos, business cards or voice notes to the Telegram bot — summarised and filed in your brain |
 | 👤 **People cards** | Everyone you deal with on one card — company, role, contact details, deals and every mention, linked in the globe |

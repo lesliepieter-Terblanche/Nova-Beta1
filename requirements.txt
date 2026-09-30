@@ -10,7 +10,8 @@ tzdata
 
 # voice
 sounddevice>=0.4.7
-pynput>=1.7            # push-to-talk hotkey
+pynput>=1.7            # push-to-talk hotkey, PC hands (mouse & keyboard)
+pywinauto>=0.6.8 ; sys_platform == "win32"   # PC hands: click buttons in any Windows app by name
 soundcard>=0.4.3        # meeting recorder: captures PC audio (WASAPI loopback)
 openwakeword==0.6.0
 onnxruntime>=1.17

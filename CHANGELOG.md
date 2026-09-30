@@ -4,6 +4,20 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.9.0] — 2026-09-30
+### Added — 🖐 PC hands
+- **Nova uses your PC like you do:** opens any app (also by its Start-menu name, e.g. "open Avaya Workplace"), your
+  **webcam** (Camera app), folders (Downloads, Documents, Desktop…), and manages windows — bring to front, minimise,
+  maximise, snap left/right, close.
+- **Clicks and types in any Windows app** by the names of its buttons and fields (Windows UI Automation — reliable,
+  no pixel guessing), presses shortcuts, scrolls, and clicks things it can *see* when they have no name.
+- **"Do it for me":** "open Excel, open Q3 deals and sort by Value", "in Outlook start a mail to Sam with the price
+  list attached" — Nova works step by step and shows each step in the dashboard's Busy card.
+- **Safety:** it stops before anything that sends, pays, buys, deletes, submits or publishes and asks you
+  ("go ahead and send"). Press **Esc**, or throw the mouse into the top-left corner, to take over instantly.
+  Night guardrails still hold emails until morning.
+- Needs `pip install -r requirements.txt` (adds pywinauto, Windows only).
+
 ## [2.8.3] — 2026-09-30
 ### Added
 - **Settings → Google → Google sign-in details:** paste your **Client ID** and **Client secret** (or upload the JSON

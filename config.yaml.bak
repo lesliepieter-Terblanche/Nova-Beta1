@@ -14,8 +14,11 @@ assistant:
 llm:
   # Hybrid: local Ollama for everyday requests. Hard tasks / failures go down the "smart" list.
   # Providers without an API key in .env are skipped automatically.
-  primary: ollama
-  smart: [gemini, groq]      # tried in this order
+  primary: gemini
+  smart:                     # tried in this order
+    - gemini
+    - claude
+    - groq
   providers:
     ollama:
       base_url: http://localhost:11434/v1
@@ -28,36 +31,34 @@ llm:
       timeout: 90
     groq:                    # free API key: console.groq.com/keys  -> GROQ_API_KEY in .env
       base_url: https://api.groq.com/openai/v1
-      model: llama-3.3-70b-versatile
+      model: openai/gpt-oss-120b
       key_env: GROQ_API_KEY
       timeout: 60
-    ollama_vision:           # fully local vision (setup offers to download it: `ollama pull gemma3:4b`, ~3.3 GB)
-      base_url: http://localhost:11434/v1
-      model: gemma3:4b
-      timeout: 180
-  # Vision (screen, photos, webcam, ads): tried in order. Gemini is sharper; local keeps working offline.
-  vision_providers: [gemini, ollama_vision]
+    # ollama_vision:         # fully local vision: `ollama pull gemma3:4b`, then set vision_provider: ollama_vision
+    #   base_url: http://localhost:11434/v1
+    #   model: gemma3:4b
+    #   timeout: 120
+  vision_provider: gemini    # used to look at screenshots, photos and webcam images
   # Requests containing these go straight to the smarter cloud model.
   escalate_keywords: ["think hard", "in detail", "plan ", "write a", "write me", "build a website", "analyse", "analyze", "compare", "summarise", "summarize", "draft", "explain why", "strategy"]
   max_tool_rounds: 6
 
 voice:
   enabled: true
-  wake_word: hey_jarvis      # built-in openWakeWord models: hey_jarvis, alexa, hey_mycroft
+  wake_word: hey_nova        # built-in openWakeWord models: hey_jarvis, alexa, hey_mycroft
   wake_threshold: 0.5
   stt_model: base.en         # tiny.en | base.en | small.en | base (multilingual). Runs on CPU.
   stt_language: en           # null = auto-detect (e.g. Afrikaans, with a multilingual model)
-  silence_seconds: 1.1       # stop recording after this much silence
+  silence_seconds: 1.0       # stop recording after this much silence
   max_record_seconds: 25
-  follow_up_seconds: 6       # after replying, keep listening this long without needing the wake word
-  max_spoken_chars: 450      # longer answers: speak the start, send the full text to Telegram
+  follow_up_seconds: 5       # after replying, keep listening this long without needing the wake word
+  max_spoken_chars: 760      # longer answers: speak the start, send the full text to Telegram
   chime: true                # little beep when Nova starts listening
-  barge_in: true             # say the wake word (or press the hotkey) while Nova talks to interrupt it
-  hotkey: "<ctrl>+<alt>+<space>"   # push-to-talk from anywhere in Windows; "" to disable
 
+  barge_in: true
+  hotkey: <space>
 tts:
-  engine: elevenlabs         # first choice: elevenlabs | kokoro | piper | windows
-  fallback: [kokoro, piper, windows]   # tried in order if the first choice fails (no internet, no credits…)
+  engine: elevenlabs         # elevenlabs | piper   (piper is the offline backup, used automatically on failure)
   elevenlabs:
     voice_id: JBFqnCBsd6RMkjVDRZzb   # replace with your own voice ID from elevenlabs.io -> Voices
     model: eleven_flash_v2_5         # fastest; use eleven_multilingual_v2 for richer quality
@@ -65,19 +66,17 @@ tts:
     similarity_boost: 0.8
     style: 0.15
     speed: 1.0
-  kokoro:                    # natural local voice (Kokoro-82M, runs on CPU) — downloaded by setup
-    model: models/kokoro-v1.0.int8.onnx
-    voices: models/voices-v1.0.bin
-    voice: bm_george         # British: bm_george bm_lewis bm_daniel bf_emma bf_isabella · American: am_adam af_heart af_bella
-    lang: en-gb              # en-gb | en-us
-    speed: 1.0
   piper:
     voice: voices/en_GB-alan-medium.onnx
 
+  kokoro:
+    voice: bf_emma
 telegram:
   enabled: true
   # Only these Telegram user IDs may control Nova. Message the bot /id to find yours.
-  allowed_user_ids: []
+  allowed_user_ids:
+    - 987654321
+    - 1264378976
   voice_replies: true        # answer voice notes with a voice note (your ElevenLabs voice)
 
 google:
@@ -91,18 +90,20 @@ brain:
   embed_model: nomic-embed-text
   learn_automatically: true  # extract new memories after every conversation
 
-meetings:
-  folder: workspace/meetings   # recordings (the notes go to the brain's Meetings folder)
-  stt_model: small.en          # more accurate than the live-voice model; runs in the background
-  create_tasks: true           # add YOUR action items to Google Tasks
-
 dashboard:
   enabled: true
   port: 8765                 # http://localhost:8765
   open_on_start: true
 
   theme:
+    accent: '#8b7bff'
+    background: '#03040a'
+    accent2: '#4cc9f0'
+    bloom: 0.85
+    stars: 3000
+    orbit_speed: 2.3
     layout: categories
+    calm: true
 files:
   # Nova may only touch files inside these folders.
   allowed_roots:
@@ -115,16 +116,15 @@ files:
 
 web:
   sites_dir: workspace/sites
-  searxng_url: ""            # your private search engine, e.g. http://localhost:8888 (docs/ENHANCEMENTS.md)
 
 media:
   output_dir: workspace/videos
   # Optional local AI images (Stable Diffusion 1.5, ~3 GB VRAM). Needs requirements-imagegen.txt
-  captions: true             # burn subtitles into videos
-  broll: true                # stock footage behind scenes when PEXELS_API_KEY is set (free at pexels.com/api)
-  image_gen_enabled: false
+  image_gen_enabled: true
   image_model: runwayml/stable-diffusion-v1-5
 
+  broll: true
+  captions: true
 system:
   allow_shell: true          # shell commands always need a "yes" first
 
@@ -135,7 +135,7 @@ system:
 #    confirm:  auto (default: ask before write/destructive tools) | always | never | [tool names]
 #    only_tools: [..] expose just these tools (keeps small local models focused)
 # ─────────────────────────────────────────────────────────────
-mcp_import_claude_desktop: false   # true = also load servers from Claude Desktop's config
+mcp_import_claude_desktop: true    # true = also load servers from Claude Desktop's config
 
 mcp_servers:
   windows:                   # control any Windows app: click, type, read the screen (CursorTouch/Windows-MCP)
@@ -153,20 +153,20 @@ mcp_servers:
     confirm: never
 
   github:                    # repos, issues, PRs (needs Docker + a GitHub token in .env)
-    enabled: false
+    enabled: true
     command: docker
     args: ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"]
     env: {GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"}
     keywords: [github, repo, pull request, issue]
 
   git:                       # history/diffs of a local repo
-    enabled: false
+    enabled: true
     command: uvx
     args: ["mcp-server-git", "--repository", "C:/path/to/repo"]
     keywords: [git, commit, diff, branch]
 
   fetch:                     # fetch any URL as markdown (official reference server)
-    enabled: false
+    enabled: true
     command: uvx
     args: ["mcp-server-fetch"]
     keywords: [fetch, url, http]
@@ -178,7 +178,7 @@ mcp_servers:
     keywords: [blender, 3d model, 3d scene, render]
 
   google_workspace_plus:     # alternative/extra Google tools: Slides, Forms, Chat… (taylorwilsdon/google_workspace_mcp)
-    enabled: false
+    enabled: true
     command: uvx
     args: ["workspace-mcp", "--tools", "slides", "forms", "chat"]
     env: {GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}", GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"}
@@ -192,12 +192,26 @@ nova_mcp_server:
 #  Routines — things Nova does on its own at set times (docs/CONFIGURATION.md)
 # ─────────────────────────────────────────────────────────────
 routines:
-  - name: Morning briefing
-    at: "07:30"
+  - name: Latest News
+    at: "08:00"
     days: [mon, tue, wed, thu, fri]
-    prompt: "Give me my morning briefing"
+    prompt: "Give me the latest news of south africa and the war"
     speak: true
     telegram: true
+  - name: Email
+    at: "08:00"
+    days: [mon, tue, wed, thu, fri]
+    prompt: "Give me a breakdown of my unread gmail emails."
+    speak: true
+    telegram: true
+  - name: Projects
+    at: "08:00"
+    days: [mon, tue, wed, thu, fri]
+    prompt: "guve me a breakdown of all current projects outstanding, busy with and completed and prioritize the outstanding."
+    speak: true
+    telegram: true
+meetings:
+  create_tasks: true
 #  - name: Morning briefing
 #    at: "07:30"
 #    days: [mon, tue, wed, thu, fri]
@@ -209,3 +223,26 @@ routines:
 #    days: [fri]
 #    prompt: "Do my weekly review"
 #    telegram: true
+  stt_model: base.en
+dreaming:
+  drive_backup: true
+presence:
+  briefing_prompt: "I just sat down at my desk. Give me my short morning briefing: today's calendar, the weather, latest news and anything urgent."
+globe:
+  auto_start: true
+remote:
+  enabled: true
+wellbeing:
+  focus_default: true
+  night:
+    from: 22:00
+    to: 05:00
+  signals:
+    short_sleep_hours: 5.0
+  signals_telegram: true
+  plan: Get Alone time First
+  nudge_minutes: 45
+  anchors:
+    - 07:30 Morning routine | Glass of water; Medication (if any); Pick today's one thing
+    - 12:30 Lunch — step away from the screen
+    - 21:30 Wind down | Dim the screens; Write tomorrow's one thing; Bed by 22:00

@@ -148,7 +148,7 @@
   .gear { display: grid; place-items: center; width: 52px; height: 52px; color: var(--text); text-decoration: none; transition: transform .3s; }
   .gear:hover { transform: rotate(40deg); color: #fff; }
   .gear[href='/globe']:hover { transform: scale(1.08); }
-  .no-labels .hub-label, .no-labels .core-label { display: none; }
+  .no-labels .hub-label, .no-labels .proj-label, .no-labels .person-label { display: none !important; }
   .hub-label { font: 600 12.5px var(--display); letter-spacing: .06em; color: #fff; padding: 4px 10px; border-radius: 999px;
     background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); cursor: pointer;
     text-shadow: 0 0 12px var(--c); white-space: nowrap; pointer-events: auto; transform: translateY(-50%); }
@@ -339,6 +339,34 @@
     font: 600 10.5px var(--body); letter-spacing: 0; }
   .feed.min .newn.show { display: inline-block; }
 
+  /* colour key */
+  .legend { position: fixed; right: 18px; top: 124px; width: 236px; z-index: 4; padding: 38px 12px 10px 14px;
+    max-height: max(140px, calc(62vh - 250px)); overflow-y: auto; overflow-x: hidden; }
+  .legend .railhd { position: absolute; top: 13px; left: 14px; font: 600 11px var(--body); letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); }
+  .legend .minbtn { top: 8px; right: 8px; }
+  .legend h5 { margin: 10px 0 5px; font: 600 10.5px var(--body); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); display: flex; align-items: center; gap: 7px; }
+  .legend h5 svg { flex: none; }
+  .legend .keys { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; }
+  .legend .keys button { display: flex; align-items: center; gap: 7px; background: none; border: 0; padding: 3px 4px;
+    border-radius: 7px; color: var(--text); font: 12px var(--body); cursor: pointer; text-align: left; min-width: 0; }
+  .legend .keys button:hover { background: rgba(255,255,255,.06); }
+  .legend .keys button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend .keys button small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .legend .keys button.off { opacity: .35; }
+  .legend .keys.projects { grid-template-columns: 1fr; }
+  .legend .sw { width: 10px; height: 10px; flex: none; background: var(--c); box-shadow: 0 0 8px var(--c); }
+  .legend .sw.sphere { border-radius: 50%; } .legend .sw.diamond { transform: rotate(45deg) scale(.85); }
+  .legend .sw.cube { border-radius: 2px; } .legend .sw.pyramid { clip-path: polygon(50% 0, 100% 100%, 0 100%); box-shadow: none; }
+  .legend .sw.ring { border-radius: 50%; background: none; border: 2px solid var(--c); }
+  .legend .sw.line { height: 3px; border-radius: 2px; }
+  .legend .hint { font-size: 11px; color: var(--muted); margin: 8px 0 0; line-height: 1.4; }
+  .legend.min { width: auto; max-height: none; padding: 10px 44px 10px 14px; cursor: pointer; overflow: hidden; }
+  .legend.min > :not(.minbtn):not(.railhd) { display: none; }
+  .legend.min .railhd { position: static; }
+  .panel.open ~ .legend { opacity: 0; pointer-events: none; }
+
   /* people cards */
   .pcardx { display: grid; grid-template-columns: 90px 1fr; gap: 7px 10px; align-items: center; font-size: 12.5px; margin-bottom: 6px; }
   .pcardx label { color: var(--muted); }
@@ -400,6 +428,7 @@
     .reply { bottom: 80px; width: calc(100vw - 20px); }
     .panel { top: 122px; right: 10px; left: 10px; bottom: 80px; width: auto; }
     .gchip, .gcam { display: none !important; }
+    .legend { top: 118px; right: 10px; width: min(236px, calc(100vw - 20px)); max-height: 40vh; }
     .gtoast { top: 70px; }
     .tl-bar { bottom: 80px; width: calc(100vw - 20px); flex-wrap: wrap; gap: 8px; }
     .tl-bar .when { min-width: 0; flex: 1; } .tl-hist { display: none; }
@@ -486,6 +515,12 @@
     <button class="btn" id="p-focus">Focus</button>
     <button class="btn primary" id="p-open">Open on PC</button>
   </div>
+</section>
+
+<section class="legend glass" id="legend" aria-label="Colour key">
+  <div class="railhd">🎨 Colour key</div>
+  <button class="minbtn" id="legend-min" title="Minimise" aria-label="Minimise colour key">▾</button>
+  <div id="legend-body"></div>
 </section>
 
 <section class="feed glass" id="feed">
@@ -717,6 +752,14 @@ function visible(n) {
 }
 function isHot(n) { if (typeof n !== "object") n = nodeById.get(n); return !!(n && n.hot); }
 
+const MEMORY_KINDS = ["person", "project", "preference", "fact", "goal", "decision", "routine", "event"];
+const familyOf = (k) => MEMORY_KINDS.includes(k) ? "sphere" : k === "note" ? "diamond" : (k === "action" || k === "mission") ? "pyramid" : "cube";
+function shapeGeo(fam, r) {
+  if (fam === "diamond") return new THREE.OctahedronGeometry(r * 1.25);
+  if (fam === "cube") return new THREE.BoxGeometry(r * 1.55, r * 1.55, r * 1.55);
+  if (fam === "pyramid") return new THREE.TetrahedronGeometry(r * 1.45);
+  return new THREE.SphereGeometry(r, 18, 18);
+}
 function makeNode(n) {
   const group = new THREE.Group();
   const color = new THREE.Color(colorOf(n));
@@ -738,7 +781,7 @@ function makeNode(n) {
     return group;
   }
   if (n.kind === "hub") {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(3.4, 32, 32), new THREE.MeshBasicMaterial({ color }));
+    const s = new THREE.Mesh(shapeGeo(familyOf(n.hubKind), 3.4), new THREE.MeshBasicMaterial({ color }));
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.4, depthWrite: false }));
     halo.scale.set(24, 24, 1);
     const lab = htmlLabel(n.label, "hub-label", 9);
@@ -780,7 +823,8 @@ function makeNode(n) {
     return group;
   }
   const r = Math.cbrt(n.val || 4) * 1.35;
-  const s = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 18), new THREE.MeshBasicMaterial({ color }));
+  const s = new THREE.Mesh(shapeGeo(familyOf(n.kind), r), new THREE.MeshBasicMaterial({ color }));
+  if (familyOf(n.kind) !== "sphere") { s.rotation.set(hash(n.id) * 3, hash(n.id + "y") * 3, 0); }
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: n.hot ? 0.65 : 0.28, depthWrite: false }));
   halo.scale.set(r * (n.hot ? 6.5 : 4.5), r * (n.hot ? 6.5 : 4.5), 1);
   group.add(halo, s);
@@ -875,7 +919,7 @@ async function applyTheme() {
   scene.fog.color.set(t.background);
   bloom.strength = Number(t.bloom);
   orbitSpeed = Number(t.orbit_speed);
-  document.body.classList.toggle("no-labels", !t.labels);
+  document.body.classList.toggle("no-labels", !t.tags);
   if (t.layout && t.layout !== layout) applyLayout(t.layout);
   const want = Math.round(Number(t.stars));
   if (stars.geometry.attributes.position.count !== want) {
@@ -900,10 +944,39 @@ async function loadGraph() {
   if (focusSet && selected?.isProject) setFocus(clusterOf(selected.id));
   else if (focusSet && selected?.isPerson) setFocus(personCluster(selected.id));
   if (timeline.on) timelineSetup(false);
-  buildChips();
+  buildChips(); buildLegend();
   $("empty").classList.toggle("show", g.nodes.length <= 1);
 }
 
+const FAMILIES = [["sphere", "Memories"], ["diamond", "Notes"], ["cube", "Creations"], ["pyramid", "Activity"]];
+const famIcon = (fam) => `<span class="sw ${fam}" style="--c:#c8cdf0"></span>`;
+function buildLegend() {
+  const counts = {}, colors = {};
+  for (const n of data.nodes) if (n.kind === "hub") colors[n.hubKind] = n.color;
+  for (const n of data.nodes) if (!["core", "hub"].includes(n.kind)) counts[n.kind] = (counts[n.kind] || 0) + 1;
+  let h = "";
+  for (const [fam, title] of FAMILIES) {
+    const kinds = Object.keys(colors).filter((k) => familyOf(k) === fam).sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+    if (!kinds.length) continue;
+    h += `<h5>${famIcon(fam)}${title}</h5><div class="keys">${kinds.map((k) =>
+      `<button data-lk="${k}" class="${hidden.has(k) ? "off" : ""}" title="Click: list them · Alt-click: hide/show" style="--c:${colors[k]}"><span class="sw ${k === "person" ? "ring" : fam}"></span><span>${esc(labelFor(k))}</span><small>${counts[k] || 0}</small></button>`).join("")}</div>`;
+  }
+  const roots = data.nodes.filter((n) => n.isProject && !(n.parent && nodeById.has(n.parent)))
+                          .sort((a, b) => (a.short || a.label).localeCompare(b.short || b.label));
+  if (roots.length) h += `<h5><span class="sw line" style="--c:#c8cdf0"></span>Projects (lines &amp; rings)</h5><div class="keys projects">${roots.map((p) =>
+      `<button data-lp="${esc(p.id)}" style="--c:${p.pcolor || p.color}" title="${esc(p.label)}"><span class="sw line"></span><span>${esc(p.short || p.label)}</span></button>`).join("")}</div>`;
+  h += `<p class="hint">Hover any shape for its name; click a colour to list those items. ${roots.length ? "Lines in a project's colour join everything that belongs to it. " : ""}Hide or show a category under Layers (left panel).</p>`;
+  $("legend-body").innerHTML = h || `<p class="hint">Nothing in the brain yet.</p>`;
+}
+$("legend-body").addEventListener("click", (e) => {
+  const k = e.target.closest("[data-lk]"), p = e.target.closest("[data-lp]");
+  if (k && e.altKey) {
+    const kind = k.dataset.lk; hidden.has(kind) ? hidden.delete(kind) : hidden.add(kind);
+    Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility()); buildChips(); buildLegend(); return;
+  }
+  if (k) return openTopic(k.dataset.lk);
+  if (p) { const n = nodeById.get(p.dataset.lp); if (n) select(n); }
+});
 function buildChips() {
   const counts = {};
   const colors = {};
@@ -916,7 +989,7 @@ $("chips").addEventListener("click", (e) => {
   const c = e.target.closest(".chip"); if (!c) return;
   const k = c.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
   c.classList.toggle("off");
-  Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility());
+  Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility()); buildLegend();
 });
 
 async function loadStats() {
@@ -1000,17 +1073,19 @@ function setMin(id, on) {
   el.classList.toggle("min", on);
   store_.set("nova.min." + id, on ? "1" : "0");
   if (id === "rail") { btn.textContent = on ? "☰" : "‹"; btn.title = on ? "Show panel (M)" : "Minimise (M)"; }
+  else if (id === "legend") { btn.textContent = on ? "▴" : "▾"; btn.title = on ? "Show colour key" : "Minimise"; }
   else { btn.textContent = on ? "▴" : "▾"; btn.title = on ? "Show live activity" : "Minimise"; if (!on) { feedNew = 0; $("feed-new").classList.remove("show"); } }
 }
-for (const id of ["rail", "feed"]) {
+for (const id of ["rail", "feed", "legend"]) {
   $(id + "-min").onclick = (e) => { e.stopPropagation(); setMin(id, !$(id).classList.contains("min")); };
   $(id).addEventListener("click", () => { if ($(id).classList.contains("min")) setMin(id, false); });
-  if (store_.get("nova.min." + id) === "1") setMin(id, true);
+  const saved = store_.get("nova.min." + id);
+  if (saved === "1" || (saved == null && id === "legend" && innerWidth < 900)) setMin(id, true);
 }
 document.addEventListener("keydown", (e) => {
   if ((e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
-    const both = !$("rail").classList.contains("min");
-    setMin("rail", both); setMin("feed", both);
+    const all = !$("rail").classList.contains("min");
+    setMin("rail", all); setMin("feed", all); setMin("legend", all);
   }
 });
 

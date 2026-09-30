@@ -34,15 +34,18 @@ from ..config import resolve
 
 HERE = Path(__file__).parent
 
+# One clear colour per category. Each family also has its own shape on the brain (see the dashboard's colour key):
+# memories ● spheres · notes ◆ diamonds · creations ■ cubes · activity ▲ pyramids.
 HUBS = {
-    "person": ("People", "#ff8a5c"), "project": ("Projects", "#ffd166"), "preference": ("Preferences", "#f78fb3"),
-    "fact": ("Facts", "#7bdff2"), "goal": ("Goals", "#b8f2e6"), "decision": ("Decisions", "#caffbf"),
-    "routine": ("Routines", "#a0c4ff"), "event": ("Events", "#bdb2ff"),
-    "note": ("Notes", "#9b8cff"), "file": ("Files", "#8ecae6"), "site": ("Websites", "#4cc9f0"),
-    "video": ("Videos", "#ff4d6d"), "ad": ("Ads", "#ff9f1c"), "image": ("Images", "#ffb4a2"),
-    "email": ("Email", "#90e0ef"), "doc": ("Google Docs", "#80ed99"), "scrape": ("Web research", "#48cae4"),
-    "audio": ("Audio", "#e0aaff"), "meeting": ("Meetings", "#f4a261"),
-    "action": ("Actions", "#ffe066"), "mission": ("Missions", "#c77dff"),
+    "person": ("People", "#ff7a45"), "project": ("Projects", "#ffd23f"), "preference": ("Preferences", "#ff5fa2"),
+    "fact": ("Facts", "#38bdf8"), "goal": ("Goals", "#34d399"), "decision": ("Decisions", "#a3e635"),
+    "routine": ("Routines", "#6366f1"), "event": ("Events", "#e879f9"),
+    "note": ("Notes", "#a78bfa"),
+    "file": ("Files", "#94a3b8"), "site": ("Websites", "#22d3ee"), "video": ("Videos", "#ef4444"),
+    "ad": ("Ads", "#fb923c"), "image": ("Images", "#fda4af"), "email": ("Email", "#fef08a"),
+    "doc": ("Google Docs", "#2dd4bf"), "scrape": ("Web research", "#60a5fa"), "audio": ("Audio", "#c084fc"),
+    "meeting": ("Meetings", "#4ade80"),
+    "action": ("Actions", "#fde047"), "mission": ("Missions", "#d946ef"),
 }
 MEMORY_HUBS = ("person", "project", "preference", "fact", "goal", "decision", "routine", "event")
 GROUPS = {"memories": "Memories", "notes": "Notes", "creations": "Creations", "actions": "Actions",

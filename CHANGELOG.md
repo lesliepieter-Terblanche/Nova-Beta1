@@ -4,6 +4,16 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.6.1] — 2026-09-30
+### Changed
+- **A clean brain sphere:** no more name tags floating on the globe (turn them back on in Settings → Appearance →
+  *Show name tags on the brain*). Hover any shape for its name.
+- **Every category has its own colour**, and each family its own shape: memories ● spheres, notes ◆ diamonds,
+  creations ■ cubes, activity ▲ pyramids, people ● with a ring.
+- **🎨 Colour key** (top right) shows what each colour means, with counts, plus every project's colour. Click a
+  colour to list those items, click a project to light up its cluster. Minimise it with ▾ (M minimises all panels);
+  it starts minimised on phones.
+
 ## [2.6.0] — 2026-09-30
 ### Added
 - **📥 Forward anything to Telegram → filed in your brain.** Forwarded messages, bare links, PDFs/Word/Excel files,

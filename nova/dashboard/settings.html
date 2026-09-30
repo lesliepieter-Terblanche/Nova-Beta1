@@ -532,7 +532,7 @@ function current(path) { const f = FIELDS()[path]; return path in changes.values
 function updatePreview() {
   const el = $("#preview"); if (!el) return;
   const a = current("dashboard.theme.accent"), a2 = current("dashboard.theme.accent2"), bg = current("dashboard.theme.background");
-  const bloom = Number(current("dashboard.theme.bloom")), labels = current("dashboard.theme.labels");
+  const bloom = Number(current("dashboard.theme.bloom")), labels = current("dashboard.theme.tags");
   const g = (c, s) => `box-shadow:0 0 ${8 + 18 * bloom}px ${2 + 6 * bloom}px ${c};background:${c};width:${s}px;height:${s}px`;
   const stars = Array.from({ length: Math.min(160, Math.round(Number(current("dashboard.theme.stars")) / 40)) }, (_, i) =>
     `<span class="orb" style="left:${(i * 37) % 100}%;top:${(i * 53) % 100}%;width:2px;height:2px;background:#c8d0ff;opacity:.6"></span>`).join("");

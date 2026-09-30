@@ -93,7 +93,8 @@ The rules:
 - **Dependencies:** add them to a `requirements-plugins.txt` and `pip install -r` it.
   Import heavy libraries *inside* the function so Nova still starts if they're missing.
 
-See `plugins/currency.py` for a complete working example.
+See `plugins/currency.py` for a small working example, and `plugins/loadshedding.py`, `plugins/price_watch.py`
+and `plugins/news.py` for bigger ones (settings, background checks, Telegram alerts).
 
 ---
 

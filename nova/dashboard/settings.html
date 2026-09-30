@@ -212,6 +212,8 @@ const ICONS = {
   puzzle: '<path d="M10 3h4v3a2 2 0 1 0 4 0V3h3v7h-3a2 2 0 1 0 0 4h3v7h-7v-3a2 2 0 1 0-4 0v3H3v-7h3a2 2 0 1 0 0-4H3V3h7z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
+  news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
@@ -265,6 +267,8 @@ const INTRO = {
   google: "Gmail, Calendar, Drive, Docs, Sheets and Tasks.",
   files: "Where Nova may read and write, plus web and video options.",
   remote: "Open Nova's dashboard and the globe on your phone, anywhere, privately. 1) Install Tailscale on this PC and your phone (tailscale.com/download) and sign in with the same account on both. 2) Click Set up. 3) Scan the QR code from the 📱 button on the dashboard. Only your own devices can reach it — nothing is public.",
+  loadshedding: "Your load-shedding schedule from EskomSePush, plus a spoken and Telegram heads-up before the power goes off. 1) Get the free token (API keys → EskomSePush token). 2) Say 'find my load-shedding area' with your suburb, then 'use area <id>'. Free tier = 50 checks a day; Nova uses about 10.",
+  news: "Headlines from News24, BusinessTech, MyBroadband and TechCentral, plus news about the companies you work with. Ask 'what's in the news?', 'any news about Nokia?' or 'vendor news'. Free, no key needed.",
   dreaming: "Every night Nova merges duplicate memories, connects related ideas, writes the day's journal (brain/Journal) and makes an encrypted backup (backups folder, last 7). Restore with: python -m nova.dreaming restore <file> --apply",
   presence: "Nova notices when you sit down (welcome back, morning briefing) and when you walk away (stops talking, keeps messages for you, can lock the PC). Face detection runs on your PC; no pictures are kept. Typing also counts as being here.",
   gestures: "Control Nova with your hands through the webcam: ✋ stop · 👍 yes · 👎 no · ✌️ listen · ✊ Escape · 👋 swipe · 👉 point to move the mouse · 🤏 pinch to click or drag. Hold a gesture for about half a second. Runs on your PC only.",
@@ -277,6 +281,8 @@ const TESTS = { voice: [["voice", "Test voice"], ["elevenlabs", "Check ElevenLab
   globe: [["globe", "Check"], ["globe_install", "Install"]],
   gestures: [["gestures", "Try it now"], ["gestures_off", "Turn off"]],
   presence: [["presence", "Try it now"], ["presence_off", "Turn off"]],
+  loadshedding: [["loadshedding", "Check my schedule"]],
+  news: [["news", "Get headlines"]],
   dreaming: [["dream", "Dream now"], ["backup", "Back up now"]],
   remote: [["remote", "Check"], ["remote_on", "Set up"], ["remote_off", "Turn off"]] };
 
@@ -438,13 +444,24 @@ function renderExtensions() {
     <div class="card glass"><h3>MCP servers</h3>${x.mcp_servers.map((m) => row("mcp_servers", m, m.target + " · confirm: " + m.confirm)).join("") || '<p class="note">None configured.</p>'}
       <div class="ext"><div class="info"><b>Also load Claude Desktop's MCP servers</b><small>Reads claude_desktop_config.json</small></div>
       <label class="switch"><input type="checkbox" data-ext="mcp_import_claude_desktop" ${x.mcp_import_claude_desktop ? "checked" : ""}><span></span></label></div>
-      <p class="note">Add new servers in config.yaml (see docs/MCP.md) — they'll appear here.</p></div>`;
+      <p class="note">Other servers: add them in config.yaml (see docs/MCP.md) — they'll appear here.</p></div>
+    <div class="card glass"><h3>Add an MCP server <small style="text-transform:none;letter-spacing:0">— free, one click (installed with Nova's requirements)</small></h3>${
+      (x.mcp_catalog || []).map((c) => `<div class="ext"><div class="info"><b>${esc(c.title)}</b><small>${esc(c.desc)}</small></div>
+        ${c.added ? `<span class="lock">added</span>` : `<button class="btn small" data-mcpadd="${esc(c.name)}">Add</button>`}</div>`).join("")}</div>`;
 }
 $("#main").addEventListener("change", (e) => {
   const c = e.target.closest("[data-ext]"); if (!c) return;
   const x = changes.extensions ||= {};
   if (c.dataset.ext === "mcp_import_claude_desktop") x.mcp_import_claude_desktop = c.checked;
   else (x[c.dataset.ext] ||= {})[c.dataset.name] = c.checked;
+  markDirty();
+});
+
+$("#main").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-mcpadd]"); if (!b) return;
+  const x = changes.extensions ||= {};
+  (x.mcp_add ||= []).includes(b.dataset.mcpadd) || x.mcp_add.push(b.dataset.mcpadd);
+  b.outerHTML = `<span class="lock">added — Save, then restart</span>`;
   markDirty();
 });
 

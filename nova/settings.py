@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -36,6 +37,9 @@ SECRETS = [
      "help": "Encrypts the nightly backups. Made for you if empty — keep a copy, you need it to restore"},
     {"key": "TELEGRAM_BOT_TOKEN", "label": "Telegram bot token", "group": "Remote",
      "help": "Telegram → @BotFather → /newbot", "link": "https://t.me/BotFather", "test": "telegram"},
+    {"key": "ESP_TOKEN", "label": "EskomSePush token", "group": "South Africa",
+     "help": "Free (50 checks a day) — load-shedding schedule and warnings", "link": "https://eskomsepush.gumroad.com/l/api",
+     "test": "loadshedding"},
     {"key": "PEXELS_API_KEY", "label": "Pexels API key", "group": "Media",
      "help": "Free stock footage for videos", "link": "https://www.pexels.com/api/"},
     {"key": "HA_TOKEN", "label": "Home Assistant token", "group": "MCP servers",
@@ -147,6 +151,18 @@ SCHEMA = [
          "help": "Switched on automatically after Set up works. Reconnects Tailscale and re-shares Nova on every start"},
         {"path": "dashboard.allowed_hosts", "label": "Extra allowed addresses", "type": "list",
          "help": "Not needed for Tailscale — your PC's Tailscale name is allowed automatically"},
+    ]},
+    {"id": "loadshedding", "title": "Load-shedding", "icon": "bolt", "fields": [
+        {"path": "loadshedding.area_id", "label": "Your EskomSePush area id", "type": "text", "default": "",
+         "help": "Say 'find my load-shedding area Roodepoort' and Nova fills this in"},
+        {"path": "loadshedding.warn", "label": "Warn me before the power goes off", "type": "bool", "default": True},
+        {"path": "loadshedding.warn_minutes", "label": "…this many minutes before", "type": "number", "min": 5,
+         "max": 120, "default": 30},
+    ]},
+    {"id": "news", "title": "News", "icon": "news", "fields": [
+        {"path": "news.vendors", "label": "Companies to follow", "type": "list",
+         "default": ["Juniper Networks", "Avaya", "Nokia", "SonarSource", "Westcon-Comstor"],
+         "help": "One per line — used for 'vendor news' and the morning briefing"},
     ]},
     {"id": "dreaming", "title": "Dreaming", "icon": "moon", "fields": [
         {"path": "dreaming.enabled", "label": "Dream every night", "type": "bool", "default": True},
@@ -337,6 +353,34 @@ def write_env(updates: dict[str, str | None]) -> None:
 
 
 # ── extensions ────────────────────────────────────────────
+# One-click MCP servers (Settings → Extensions → Add). All free; they run on this PC through uv (uvx).
+MCP_CATALOG = [
+    {"name": "windows", "title": "Windows control", "desc": "Open apps, click, type, read windows — full PC control",
+     "spec": {"command": "uvx", "args": ["windows-mcp"], "confirm": "auto",
+              "keywords": ["window", "app", "desktop", "click on", "type into", "outlook app", "settings app"]}},
+    {"name": "excel", "title": "Excel", "desc": "Read and write .xlsx workbooks in Documents: sheets, formulas, charts",
+     "spec": {"command": "uvx", "args": ["excel-mcp-server", "stdio"], "env": {"EXCEL_FILES_PATH": "${USERPROFILE}/Documents"},
+              "confirm": "auto", "keywords": ["excel", "xlsx", "spreadsheet", "workbook", "pivot"]}},
+    {"name": "elevenlabs", "title": "ElevenLabs studio", "desc": "Voice design, sound effects, voice cloning, "
+     "transcripts (uses your ElevenLabs key and credits)",
+     "spec": {"command": "uvx", "args": ["elevenlabs-mcp"], "env": {"ELEVENLABS_API_KEY": "${ELEVENLABS_API_KEY}",
+                                                                     "ELEVENLABS_MCP_BASE_PATH": "{workspace}/audio"},
+              "confirm": "auto", "keywords": ["sound effect", "voice design", "clone voice", "elevenlabs", "design a voice"]}},
+    {"name": "youtube", "title": "YouTube transcripts", "desc": "Read any YouTube video's transcript — "
+     "'summarise this video'", "spec": {"command": "uvx", "args": ["mcp-youtube-transcript"], "confirm": "never",
+                                  "keywords": ["youtube", "video transcript", "summarise this video", "summarize this video"]}},
+]
+
+
+def mcp_catalog_spec(name: str) -> dict | None:
+    item = next((c for c in MCP_CATALOG if c["name"] == name), None)
+    if not item:
+        return None
+    ws = str((ROOT / "workspace").resolve()).replace("\\", "/")
+    spec = json.loads(json.dumps(item["spec"]).replace("{workspace}", ws))
+    return {"enabled": True, **spec}
+
+
 def extension_inventory(doc) -> dict:
     from .skills import SKILLS
     disabled_skills = set(get_path(doc, "skills.disabled", []) or [])
@@ -364,6 +408,8 @@ def extension_inventory(doc) -> dict:
         "playbooks": books,
         "mcp_servers": servers,
         "mcp_import_claude_desktop": bool(get_path(doc, "mcp_import_claude_desktop", False)),
+        "mcp_catalog": [{k: c[k] for k in ("name", "title", "desc")} | {"added": get_path(doc, f"mcp_servers.{c['name']}") is not None}
+                        for c in MCP_CATALOG],
     }
 
 
@@ -418,6 +464,16 @@ def apply(payload: dict) -> dict:
                 if get_path(doc, f"mcp_servers.{name}") is not None:
                     set_path(doc, f"mcp_servers.{name}.enabled", bool(on))
                     saved.append(f"mcp_servers.{name}.enabled")
+            for name in ext.get("mcp_add") or []:
+                spec = mcp_catalog_spec(str(name))
+                if not spec:
+                    errors[f"mcp_add.{name}"] = "unknown server"
+                    continue
+                if get_path(doc, f"mcp_servers.{name}") is None:
+                    set_path(doc, f"mcp_servers.{name}", spec)
+                else:
+                    set_path(doc, f"mcp_servers.{name}.enabled", True)
+                saved.append(f"mcp_servers.{name}")
             if "mcp_import_claude_desktop" in ext:
                 set_path(doc, "mcp_import_claude_desktop", bool(ext["mcp_import_claude_desktop"]))
                 saved.append("mcp_import_claude_desktop")
@@ -579,6 +635,20 @@ def run_test(kind: str) -> dict:
                 return {"ok": True, "message": f"On — open {st['url']} on your phone (Tailscale on)."
                         + (f" Globe: {st['globe_url']}" if st["globe_url"] else "")}
             return {"ok": st["running"], "message": st["message"] or "Tailscale is connected but not serving Nova yet."}
+        if kind in ("loadshedding", "news"):
+            import importlib.util
+            import sys
+            os.environ.update({k: v for k, v in env.items() if k == "ESP_TOKEN" and v})
+            mod = sys.modules.get(f"nova_plugins.{kind}")          # the copy Nova already loaded
+            if mod is None:
+                spec = importlib.util.spec_from_file_location(f"nova_plugins.{kind}", ROOT / "plugins" / f"{kind}.py")
+                mod = importlib.util.module_from_spec(spec)
+                sys.modules[spec.name] = mod
+                spec.loader.exec_module(mod)
+            from . import context as _ctx
+            _ctx.cfg = _ctx.cfg or cfg
+            out = mod.loadshedding_status() if kind == "loadshedding" else mod.news_briefing(max_items=3)
+            return {"ok": not out.startswith("ERROR"), "message": out.removeprefix("ERROR: ")}
         if kind in ("dream", "backup"):
             import threading as _t
 

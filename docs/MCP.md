@@ -60,11 +60,15 @@ Tools appear as `<server>__<tool>`, e.g. `windows__Click-Tool`. Check what's con
 
 ## Recommended servers (free, local-first)
 
-The ones marked ⚙ have ready-made, disabled entries in `config.example.yaml`.
+The ones marked ⚙ have ready-made, disabled entries in `config.example.yaml`. The ones marked ➕ can be added with
+one click in **Settings → Extensions → Add an MCP server** (then restart Nova).
 
 | Server | What Nova gains | Runs | Setup |
 |---|---|---|---|
-| ⚙ [Windows-MCP](https://github.com/CursorTouch/Windows-MCP) | Control any Windows app: read UI, click, type, switch windows | Local | `uvx windows-mcp` |
+| ⚙➕ [Excel MCP](https://github.com/haris-musa/excel-mcp-server) | Read/write .xlsx: sheets, formulas, formatting, charts, pivots | Local | `uvx excel-mcp-server stdio` |
+| ⚙➕ [ElevenLabs MCP](https://github.com/elevenlabs/elevenlabs-mcp) | Sound effects, voice design, voice cloning, transcription | Cloud (your key/credits) | `uvx elevenlabs-mcp`, `ELEVENLABS_API_KEY` |
+| ⚙➕ [YouTube transcript](https://github.com/jkawamoto/mcp-youtube-transcript) | "Summarise this video" — any YouTube transcript | Local | `uvx mcp-youtube-transcript` |
+| ⚙➕ [Windows-MCP](https://github.com/CursorTouch/Windows-MCP) | Control any Windows app: read UI, click, type, switch windows | Local | `uvx windows-mcp` |
 | ⚙ [Home Assistant MCP Server](https://www.home-assistant.io/integrations/mcp_server/) | Lights, plugs, geyser, gate, alarm, sensors, by voice | Local (your HA) | Enable the integration in HA, create a long-lived token → `HA_TOKEN` |
 | ⚙ [GitHub MCP Server](https://github.com/github/github-mcp-server) | Issues, PRs, repos, code search | Local (Docker) | GitHub token → `GITHUB_TOKEN` |
 | ⚙ [Git](https://github.com/modelcontextprotocol/servers/tree/main/src/git) | Log, diff, status of a local repo | Local | `uvx mcp-server-git --repository <path>` |

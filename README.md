@@ -52,6 +52,9 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 👤 **Presence awareness** | Greets you (and briefs you) when you sit down; pauses, holds messages and can lock the PC when you walk away |
 | ✋ **Gesture control** | Webcam hand gestures: ✋ stop · 👍/👎 yes/no · ✌️ listen · 👉 point = mouse · 🤏 pinch = click/drag the brain or globe (MediaPipe, local) |
 | 🌐 **God's Eye View** | Live 3D globe with real planes, ships, satellites, quakes and weather — "show me Cape Town in night vision", "what planes are overhead?" ([gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), needs Node 24) |
+| ⚡ **Load-shedding** | Your area's schedule and a heads-up 30 min before the power goes off (EskomSePush, free token) |
+| 💸 **Price watcher** | "Tell me when this drops below R8,000" — Takealot and most shops, checked every few hours |
+| 📰 **News** | SA headlines and news about your vendors (Juniper, Avaya, Nokia…) — "vendor news" |
 | 🌦 **Weather** | "What's the weather?" → spoken forecast + animated weather page (free, no key) |
 | ⏰ **Routines** | Reminders · scheduled briefings ("every weekday at 07:30…") |
 | ⚙️ **Settings page** | API keys (masked, with Test buttons), voice, models, Telegram, skills/plugins/MCP on-off, routines, colour themes with live preview |
@@ -102,6 +105,10 @@ Full walkthrough, including Telegram, Google and GitHub: **[docs/INSTALL.md](doc
 "Make a 60-second vertical video explaining Wi-Fi 7 to small businesses."
 "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?"
+"What stage of load-shedding are we on?"
+"Tell me when this drops below R8,000: <takealot link>"
+"Any news about Juniper this week?"
+"Summarise this YouTube video: <link>"                → YouTube MCP server (Settings → Extensions → Add)
 "Remind me at 4 to call Sam."
 "Thanks."                                             → ends the conversation
 ```

@@ -59,6 +59,16 @@ globe:
 remote:
   enabled: false              # true = reconnect Tailscale and share Nova every time run.bat starts it
 
+# Load-shedding (EskomSePush) — free token in .env (ESP_TOKEN); say "find my load-shedding area Roodepoort".
+loadshedding:
+  area_id: ""
+  warn: true                  # spoken + Telegram heads-up before your area's power goes off
+  warn_minutes: 30
+
+# News briefing — SA headlines + news about the companies you work with ("vendor news").
+news:
+  vendors: [Juniper Networks, Avaya, Nokia, SonarSource, Westcon-Comstor]
+
 # Nightly dreaming — memory clean-up, connections, journal and an encrypted backup while you sleep.
 dreaming:
   enabled: true
@@ -201,6 +211,29 @@ mcp_servers:
     args: ["windows-mcp"]
     keywords: [window, app, desktop, click on, type into, excel, outlook app, settings app]
     confirm: auto
+
+  excel:                     # read/write .xlsx workbooks (haris-musa/excel-mcp-server) — or Settings → Extensions → Add
+    enabled: false
+    command: uvx
+    args: ["excel-mcp-server", "stdio"]
+    env: { EXCEL_FILES_PATH: "${USERPROFILE}/Documents" }
+    keywords: [excel, xlsx, spreadsheet, workbook, pivot]
+    confirm: auto
+
+  elevenlabs:                # sound effects, voice design, cloning (official elevenlabs-mcp; uses your key + credits)
+    enabled: false
+    command: uvx
+    args: ["elevenlabs-mcp"]
+    env: { ELEVENLABS_API_KEY: "${ELEVENLABS_API_KEY}", ELEVENLABS_MCP_BASE_PATH: "C:/nova/workspace/audio" }
+    keywords: [sound effect, voice design, clone voice, elevenlabs, design a voice]
+    confirm: auto
+
+  youtube:                   # any YouTube video's transcript — "summarise this video"
+    enabled: false
+    command: uvx
+    args: ["mcp-youtube-transcript"]
+    keywords: [youtube, video transcript, summarise this video, summarize this video]
+    confirm: never
 
   home_assistant:            # smart home — enable the "Model Context Protocol Server" integration in HA
     enabled: false

@@ -4,6 +4,23 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-09-30
+### Added
+- **⚡ Load-shedding** (plugins/loadshedding.py, EskomSePush): "what stage are we on?", your area's schedule, and a
+  spoken + Telegram heads-up 30 minutes before your power goes off. Free token (Settings → API keys → EskomSePush
+  token); say "find my load-shedding area Roodepoort", then "use area <id>". Checks are cached so Nova stays well
+  inside the free 50-a-day allowance.
+- **💸 Price watcher** (plugins/price_watch.py): "tell me when this drops below R8,000" + a Takealot or other shop link.
+  Nova checks every few hours (Takealot via its product API, other shops via the price they publish for Google)
+  and messages you once when the price reaches your target. "What prices are you watching?", "stop watch 2".
+- **📰 News briefing** (plugins/news.py): SA headlines (News24, BusinessTech, MyBroadband, TechCentral), "any news
+  about Nokia?", and **vendor news** for Juniper, Avaya, Nokia, SonarSource and Westcon-Comstor (edit the list in
+  Settings → News). Free, no key.
+- The **morning briefing** now includes today's load-shedding and a line of vendor news.
+- **One-click MCP servers** — Settings → Extensions → *Add an MCP server*: Windows control, Excel, ElevenLabs studio
+  (sound effects, voice design) and YouTube transcripts. Restart Nova after adding.
+- Settings: new **Load-shedding** and **News** sections with Check buttons.
+
 ## [2.4.0] — 2026-09-29
 ### Added
 - **The 2nd brain sorts itself into projects — always.** Every project is the centre of its own cluster; the

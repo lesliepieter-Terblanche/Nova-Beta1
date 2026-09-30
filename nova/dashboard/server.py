@@ -1011,6 +1011,14 @@ class Dashboard:
                             return self._json({"error": str(e)}, 400)
                     if self.path == "/api/open":
                         return self._json({"message": dash.open_item(body.get("id", ""))})
+                    if self.path == "/api/google/client":
+                        from ..config import ROOT as _ROOT
+                        from ..skills import google_ws
+                        try:
+                            cid = google_ws.save_client_json(str(body.get("json", "")), _ROOT / "secrets" / "credentials.json")
+                            return self._json({"ok": True, "message": f"Saved your Google client ({cid[:18]}…). Now click Connect Google."})
+                        except ValueError as e:
+                            return self._json({"ok": False, "message": str(e)})
                     if self.path == "/api/focus":
                         from .. import focus
                         a, tid = body.get("action"), int(body.get("id") or 0)

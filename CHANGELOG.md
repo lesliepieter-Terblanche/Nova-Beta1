@@ -4,6 +4,11 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.8.3] — 2026-09-30
+### Added
+- **Settings → Google → Google sign-in details:** paste your **Client ID** and **Client secret** (or upload the JSON
+  file from Google Cloud) and click **Connect Google** — no files to rename or copy, no command line. Kept in `.env`.
+
 ## [2.8.2] — 2026-09-30
 ### Fixed
 - Google sign-in: Nova now finds your Google client file by itself — even when Windows hid the extension

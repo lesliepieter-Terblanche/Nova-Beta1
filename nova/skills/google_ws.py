@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import os
 import io
 import re
 from email.mime.text import MIMEText
@@ -46,6 +47,29 @@ class NeedsReconnect(RuntimeError):
 def find_client_file(secret: Path) -> Path | None:
     """Find the Google OAuth client file even if Windows hid its extension or it's still in Downloads,
     and put it where Nova expects it (secrets/credentials.json)."""
+    # Client ID + secret pasted in Settings → Google: build the file from them (and keep it in step if they change)
+    try:
+        from .. import settings as _settings
+        env = {**os.environ, **_settings.read_env()}
+    except Exception:
+        env = dict(os.environ)
+    cid, csec = (env.get("GOOGLE_OAUTH_CLIENT_ID") or "").strip(), (env.get("GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
+    if cid and csec:
+        import json as _json
+        current = {}
+        if secret.exists():
+            try:
+                current = _json.loads(secret.read_text(encoding="utf-8-sig")).get("installed", {})
+            except Exception:
+                current = {}
+        if current.get("client_id") != cid or current.get("client_secret") != csec:
+            secret.parent.mkdir(parents=True, exist_ok=True)
+            secret.write_text(_json.dumps({"installed": {
+                "client_id": cid, "client_secret": csec, "project_id": "nova",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "redirect_uris": ["http://localhost"]}}, indent=2), encoding="utf-8")
+        return secret
     if secret.exists():
         return secret
     home = Path.home()
@@ -75,6 +99,29 @@ def find_client_file(secret: Path) -> Path | None:
             print(f"[google] found your Google client file ({f}) and copied it to {secret}")
             return secret
     return None
+
+
+def save_client_json(text: str, secret: Path) -> str:
+    """The JSON file from Google Cloud, uploaded on the Settings page."""
+    import json as _json
+    try:
+        data = _json.loads(text)
+    except Exception:
+        raise ValueError("That isn't the JSON file from Google Cloud.") from None
+    if "installed" not in data:
+        if "web" in data:
+            raise ValueError("That's a 'Web application' client. Nova needs a 'Desktop app' client: Credentials → "
+                             "Create credentials → OAuth client ID → Application type: Desktop app → Download JSON.")
+        raise ValueError("That JSON isn't a Google OAuth client file.")
+    secret.parent.mkdir(parents=True, exist_ok=True)
+    secret.write_text(_json.dumps(data, indent=2), encoding="utf-8")
+    try:                                      # keep Settings → Google in step with the uploaded file
+        from .. import settings as _settings
+        _settings.write_env({"GOOGLE_OAUTH_CLIENT_ID": data["installed"].get("client_id", ""),
+                             "GOOGLE_OAUTH_CLIENT_SECRET": data["installed"].get("client_secret", "")})
+    except Exception as e:
+        print(f"[google] couldn't save the client details to .env: {e}")
+    return data["installed"].get("client_id", "")
 
 
 def login(interactive: bool = True):

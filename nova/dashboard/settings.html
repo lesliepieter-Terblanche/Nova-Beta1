@@ -296,9 +296,17 @@ function renderSection(sec) {
   if (TESTS[sec.id]) html += `<div class="card glass"><h3>Check it works</h3><div style="display:flex;gap:8px;flex-wrap:wrap">${
     TESTS[sec.id].map(([k, l]) => `<button class="btn small" data-test="${k}">${esc(l)}</button>`).join("")}</div>
     <div class="result" data-result="${sec.id}"></div><p class="note">Tests use the settings as last saved.</p></div>`;
-  if (sec.id === "google") html += `<div class="card glass"><h3>Connect Google</h3><p style="margin:0">Google status: <b>${S.google_connected ? "connected ✓" : "not connected"}</b>.
-    To connect, follow <a href="https://github.com/lesliepieter-Terblanche/Nova-Beta1/blob/main/docs/INSTALL.md#7-google-workspace" target="_blank">the 10-minute guide</a>,
-    then run <code>run.bat --google-login</code>.</p></div>`;
+  if (sec.id === "google") {
+    const keys = S.secrets.filter((s) => s.group === "Google");
+    const gcard = `<div class="card glass"><h3>Google sign-in details <small style="text-transform:none;letter-spacing:0">— status: <b>${S.google_connected ? "connected ✓" : "not connected"}</b></small></h3>
+      <p class="note" style="margin:0 0 10px">From <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud → Credentials</a> → your <b>Desktop app</b> OAuth client.
+      Paste the Client ID and Client secret below <b>or</b> upload the JSON file you downloaded. Then click <b>Connect Google</b> (it saves first).
+      New to this? <a href="https://github.com/lesliepieter-Terblanche/Nova-Beta1/blob/main/docs/INSTALL.md#7-google-workspace" target="_blank">the 10-minute guide</a>.</p>
+      ${keys.map(keyHtml).join("")}
+      <div class="key"><div class="meta"><b>…or upload the JSON file</b><small>client_secret_….json from your Downloads</small></div>
+        <div class="in"><input type="file" id="gjson" accept=".json,application/json"></div><div class="acts"></div><div class="result" id="gjson-r"></div></div></div>`;
+    html = html.replace(`<div class="card glass"><h3>Check it works</h3>`, gcard + `<div class="card glass"><h3>Check it works</h3>`);
+  }
   el.innerHTML = html;
   if (sec.id === "appearance") updatePreview();
 }
@@ -378,13 +386,19 @@ function initTags() {
 }
 
 // ── API keys ──────────────────────────────────────────
+$("#main").addEventListener("change", async (e) => {
+  if (e.target.id !== "gjson" || !e.target.files[0]) return;
+  const text = await e.target.files[0].text();
+  const r = await api("/api/google/client", { json: text }).catch(() => ({ ok: false, message: "Nova didn't answer." }));
+  const box = $("#gjson-r"); box.className = "result show " + (r.ok ? "ok" : "bad"); box.textContent = (r.ok ? "✓ " : "✕ ") + r.message;
+});
 function renderKeys() {
   const groups = {};
   S.secrets.forEach((s) => (groups[s.group] ||= []).push(s));
   $("#tab-keys").innerHTML = `<h2 class="sec-title">API keys</h2>
     <p class="sec-sub">Stored only in the <code>.env</code> file on this PC — never uploaded to GitHub and never shown in full here.
     Paste a new value to replace a key, or clear it.</p>` +
-    Object.entries(groups).map(([g, items]) => `<div class="card glass"><h3>${esc(g)}</h3>${items.map(keyHtml).join("")}</div>`).join("");
+    Object.entries(groups).filter(([g]) => g !== "Google").map(([g, items]) => `<div class="card glass"><h3>${esc(g)}</h3>${items.map(keyHtml).join("")}</div>`).join("");
 }
 function keyHtml(s) {
   return `<div class="key" data-key="${s.key}">
@@ -397,7 +411,7 @@ function keyHtml(s) {
     <div class="result"></div></div>`;
 }
 $("#main").addEventListener("input", (e) => {
-  const row = e.target.closest(".key"); if (!row) return;
+  const row = e.target.closest(".key"); if (!row || !row.dataset.key || e.target.type === "file") return;
   const v = e.target.value.trim();
   if (v) changes.secrets[row.dataset.key] = v; else delete changes.secrets[row.dataset.key];
   const pill = row.querySelector(".pill");

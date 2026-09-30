@@ -148,7 +148,10 @@ def test_slow_servers_connect_last():
 
 
 def test_finds_client_file_with_hidden_extension_or_in_downloads(tmp_path, monkeypatch):
+    from nova import settings
     from nova.skills import google_ws
+    monkeypatch.setattr(settings, "read_env", lambda: {})
+    monkeypatch.delenv("GOOGLE_OAUTH_CLIENT_ID", raising=False)
     monkeypatch.setattr(google_ws.Path, "home", lambda: tmp_path)
     secret = tmp_path / "Nova" / "secrets" / "credentials.json"
     secret.parent.mkdir(parents=True)
@@ -165,3 +168,26 @@ def test_finds_client_file_with_hidden_extension_or_in_downloads(tmp_path, monke
         google_ws.find_client_file(secret)
     (tmp_path / "Downloads" / "client_secret_123.apps.googleusercontent.com.json").unlink()
     assert google_ws.find_client_file(secret) is None
+
+
+def test_client_id_and_secret_from_settings(tmp_path, monkeypatch):
+    from nova import settings
+    from nova.skills import google_ws
+    env = {"GOOGLE_OAUTH_CLIENT_ID": "123-abc.apps.googleusercontent.com", "GOOGLE_OAUTH_CLIENT_SECRET": "GOCSPX-xyz"}
+    monkeypatch.setattr(settings, "read_env", lambda: dict(env))
+    secret = tmp_path / "secrets" / "credentials.json"
+    assert google_ws.find_client_file(secret) == secret
+    data = json.loads(secret.read_text())["installed"]
+    assert data["client_id"] == env["GOOGLE_OAUTH_CLIENT_ID"] and data["client_secret"] == "GOCSPX-xyz"
+    env["GOOGLE_OAUTH_CLIENT_SECRET"] = "GOCSPX-new"                     # changed in Settings → file follows
+    google_ws.find_client_file(secret)
+    assert json.loads(secret.read_text())["installed"]["client_secret"] == "GOCSPX-new"
+    saved = {}
+    monkeypatch.setattr(settings, "write_env", lambda d: saved.update(d))
+    cid = google_ws.save_client_json(json.dumps({"installed": {"client_id": "9-z.apps.googleusercontent.com",
+                                                                "client_secret": "GOCSPX-up"}}), secret)
+    assert cid.startswith("9-z") and saved["GOOGLE_OAUTH_CLIENT_SECRET"] == "GOCSPX-up"
+    with pytest.raises(ValueError, match="Desktop app"):
+        google_ws.save_client_json('{"web": {}}', secret)
+    with pytest.raises(ValueError):
+        google_ws.save_client_json("not json", secret)

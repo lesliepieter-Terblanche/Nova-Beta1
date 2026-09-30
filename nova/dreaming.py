@@ -396,8 +396,9 @@ class Dreamer:
             s.db.commit()
         s.log("dream", "dreaming", "🌙 Dreaming…", "", turn=0)
         stats, merged, links, journal, bk, errors = {}, [], [], None, None, []
-        steps = [("consolidate", "Tidying memories"), ("connect", "Connecting ideas"), ("journal", "Writing the journal"),
-                 ("backup", "Backing up")]
+        steps = [("consolidate", "Tidying memories"), ("connect", "Connecting ideas"), ("people", "Updating people cards"),
+                 ("journal", "Writing the journal"), ("backup", "Backing up")]
+        people_n, digest = 0, None
         for key, label in steps:
             if not c.get(key, True):
                 continue
@@ -407,6 +408,9 @@ class Dreamer:
                     merged = self.consolidate()
                 elif key == "connect":
                     links = self.connect()
+                elif key == "people":
+                    from . import people as _people
+                    people_n = _people.catch_up()
                 elif key == "journal":
                     journal = self.journal(day)
                 elif key == "backup":
@@ -414,7 +418,14 @@ class Dreamer:
             except Exception as e:
                 errors.append(f"{label}: {e}")
                 print(f"[dream] {label} failed: {e}")
-        stats = {"merged": len(merged), "connections": len(links), "journal": bool(journal),
+        if c.get("weekly_digest", True) and started.weekday() == 6:        # Sunday night → the week in review
+            self.step = "Writing the weekly digest"
+            try:
+                from .answers import digest as _digest
+                digest = _digest(7)
+            except Exception as e:
+                errors.append(f"Weekly digest: {e}")
+        stats = {"merged": len(merged), "connections": len(links), "journal": bool(journal), "people": people_n,
                  "backup_mb": bk["size_mb"] if bk else None, "errors": errors}
         note = self._report(day, merged, links, journal, bk, errors)
         with s.lock:
@@ -427,6 +438,8 @@ class Dreamer:
             parts.append(f"merged {len(merged)} duplicate memor{'y' if len(merged) == 1 else 'ies'}")
         if links:
             parts.append(f"found {len(links)} connection{'s' if len(links) > 1 else ''}")
+        if people_n:
+            parts.append(f"updated {people_n} people card{'s' if people_n > 1 else ''}")
         if journal:
             parts.append("wrote yesterday's journal")
         if bk:
@@ -442,6 +455,8 @@ class Dreamer:
             msg += ("\n\n🔑 Your backups are encrypted with this passphrase — save it in a password manager, you need it"
                     f" to restore:\n{passphrase(create=False)[0]}")
         context.push(msg, [])
+        if digest:
+            context.push(digest, [])
         self.running, self.step = False, ""
         return {"status": "done", "summary": summary, "note": note, **stats}
 

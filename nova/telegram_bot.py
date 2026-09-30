@@ -1,7 +1,9 @@
 """Remote control from your phone via a private Telegram bot.
 
 - Text or voice notes in, text (+ voice note in your ElevenLabs voice) out.
-- Send it files/photos: they land in workspace/inbox and Nova is told about them.
+- Forward it anything — a message, a link, a PDF, a photo of a whiteboard or business card, a voice note — and it's
+  filed in the 2nd brain (summary, people cards, project). /save <text or link> does the same; so does replying /save
+  to any message. A file sent WITH a caption is treated as a request ("turn this into a slide") instead.
 - Only Telegram user IDs listed in config.yaml can use it.
 """
 from __future__ import annotations
@@ -51,7 +53,8 @@ class TelegramBot:
         if await self._guard(update):
             await update.effective_message.reply_text(
                 f"Hi {self.cfg.assistant.owner}, {self.cfg.assistant.name} here. Type or send a voice note.\n"
-                "/new – fresh conversation   /status – PC status   /id – your ID")
+                "Forward me anything (links, PDFs, photos, business cards, voice notes) and I'll file it in your brain.\n"
+                "/save – file text or a replied-to message   /new – fresh conversation   /status – PC status   /id – your ID")
 
     async def cmd_new(self, update: Update, _):
         if await self._guard(update):
@@ -63,19 +66,111 @@ class TelegramBot:
             await self._ask(update, "Give me a short PC status report.", voice=False)
 
     async def on_text(self, update: Update, _):
-        if await self._guard(update):
-            await self._ask(update, update.effective_message.text, voice=False)
-
-    async def on_voice(self, update: Update, _):
         if not await self._guard(update):
             return
         msg = update.effective_message
+        text = msg.text or ""
+        if self._filing() and (self._forwarded(msg) or self.only_links(text)):
+            await self._file(update, "text", text=text, from_who=self._forwarded(msg))
+            return
+        await self._ask(update, text, voice=False)
+
+    async def cmd_save(self, update: Update, ctx):
+        """/save <text or link>, or reply /save to any message (text, link, photo, file, voice note)."""
+        if not await self._guard(update):
+            return
+        msg = update.effective_message
+        arg = " ".join(getattr(ctx, "args", None) or []).strip()
+        target = msg.reply_to_message
+        if target and (target.photo or target.document or target.video or target.voice or target.audio):
+            await self._file_media(update, target, note=arg)
+        elif target and (target.text or target.caption):
+            await self._file(update, "text", text=target.text or target.caption, note=arg,
+                             from_who=self._forwarded(target))
+        elif arg:
+            await self._file(update, "text", text=arg)
+        else:
+            await msg.reply_text("Send /save followed by a link or some text, or reply /save to any message.")
+
+    # ── filing into the brain ─────────────────────────────
+    def _filing(self) -> bool:
+        return bool(self.cfg.telegram.get("file_forwards", True))
+
+    @staticmethod
+    def _forwarded(msg) -> str:
+        """'' if not forwarded, else who it came from (a name, a channel, or 'forwarded')."""
+        fo = getattr(msg, "forward_origin", None)
+        if not fo:
+            return ""
+        for attr in ("sender_user", "chat", "sender_chat"):
+            o = getattr(fo, attr, None)
+            if o is not None:
+                return " ".join(x for x in (getattr(o, "first_name", None), getattr(o, "last_name", None)) if x) \
+                    or getattr(o, "title", None) or "forwarded"
+        return getattr(fo, "sender_user_name", None) or "forwarded"
+
+    @staticmethod
+    def only_links(text: str) -> bool:
+        from .inbox import URL_RE
+        t = (text or "").strip()
+        return bool(t) and bool(URL_RE.search(t)) and not URL_RE.sub("", t).strip(" \n,;")
+
+    async def _file(self, update: Update, kind: str, text: str = "", path: Path | None = None, note: str = "",
+                    from_who: str = ""):
+        from . import inbox
+        chat = update.effective_chat
+        await chat.send_action(ChatAction.TYPING)
+
+        def work():
+            if kind == "text":
+                links = inbox.URL_RE.findall(text or "")
+                if links and self.only_links(text):
+                    return [inbox.file_url(u, "telegram", note) for u in dict.fromkeys(links)][:5]
+                return [inbox.file_text(text, "telegram", note, from_who=from_who if from_who != "forwarded" else "")]
+            if kind == "voice":
+                return [inbox.file_voice(text, "telegram", note, from_who=from_who if from_who != "forwarded" else "")]
+            return [inbox.file_document(path, "telegram", note)]
+        try:
+            results = await asyncio.to_thread(work)
+        except Exception as e:
+            await update.effective_message.reply_text(f"I couldn't file that: {e}")
+            return
+        await update.effective_message.reply_text("\n\n".join(inbox.reply_text(r) for r in results))
+
+    async def _file_media(self, update: Update, msg, note: str = ""):
+        if msg.voice or msg.audio:
+            text = await self._transcribe(msg)
+            await self._file(update, "voice", text=text, note=note, from_who=self._forwarded(msg))
+            return
+        dest = await self._download(msg)
+        await self._file(update, "file", path=dest, note=note or (msg.caption or ""))
+
+    async def _download(self, msg) -> Path:
+        if msg.photo:
+            f, name = await msg.photo[-1].get_file(), f"photo_{msg.message_id}.jpg"
+        else:
+            doc = msg.document or msg.video
+            f, name = await doc.get_file(), (getattr(doc, "file_name", None) or f"file_{msg.message_id}")
+        dest = self.inbox / name
+        await f.download_to_drive(dest)
+        return dest
+
+    async def _transcribe(self, msg) -> str:
         tg_file = await (msg.voice or msg.audio).get_file()
         with tempfile.TemporaryDirectory() as td:
             src, wav = Path(td) / "in.ogg", Path(td) / "in.wav"
             await tg_file.download_to_drive(src)
             await asyncio.to_thread(ffmpeg.to_wav16k, src, wav)
-            text = await asyncio.to_thread(self.speech.transcribe, str(wav))
+            return await asyncio.to_thread(self.speech.transcribe, str(wav))
+
+    async def on_voice(self, update: Update, _):
+        if not await self._guard(update):
+            return
+        msg = update.effective_message
+        if self._filing() and self._forwarded(msg):                 # someone else's voice note → file it
+            await self._file_media(update, msg)
+            return
+        text = await self._transcribe(msg)
         if not text:
             await msg.reply_text("I couldn't make out that voice note.")
             return
@@ -86,13 +181,11 @@ class TelegramBot:
         if not await self._guard(update):
             return
         msg = update.effective_message
-        if msg.photo:
-            f, name = await msg.photo[-1].get_file(), f"photo_{msg.message_id}.jpg"
-        else:
-            doc = msg.document or msg.video
-            f, name = await doc.get_file(), (getattr(doc, "file_name", None) or f"file_{msg.message_id}")
-        dest = self.inbox / name
-        await f.download_to_drive(dest)
+        if self._filing() and (self._forwarded(msg) or not msg.caption) and not msg.video:
+            await self._file_media(update, msg)                      # no instructions → file it in the brain
+            return
+        dest = await self._download(msg)
+        name = dest.name
         context.record("file", name, dest, "received via Telegram")
         caption = msg.caption or "Tell me briefly what this file is and ask what I want done with it."
         await self._ask(update, f"I've sent you a file, saved at {dest}. {caption}", voice=False)
@@ -204,6 +297,7 @@ class TelegramBot:
         a.add_handler(CommandHandler("start", self.cmd_start))
         a.add_handler(CommandHandler("new", self.cmd_new))
         a.add_handler(CommandHandler("status", self.cmd_status))
+        a.add_handler(CommandHandler("save", self.cmd_save))
         a.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, self.on_voice))
         a.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | filters.VIDEO, self.on_file))
         a.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.on_text))

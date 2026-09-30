@@ -75,6 +75,8 @@ dreaming:
   at: "02:30"                 # if the PC is off then, it catches up ~10 min after Nova next starts
   consolidate: true           # merge duplicate memories (old versions kept as history)
   connect: true               # find related ideas and write them down
+  people: true                # turn what you say about people into people cards
+  weekly_digest: true         # Sunday night: "what's new in your brain" on Telegram (brain/Digests)
   journal: true               # brain/Journal/<date>.md
   backup: true                # encrypted with NOVA_BACKUP_PASSPHRASE (made for you the first time)
   backup_dir: backups
@@ -147,6 +149,7 @@ telegram:
   allowed_user_ids: []
   voice_replies: true        # answer voice notes with a voice note (your ElevenLabs voice)
   announce_online: true      # message you when Nova starts (🟢) and stops (🔴)
+  file_forwards: true        # forwarded messages, bare links and files without a caption are filed in your brain
   quiet_hours: ["22:00", "07:00"]   # messages in these hours arrive without a buzz
 
 google:

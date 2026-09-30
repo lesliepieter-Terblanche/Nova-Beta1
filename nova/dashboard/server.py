@@ -129,7 +129,9 @@ class Dashboard:
         for n in notes:
             p = Path(n["path"])
             titles[p.stem.lower()] = f"note:{n['path']}"
-            add(f"note:{n['path']}", p.stem, "note", 5, "", n["e"],
+            import datetime as _dt
+            add(f"note:{n['path']}", p.stem, "note", 5,
+                _dt.datetime.fromtimestamp(n["m"]).isoformat(timespec="seconds") if n["m"] else "", n["e"],
                 {"folder": str(p.parent.relative_to(vault)) if vault in p.parents else ""})
         for a in arts:
             add(f"artifact:{a['id']}", a["title"] or Path(a["location"]).name, _kind_of_artifact(a["kind"]), 4,
@@ -146,6 +148,17 @@ class Dashboard:
                 {"status": t["status"] or "done", "session": t["session"]})
             if t["status"] == "running":
                 nodes[-1]["hot"] = True
+
+        # people cards: each person linked to everything that mentions them
+        from .. import people as _people
+        ids_now = {n["id"] for n in nodes}
+        for pr in _people.all_people():
+            ms = _people.mentions(pr, limit=60)
+            add(f"person:{pr['id']}", pr["name"], "person", 5 + min(len(ms), 20) * 0.35, pr["created"], None,
+                {"isPerson": True, "company": pr["company"], "mentions": len(ms)})
+            for m in ms:
+                if m["id"] in ids_now:
+                    links.append({"source": f"person:{pr['id']}", "target": m["id"], "type": "mention"})
 
         # [[wiki links]] between notes
         for n in notes:
@@ -236,6 +249,9 @@ class Dashboard:
                   for n in notes]
         items += [{"id": f"mission:{m['id']}", "text": f"{m['title']} {m['goal']}", "vec": None} for m in mis]
         items += [{"id": f"turn:{t['id']}", "text": t["title"], "vec": None} for t in turns]
+        from .. import people as _people
+        items += [{"id": f"person:{p['id']}", "text": f"{p['name']} {p['company']} {p['role']} {p['notes']}", "vec": None}
+                  for p in _people.all_people()]
         res = organize(projects, items, manual, owner=self.cfg.assistant.owner)
         roots = [p["id"] for p in projects if p["id"] not in res["parents"]]
         colors = dict(zip(roots, palette(len(roots))))
@@ -303,7 +319,7 @@ class Dashboard:
             for m in members:
                 kind = m.split(":")[0]
                 label = {"memory": "Memories", "note": "Notes", "artifact": "Creations", "mission": "Missions",
-                         "turn": "Actions"}.get(kind, kind)
+                         "turn": "Actions", "person": "People"}.get(kind, kind)
                 if m in org["projects"]:
                     label = "Sub-projects"
                 linked.setdefault(label, []).append({"id": m, "title": self.title_of(m) or m,
@@ -396,6 +412,27 @@ class Dashboard:
                 "meta": {"schedule": m["when"], "runs": m["runs"],
                          "next run": (m.get("next_run") or "—")[:16].replace("T", " ")}}
 
+    def person(self, pid: int) -> dict:
+        from .. import people as _people
+        c = _people.card(pid)
+        if not c:
+            return {"error": "not found"}
+        groups: dict[str, list] = {}
+        label = {"memory": "What Nova knows", "note": "Notes & meetings", "creation": "Creations", "action": "Requests"}
+        for m in c["mentions"]:
+            if m["deal"]:
+                groups.setdefault("Deals & money", []).append(m)
+            groups.setdefault(label.get(m["kind"], m["kind"]), []).append(m)
+        return {"id": f"person:{pid}", "type": "person", "title": c["name"], "created": c["created"],
+                "person": {k: c[k] for k in ("name", "company", "role", "email", "phone", "notes", "aliases",
+                                             "last_contact", "last_seen", "source")},
+                "mentions": {k: [{"id": m["id"], "title": m["title"], "ts": m["ts"]} for m in v[:40]]
+                             for k, v in groups.items()},
+                "mention_count": len(c["mentions"]),
+                "others": [{"id": f"person:{p['id']}", "name": p["name"]} for p in _people.all_people()
+                           if p["id"] != pid],
+                "meta": {}}
+
     def title_of(self, nid: str) -> str:
         s = context.store
         kind, _, key = nid.partition(":")
@@ -412,6 +449,10 @@ class Dashboard:
             if kind == "mission" and key.isdigit():
                 r = s.db.execute("SELECT title FROM missions WHERE id=?", (int(key),)).fetchone()
                 return r["title"] if r else ""
+        if kind == "person" and key.isdigit():
+            from .. import people as _people
+            pr = _people.get(int(key))
+            return pr["name"] if pr else ""
         if kind == "note":
             return Path(key).stem
         return ""
@@ -494,6 +535,14 @@ class Dashboard:
                     row.update(extra)
                 items.append(row)
 
+            if kind in ("person", "people", "tracked", "doing"):
+                from .. import people as _people
+                for pr in _people.all_people():
+                    push(f"person:{pr['id']}", pr["name"], "person", pr["created"],
+                         {"sub": ", ".join(x for x in (pr["role"], pr["company"]) if x) or "person card",
+                          "card": True})
+            if kind == "people":
+                kind = "person"
             if kind in MEMORY_HUBS or kind in ("memories", "tracked", "doing"):
                 kinds = MEMORY_HUBS if kind in ("memories", "tracked", "doing") else (kind,)
                 q = ",".join("?" * len(kinds))
@@ -620,6 +669,8 @@ class Dashboard:
             return self.turn(int(key))
         if kind == "mission" and key.isdigit():
             return self.mission(int(key))
+        if kind == "person" and key.isdigit():
+            return self.person(int(key))
         if kind == "memory":
             with s.lock:
                 r = s.db.execute("SELECT * FROM memories WHERE id=?", (int(key),)).fetchone()
@@ -940,6 +991,27 @@ class Dashboard:
                             return self._json({"error": str(e)}, 400)
                     if self.path == "/api/open":
                         return self._json({"message": dash.open_item(body.get("id", ""))})
+                    if self.path == "/api/ask_brain":
+                        from .. import answers
+                        return self._json(answers.ask(str(body.get("question", ""))[:1000]))
+                    if self.path == "/api/person":
+                        from .. import people as _people
+                        pid = int(str(body.get("id", "")).removeprefix("person:") or 0)
+                        if body.get("delete"):
+                            _people.delete(pid)
+                            return self._json({"ok": True})
+                        if body.get("merge_into"):
+                            keep = int(str(body["merge_into"]).removeprefix("person:"))
+                            _people.merge(keep, pid)
+                            return self._json({"ok": True, "id": f"person:{keep}"})
+                        if body.get("new"):
+                            new_id, _ = _people.upsert(str(body.get("name", "")), str(body.get("company", "")),
+                                                       str(body.get("role", "")), str(body.get("email", "")),
+                                                       str(body.get("phone", "")), source="dashboard")
+                            return self._json({"ok": True, "id": f"person:{new_id}"})
+                        fields = {k: body[k] for k in ("name", "company", "role", "email", "phone", "notes", "aliases")
+                                  if k in body}
+                        return self._json({"ok": True, "person": _people.update(pid, **fields)})
                     if self.path == "/api/ask":
                         reply = dash.agent.handle(body.get("text", ""), session="dashboard")
                         if body.get("speak") and context.speech:

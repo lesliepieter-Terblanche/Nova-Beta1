@@ -34,6 +34,9 @@ def remember(text: str, kind: str = "fact", important: bool = False) -> str:
     """
     msg = context.store.add_memory(text, kind, "told", 3 if important else 2)
     context.store.export_markdown(vault())
+    if kind == "person":
+        from .. import people
+        people.absorb_in_background(text, "told")
     return msg
 
 
@@ -127,27 +130,15 @@ def journal(entry: str) -> str:
 
 @tool(group="brain")
 def ingest_to_brain(source: str, title: str = "") -> str:
-    """Save a web page or document into the 2nd brain so it can be searched later.
+    """Save a web page or document into the 2nd brain so it can be searched later (summarised, with the people in it
+    getting cards and the right project linked).
     Args:
-        source: a URL or a full file path (pdf, docx, txt, md)
-        title: optional title
+        source: a URL or a full file path (pdf, docx, xlsx, txt, md, image)
+        title: optional note about it
     """
+    from .. import inbox
     if source.startswith("http"):
-        from .web import fetch_text
-        text, page_title = fetch_text(source)
-        title = title or page_title or source
-        body = f"Source: {source}\n\n{text}"
+        r = inbox.file_url(source, "voice", title, folder="Library")
     else:
-        from .files import extract_text
-        p = Path(source).expanduser()
-        text = extract_text(p)
-        title = title or p.stem
-        body = f"Source: {p}\n\n{text}"
-    summary = ""
-    try:
-        summary = context.llm.complete(f"Summarise in 5 bullet points:\n\n{text[:12000]}", prefer_smart=True)
-    except Exception:
-        pass
-    content = (f"## Summary\n{summary}\n\n## Content\n" if summary else "") + body[:60000]
-    write_note(title, content, folder="Library")
-    return f"Added '{title}' to your brain." + (f" Summary: {summary[:400]}" if summary else "")
+        r = inbox.file_document(Path(source).expanduser(), "voice", title, folder="Library")
+    return inbox.reply_text(r)

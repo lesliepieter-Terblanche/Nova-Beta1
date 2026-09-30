@@ -339,6 +339,47 @@
     font: 600 10.5px var(--body); letter-spacing: 0; }
   .feed.min .newn.show { display: inline-block; }
 
+  /* people cards */
+  .pcardx { display: grid; grid-template-columns: 90px 1fr; gap: 7px 10px; align-items: center; font-size: 12.5px; margin-bottom: 6px; }
+  .pcardx label { color: var(--muted); }
+  .pcardx input, .pcardx textarea { width: 100%; padding: 7px 9px; border-radius: 9px; border: 1px solid var(--line);
+    background: rgba(0,0,0,.25); color: var(--text); font: 12.5px var(--body); outline: none; }
+  .pcardx textarea { min-height: 70px; resize: vertical; grid-column: 1 / -1; }
+  .pcardx input:focus, .pcardx textarea:focus { border-color: var(--line-strong); }
+  .prow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0 4px; font-size: 12px; }
+  .prow .btn { flex: none; padding: 7px 12px; font-size: 12px; }
+  .prow select { background: rgba(0,0,0,.3); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 6px 8px; font: 12px var(--body); max-width: 190px; }
+  .person-label { font: 600 10.5px var(--display); color: #fff; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+    background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); pointer-events: auto; cursor: pointer;
+    transform: translateY(-50%); }
+  body.far .person-label, .no-labels .person-label, body[data-layout="categories"] .person-label { display: none; }
+  body.dimmed .person-label.off { opacity: .12; }
+
+  /* ask the brain */
+  .ask .toggle.brain input:checked + span { color: var(--accent-2); }
+  .reply .srcs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .reply .srcs button { display: inline-flex; gap: 6px; align-items: center; max-width: 100%; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); font: 12px var(--body); cursor: pointer; }
+  .reply .srcs button b { color: var(--accent-2); font-weight: 600; }
+  .reply .srcs button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+  .reply .srcs button:hover { border-color: var(--line-strong); }
+  .reply .x { position: sticky; float: right; top: 0; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 15px; }
+
+  /* timeline */
+  .tl-bar { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(760px, calc(100vw - 36px)); z-index: 5;
+    display: none; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(14,18,36,.5); }
+  body.tl-on .tl-bar { display: flex; }
+  body.tl-on .reply { bottom: 160px; }
+  .tl-bar button { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-strong); background: rgba(255,255,255,.05);
+    color: var(--text); cursor: pointer; font-size: 13px; }
+  .tl-bar button.play { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; border: 0; }
+  .tl-bar input[type=range] { flex: 1; accent-color: var(--accent); min-width: 80px; }
+  .tl-bar .when { min-width: 150px; font: 600 13px var(--display); }
+  .tl-bar .when small { display: block; font: 11px var(--body); color: var(--muted); }
+  .tl-bar select { background: rgba(0,0,0,.3); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 6px; font: 12px var(--body); }
+  .tl-hist { position: absolute; left: 60px; right: 250px; bottom: 2px; height: 10px; display: flex; align-items: flex-end; gap: 1px; pointer-events: none; opacity: .55; }
+  .tl-hist i { flex: 1; background: var(--accent-2); border-radius: 1px 1px 0 0; min-height: 1px; }
+
   /* phone layout */
   @media (max-width: 900px) {
     header { top: 10px; left: 10px; right: 10px; gap: 8px; flex-wrap: wrap; }
@@ -350,15 +391,20 @@
     .feed { display: none; }
     .rail { top: auto; bottom: 86px; left: 10px; right: 10px; width: auto; max-height: 36vh; padding: 36px 10px 10px; }
     .rail.min { right: auto; width: 44px; padding: 0; }
-    .rail .search, .rail .results, .rail .views, .rail #chips, .rail h3:not(.keep) { display: none; }
+    .rail .search, .rail .results, .rail .views:not(.keep), .rail #chips, .rail h3:not(.keep) { display: none; }
     .rail .busy { margin-bottom: 8px; }
     .ask { bottom: 14px; width: calc(100vw - 20px); padding: 6px 6px 6px 14px; }
     .ask input { font-size: 16px; }                     /* stops iPhones zooming in */
-    .ask .toggle { display: none; }
+    .ask .toggle:not(.brain) { display: none; }
+    .ask .toggle.brain span { font-size: 0; } .ask .toggle.brain span::before { content: "🧠"; font-size: 15px; }
     .reply { bottom: 80px; width: calc(100vw - 20px); }
     .panel { top: 122px; right: 10px; left: 10px; bottom: 80px; width: auto; }
     .gchip, .gcam { display: none !important; }
     .gtoast { top: 70px; }
+    .tl-bar { bottom: 80px; width: calc(100vw - 20px); flex-wrap: wrap; gap: 8px; }
+    .tl-bar .when { min-width: 0; flex: 1; } .tl-hist { display: none; }
+    .tl-bar input[type=range] { order: 9; flex-basis: 100%; }
+    body.tl-on .rail { display: none; }
   }
 </style>
 </head>
@@ -412,6 +458,7 @@
     <button id="v-free">Free</button>
     <button id="v-fit">Fit all</button>
   </div>
+  <div class="views keep" style="margin-top:6px"><button id="v-time" title="Replay how your brain grew — or see one month">🕘 Timeline</button></div>
   <h3>Layers</h3>
   <div class="chips" id="chips"></div>
   <h3 class="keep">Track</h3>
@@ -419,6 +466,7 @@
     <button data-open="doing">In progress</button>
     <button data-open="tracked">All tracked</button>
     <button data-open="project">Projects</button>
+    <button data-open="person">People</button>
     <button data-open="mission">Missions</button>
     <button data-open="actions">Actions</button>
     <button data-open="skills">Skills</button>
@@ -447,8 +495,17 @@
 </section>
 
 <div class="reply glass" id="reply"></div>
+<div class="tl-bar glass" id="tl">
+  <button class="play" id="tl-play" title="Play">▶</button>
+  <input type="range" id="tl-range" min="0" max="1000" value="1000" aria-label="Point in time">
+  <div class="tl-hist" id="tl-hist"></div>
+  <div class="when" id="tl-when">Now<small></small></div>
+  <select id="tl-mode" aria-label="Timeline mode"><option value="upto">Everything up to</option><option value="month">Only that month</option><option value="week">Only that week</option></select>
+  <button id="tl-close" title="Close timeline">✕</button>
+</div>
 <form class="ask glass" id="ask">
   <input id="ask-in" placeholder="Ask Nova or tell it something to remember…" autocomplete="off">
+  <label class="toggle brain" title="Answer only from your 2nd brain, with sources"><input type="checkbox" id="brainmode"> <span>🧠 brain</span></label>
   <label class="toggle"><input type="checkbox" id="speak"> speak</label>
   <button class="send" type="submit">Send</button>
 </form>
@@ -492,11 +549,11 @@ const Graph = ForceGraph3D({ controlType: "orbit", extraRenderers: [labelRendere
   .nodeRelSize(3.2)
   .nodeVal((n) => n.val)
   .nodeLabel(() => "")
-  .nodeVisibility((n) => n.kind === "core" || !hidden.has(n.kind === "hub" ? n.hubKind : n.kind))
+  .nodeVisibility((n) => visible(n))
   .linkVisibility((l) => visible(l.source) && visible(l.target) && linkShown(l))
   .linkColor(linkColorOf)
   .linkWidth((l) => l.type === "core" ? 0.6 : l.type === "subproject" ? 0.9 : l.type === "project" ? (layout === "projects" ? 0.45 : 0.25)
-                  : l.type === "semantic" ? 0.25 : 0)
+                  : l.type === "semantic" ? 0.25 : l.type === "mention" ? (focusSet ? 0.5 : 0.15) : 0)
   .linkOpacity(0.4)
   .linkDirectionalParticles((l) => (isHot(l.source) || isHot(l.target) || l.type === "core") ? 2 : 0)
   .linkDirectionalParticleWidth((l) => l.type === "core" ? 1.6 : 1.2)
@@ -518,6 +575,7 @@ function linkShown(l) {
   if (layout === "projects" && l.type === "hub" && t?.project) return false;      // it hangs off its project instead
   if (layout === "categories" && l.type === "project") return false;
   if (layout !== "web" && l.type === "semantic") return false;
+  if (l.type === "mention" && layout === "categories" && !focusSet) return false;
   return true;
 }
 function rgba(hex, a) { const c = new THREE.Color(hex || "#8b7bff"); return `rgba(${c.r * 255 | 0},${c.g * 255 | 0},${c.b * 255 | 0},${a})`; }
@@ -525,15 +583,17 @@ function linkColorOf(l) {
   const s = nodeOf(l.source), t = nodeOf(l.target);
   if (focusSet && !(focusSet.has(s?.id) && focusSet.has(t?.id))) return "rgba(120,130,200,0.03)";
   if (l.type === "project" || l.type === "subproject") return rgba(l.color, l.type === "subproject" ? 0.55 : 0.32);
+  if (l.type === "mention") return rgba(s?.color || "#ff8a5c", focusSet ? 0.6 : 0.16);
   return l.type === "semantic" ? "rgba(110,190,255,0.35)" : l.type === "wiki" ? "rgba(190,160,255,0.6)"
     : l.type === "core" ? "rgba(200,205,255,0.28)" : "rgba(150,160,255,0.10)";
 }
 function linkStrength(l) {
   const t = nodeOf(l.target), ty = l.type;
   if (layout === "projects") return ty === "project" ? 0.9 : ty === "subproject" ? 0.6 : ty === "hub" ? (t?.project ? 0 : 0.8)
-    : ty === "core" ? 0 : 0.02;
+    : ty === "core" ? 0 : ty === "mention" ? 0.015 : 0.02;
   if (layout === "categories") return ty === "hub" ? 0.9 : ty === "core" ? 0 : ty === "subproject" ? 0.03 : 0.01;
-  return ty === "semantic" ? 0.05 : ty === "wiki" ? 0.2 : ty === "project" ? 0.15 : ty === "subproject" ? 0.3 : 0.7;
+  return ty === "semantic" ? 0.05 : ty === "wiki" ? 0.2 : ty === "project" ? 0.15 : ty === "subproject" ? 0.3
+    : ty === "mention" ? 0.12 : 0.7;
 }
 function linkDistance(l) {
   const k = hash(typeof l.target === "object" ? l.target.id : l.target);
@@ -591,6 +651,14 @@ function clusterOf(pid) {
   }
   return ids;
 }
+function personCluster(pid) {
+  const ids = new Set([pid]);
+  for (const l of data.links) {
+    const sId = typeof l.source === "object" ? l.source.id : l.source, tId = typeof l.target === "object" ? l.target.id : l.target;
+    if (l.type === "mention" && sId === pid) ids.add(tId);
+  }
+  return ids;
+}
 function setFocus(ids) {
   focusSet = ids;
   document.body.classList.toggle("dimmed", !!ids);
@@ -645,7 +713,7 @@ function htmlLabel(text, cls, dy) {
 function colorOf(n) { return n?.color || "#8b7bff"; }
 function visible(n) {
   if (typeof n !== "object") n = nodeById.get(n);
-  return n && (n.kind === "core" || !hidden.has(n.kind === "hub" ? n.hubKind : n.kind));
+  return n && (n.kind === "core" || (!hidden.has(n.kind === "hub" ? n.hubKind : n.kind) && inTime(n)));
 }
 function isHot(n) { if (typeof n !== "object") n = nodeById.get(n); return !!(n && n.hot); }
 
@@ -696,6 +764,21 @@ function makeNode(n) {
     group.userData = { label: lab, ring };
     return group;
   }
+  if (n.isPerson) {
+    const r = Math.cbrt(n.val || 5) * 1.3;
+    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 20), new THREE.MeshBasicMaterial({ color }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.8, 0.14, 6, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75 }));
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.3, depthWrite: false }));
+    halo.scale.set(r * 5, r * 5, 1);
+    group.add(halo, s, ring);
+    if ((n.mentions || 0) >= 2) {
+      const lab = htmlLabel(n.label.split(" ").slice(0, 2).join(" "), "person-label", r + 5);
+      lab.element.style.setProperty("--c", n.color); lab.element.onclick = () => select(n);
+      lab.element.title = n.company ? `${n.label} · ${n.company}` : n.label;
+      group.add(lab); group.userData = { label: lab, ring };
+    } else group.userData = { ring };
+    return group;
+  }
   const r = Math.cbrt(n.val || 4) * 1.35;
   const s = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 18), new THREE.MeshBasicMaterial({ color }));
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: n.hot ? 0.65 : 0.28, depthWrite: false }));
@@ -714,7 +797,7 @@ function onHover(n) {
   $("graph").style.cursor = n ? "pointer" : "grab";
   if (!n || n.kind === "core") { tip.style.display = "none"; return; }
   tip.style.setProperty("--c", n.color);
-  tip.innerHTML = `<b>${esc(n.kind === "hub" ? "Category" : labelFor(n.kind))}</b>${esc(n.label)}`;
+  tip.innerHTML = `<b>${esc(n.kind === "hub" ? "Category" : labelFor(n.kind))}</b>${esc(n.label)}${n.isPerson && n.company ? `<br><span style="color:var(--muted)">${esc(n.company)} · ${n.mentions || 0} mention${n.mentions === 1 ? "" : "s"}</span>` : ""}`;
   tip.style.display = "block"; placeTip();
 }
 
@@ -722,6 +805,7 @@ const LABELS = { person: "Person", project: "Project", preference: "Preference",
   decision: "Decision", routine: "Routine", event: "Event", note: "Note", file: "File", site: "Website", video: "Video",
   ad: "Ad", image: "Image", email: "Email", doc: "Google Doc", scrape: "Web research", audio: "Audio",
   action: "Action", meeting: "Meeting", mission: "Mission" };
+LABELS.person = "Person";
 const labelFor = (k) => LABELS[k] || k;
 
 // ── camera ────────────────────────────────────────────
@@ -814,6 +898,8 @@ async function loadGraph() {
   Graph.graphData(g);
   applyLayout(layout, { reheat: false });
   if (focusSet && selected?.isProject) setFocus(clusterOf(selected.id));
+  else if (focusSet && selected?.isPerson) setFocus(personCluster(selected.id));
+  if (timeline.on) timelineSetup(false);
   buildChips();
   $("empty").classList.toggle("show", g.nodes.length <= 1);
 }
@@ -853,6 +939,57 @@ function setStatus(s) {
   $("status").textContent = status;
   document.documentElement.style.setProperty("--orb", STATUS_COLORS[status] || STATUS_COLORS.idle);
 }
+
+// ── timeline: replay how the brain grew, or look at one month ──
+const timeline = { on: false, t0: 0, t1: 0, cut: null, mode: "upto", playing: null };
+const tOf = (n) => { const t = n.created ? Date.parse(n.created) : NaN; return isNaN(t) ? null : t; };
+function inTime(n) {
+  if (!timeline.on || timeline.cut == null || n.kind === "hub" || n.kind === "core") return true;
+  const t = tOf(n); if (t == null) return true;
+  if (timeline.mode === "upto") return t <= timeline.cut;
+  const span = timeline.mode === "week" ? 7 * 864e5 : null;
+  if (span) return t <= timeline.cut && t > timeline.cut - span;
+  const a = new Date(timeline.cut), b = new Date(t);
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+function timelineSetup(reset = true) {
+  const ts = data.nodes.map(tOf).filter((t) => t != null).sort((a, b) => a - b);
+  timeline.t0 = ts.length ? ts[0] : Date.now() - 864e5; timeline.t1 = Math.max(Date.now(), ts[ts.length - 1] || 0);
+  if (reset) { timeline.cut = timeline.t1; $("tl-range").value = 1000; }
+  const bins = 60, hist = new Array(bins).fill(0), span = Math.max(1, timeline.t1 - timeline.t0);
+  ts.forEach((t) => hist[Math.min(bins - 1, Math.floor(((t - timeline.t0) / span) * bins))]++);
+  const mx = Math.max(1, ...hist);
+  $("tl-hist").innerHTML = hist.map((v) => `<i style="height:${Math.round((v / mx) * 100)}%"></i>`).join("");
+  timelineApply();
+}
+function timelineApply() {
+  const cut = timeline.cut ?? timeline.t1, d = new Date(cut);
+  const shown = data.nodes.filter((n) => n.kind !== "hub" && n.kind !== "core" && inTime(n)).length;
+  const label = timeline.mode === "month" ? d.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  $("tl-when").innerHTML = `${timeline.mode === "week" ? "Week to " : ""}${esc(label)}<small>${shown} item${shown === 1 ? "" : "s"}${timeline.mode === "upto" ? " so far" : ""}</small>`;
+  Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility());
+}
+function timelineToggle(on) {
+  timeline.on = on; document.body.classList.toggle("tl-on", on); $("v-time").classList.toggle("on", on);
+  if (!on) { timelineStop(); timeline.cut = null; Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility()); return; }
+  timelineSetup(true);
+}
+function timelineStop() { clearInterval(timeline.playing); timeline.playing = null; $("tl-play").textContent = "▶"; }
+$("v-time").onclick = () => timelineToggle(!timeline.on);
+$("tl-close").onclick = () => timelineToggle(false);
+$("tl-range").oninput = () => { timelineStop(); timeline.cut = timeline.t0 + (timeline.t1 - timeline.t0) * ($("tl-range").value / 1000); timelineApply(); };
+$("tl-mode").onchange = () => { timeline.mode = $("tl-mode").value; timelineApply(); };
+$("tl-play").onclick = () => {
+  if (timeline.playing) return timelineStop();
+  if (+$("tl-range").value >= 1000) $("tl-range").value = 0;
+  $("tl-play").textContent = "❚❚";
+  timeline.playing = setInterval(() => {
+    const v = Math.min(1000, +$("tl-range").value + 6);
+    $("tl-range").value = v; timeline.cut = timeline.t0 + (timeline.t1 - timeline.t0) * (v / 1000); timelineApply();
+    if (v >= 1000) timelineStop();
+  }, 60);
+};
 
 // ── minimise the side panels (remembered on this device) ─
 const store_ = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -986,7 +1123,9 @@ async function renderTopic(v) {
     return `<button class="row" data-id="${esc(i.id)}" style="--c:${i.color}"><i></i><div><div class="tt">${esc(i.title)}</div>
       <div class="mm">${bits.join(" · ")}${i.note ? ` · <span title="${esc(i.note)}">📝 note</span>` : ""}</div></div><div class="rt">${right}</div></button>`;
   }).join("");
-  $("p-body").innerHTML = `
+  const addP = v.kind === "person" ? `<div class="prow" style="margin:0 0 10px"><input class="find" id="np-name" placeholder="New person — full name" style="margin:0;flex:1">
+    <input class="find" id="np-co" placeholder="Company" style="margin:0;width:130px"><button class="btn" id="np-add">Add</button></div>` : "";
+  $("p-body").innerHTML = addP + `
     <input class="find" id="t-find" placeholder="Filter ${esc(t.label.toLowerCase())}…" value="${esc(v.q)}">
     <div class="filters" style="--c:${color}">${F.filter(([k, , n]) => k === "all" || n).map(([k, l, n]) =>
       `<button data-f="${k}" class="${v.filter === k ? "on" : ""}">${l}<small>${n}</small></button>`).join("")}</div>
@@ -994,6 +1133,11 @@ async function renderTopic(v) {
       v.kind === "tracked" ? "Nothing tracked yet. Open any memory, note, creation or action and give it a status or ★ pin." :
       v.kind === "doing" ? "Nothing in progress. Open an item and set it to “In progress”." :
       "Nothing here yet — it fills up as you talk to Nova."}</div>`}</div>`;
+  if ($("np-add")) $("np-add").onclick = async () => {
+    const name = $("np-name").value.trim(); if (!name) return;
+    const r = await api("/api/person", { new: true, name, company: $("np-co").value.trim() });
+    await loadGraph(); openItem(r.id, true);
+  };
   const f = $("t-find");
   f.oninput = () => { v.q = f.value; const pos = f.selectionStart; renderTopic(v).then(() => { const g = $("t-find"); g.focus(); g.setSelectionRange(pos, pos); }); };
 }
@@ -1025,7 +1169,8 @@ async function renderItem(v) {
         ${it.projects.map((p) => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join("")}
       </select>${cur && it.project.why ? `<span class="muted">(${esc(it.project.why)})</span>` : ""}</div>`;
   }
-  if (it.type === "action") h += turnBody(it);
+  if (it.type === "person") h += personBody(it);
+  else if (it.type === "action") h += turnBody(it);
   else if (it.type === "mission") h += missionBody(it);
   else {
     const pv = it.preview;
@@ -1049,6 +1194,7 @@ async function renderItem(v) {
     return `<button data-id="${esc(r.id)}" style="--c:${rn?.color || "#8f97bf"}"><i></i><span>${esc(r.title)}</span></button>`; }).join("")}</div>`;
   $("p-body").innerHTML = h;
   bindTrack(id);
+  if (it.type === "person") bindPerson(id, it);
   const ps = $("projsel");
   if (ps) {
     if (it.project?.why === "you linked it") ps.value = it.project.id;
@@ -1064,6 +1210,45 @@ async function renderItem(v) {
   $("p-open").onclick = async () => { const r = await api("/api/open", { id }); flash(r.message); };
   $("p-focus").disabled = !n;
   $("p-focus").onclick = () => n && flyTo(n, 45);
+}
+
+function personBody(it) {
+  const p = it.person;
+  const f = (k, label, type = "text", ph = "") => `<label for="pf-${k}">${label}</label><input id="pf-${k}" data-pf="${k}" type="${type}" value="${esc(p[k] || "")}" placeholder="${ph}">`;
+  let h = `<div class="pcardx">${f("company", "Company", "text", "e.g. Axiz")}${f("role", "Role", "text", "e.g. Juniper BDM")}
+    ${f("email", "Email", "email")}${f("phone", "Phone", "tel")}
+    <label for="pf-aliases">Also called</label><input id="pf-aliases" data-pf="aliases" value="${esc((p.aliases || []).join(", "))}" placeholder="nicknames, comma separated">
+    <textarea id="pf-notes" data-pf="notes" placeholder="Notes about ${esc(p.name.split(" ")[0])}…">${esc(p.notes || "")}</textarea></div>
+    <div class="prow"><button class="btn primary" id="pf-save">Save card</button>
+      ${p.email ? `<a class="btn" style="text-decoration:none" href="mailto:${esc(p.email)}">Email</a>` : ""}
+      ${p.phone ? `<a class="btn" style="text-decoration:none" href="tel:${esc(p.phone.replace(/\s/g, ""))}">Call</a>` : ""}
+      <span class="muted">${p.last_seen ? "Last mentioned " + ago(p.last_seen) : "Not mentioned yet"} · ${it.mention_count} mention${it.mention_count === 1 ? "" : "s"}</span></div>`;
+  const order = ["Deals & money", "What Nova knows", "Notes & meetings", "Requests", "Creations"];
+  const groups = Object.entries(it.mentions || {}).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+  h += groups.length ? groups.map(([g, rows]) => `<h4>${esc(g)} (${rows.length})</h4><div class="related">${rows.map((r) =>
+      `<button data-id="${esc(r.id)}" style="--c:${nodeById.get(r.id)?.color || "#8f97bf"}" title="${esc(r.ts || "")}"><i></i><span>${esc(r.title)}</span></button>`).join("")}</div>`).join("")
+    : `<h4>Mentions</h4><div class="muted">Nothing mentions ${esc(p.name)} yet. Everything you tell Nova or forward about them links here automatically.</div>`;
+  h += `<h4>Tidy up</h4><div class="prow"><select id="pf-merge"><option value="">Same person as…</option>${(it.others || []).map((o) =>
+      `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join("")}</select><button class="btn" id="pf-merge-go">Merge</button>
+      <span style="flex:1"></span><button class="btn" id="pf-del" style="color:#ff8fa3">Delete card</button></div>`;
+  return h;
+}
+function bindPerson(id, it) {
+  $("pf-save").onclick = async () => {
+    const body = { id };
+    document.querySelectorAll("#p-body [data-pf]").forEach((el) => { body[el.dataset.pf] = el.value; });
+    await api("/api/person", body); flash("Saved."); renderView();
+  };
+  $("pf-merge-go").onclick = async () => {
+    const into = $("pf-merge").value; if (!into) return;
+    const other = it.others.find((o) => o.id === into)?.name;
+    if (!confirm(`Merge ${it.title} into ${other}? The card for ${it.title} is folded into ${other}'s.`)) return;
+    const r = await api("/api/person", { id, merge_into: into }); flash("Merged."); await loadGraph(); openItem(r.id);
+  };
+  $("pf-del").onclick = async () => {
+    if (!confirm(`Delete the card for ${it.title}? Memories and notes that mention them are kept.`)) return;
+    await api("/api/person", { id, delete: true }); flash("Card deleted."); closePanel(); loadGraph();
+  };
 }
 
 function turnBody(t) {
@@ -1185,7 +1370,7 @@ async function select(n) {
   if (n.kind === "core") { closePanel(); flyTo(n, 260); return; }
   if (n.kind === "hub") return openTopic(n.hubKind);
   tip.style.display = "none";
-  setFocus(n.isProject ? clusterOf(n.id) : null);
+  setFocus(n.isProject ? clusterOf(n.id) : n.isPerson ? personCluster(n.id) : null);
   if (n.isProject) { selected = n; flyTo(n, 230); openView({ type: "item", id: n.id, n }); return; }
   openItem(n.id);
 }
@@ -1334,10 +1519,26 @@ $("v-free").onclick = () => { orbit = false; setView("v-free"); };
 $("v-fit").onclick = () => { userBusy = performance.now() + 3000; Graph.zoomToFit(1200, 60); };
 
 // ── ask Nova ──────────────────────────────────────────
+$("brainmode").onchange = () => { $("ask-in").placeholder = $("brainmode").checked ? "Ask your brain — e.g. What do I know about the Axiz Mist deal?" : "Ask Nova or tell it something to remember…"; };
 $("ask").addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = $("ask-in").value.trim(); if (!text) return;
   $("ask-in").value = ""; flash("Thinking…"); setStatus("thinking");
+  if ($("brainmode").checked) {
+    try {
+      const r = await api("/api/ask_brain", { question: text });
+      const box = $("reply"); clearTimeout(flash.t);
+      if (innerWidth < 900) closePanel();                // on a phone the answer needs the space
+      const withRefs = esc(r.answer || r.error).replace(/\[(\d{1,2})\]/g, (m, n) => `<b style="color:var(--accent-2)">[${n}]</b>`);
+      box.innerHTML = `<button class="x" id="reply-x" aria-label="Close">✕</button>${withRefs.replace(/\n/g, "<br>")}` +
+        (r.sources?.length ? `<div class="srcs">${r.sources.map((x) => `<button data-src="${esc(x.id)}" title="${esc(x.title)}"><b>[${x.n}]</b><span>${esc(x.title)}</span></button>`).join("")}</div>` : "");
+      box.classList.add("show"); setStatus("idle");
+      $("reply-x").onclick = () => box.classList.remove("show");
+      box.querySelectorAll("[data-src]").forEach((b) => { b.onclick = () => openItem(b.dataset.src); });
+      flash.t = setTimeout(() => box.classList.remove("show"), 90000);
+    } catch { flash("Nova is offline."); }
+    return;
+  }
   try { const r = await api("/api/ask", { text, speak: $("speak").checked }); flash(r.text || r.error); clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 15000); }
   catch { flash("Nova is offline."); }
 });

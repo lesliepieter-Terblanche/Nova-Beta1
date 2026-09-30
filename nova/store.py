@@ -449,3 +449,10 @@ def learn_from_turn(store: Store, llm, owner: str, user: str, assistant: str, to
             store.add_memory(text, kind, "learned", max(1, min(3, imp)), turn=turn)
     if items and getattr(store, "vault", None):
         store.export_markdown(store.vault)
+    who = [str(it.get("text", "")) for it in items[:6] if str(it.get("kind")) == "person"]
+    if who:                                   # people cards stay up to date as you talk
+        try:
+            from . import people
+            people.absorb("\n".join(who), source="learned")
+        except Exception as e:
+            print(f"[people] {e}")

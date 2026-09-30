@@ -52,6 +52,9 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 👤 **Presence awareness** | Greets you (and briefs you) when you sit down; pauses, holds messages and can lock the PC when you walk away |
 | ✋ **Gesture control** | Webcam hand gestures: ✋ stop · 👍/👎 yes/no · ✌️ listen · 👉 point = mouse · 🤏 pinch = click/drag the brain or globe (MediaPipe, local) |
 | 🌐 **God's Eye View** | Live 3D globe with real planes, ships, satellites, quakes and weather — "show me Cape Town in night vision", "what planes are overhead?" ([gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), needs Node 24) |
+| 📥 **Forward to file** | Forward links, PDFs, photos, business cards or voice notes to the Telegram bot — summarised and filed in your brain |
+| 👤 **People cards** | Everyone you deal with on one card — company, role, contact details, deals and every mention, linked in the globe |
+| 🧠 **Ask the brain** | Answers only from your own brain, with clickable sources · weekly "what's new" digest · 🕘 timeline replay |
 | ⚡ **Load-shedding** | Your area's schedule and a heads-up 30 min before the power goes off (EskomSePush, free token) |
 | 💸 **Price watcher** | "Tell me when this drops below R8,000" — Takealot and most shops, checked every few hours |
 | 📰 **News** | SA headlines and news about your vendors (Juniper, Avaya, Nokia…) — "vendor news" |
@@ -105,6 +108,9 @@ Full walkthrough, including Telegram, Google and GitHub: **[docs/INSTALL.md](doc
 "Make a 60-second vertical video explaining Wi-Fi 7 to small businesses."
 "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?"
+"What do I know about the Axiz Mist deal?"          → answer from your brain, with sources
+"Who is Sam? What's his number?"                      → people card
+"Save this to my brain: <link>"                       → or just forward it to the Telegram bot
 "What stage of load-shedding are we on?"
 "Tell me when this drops below R8,000: <takealot link>"
 "Any news about Juniper this week?"

@@ -266,6 +266,15 @@ def process_recording(wav: Path, title: str, when: dt.datetime) -> Path | None:
         context.store.index_note(note)
         context.record("meeting", title, note, data.get("summary", "")[:300])
         context.record("audio", f"{title} (recording)", wav, f"{minutes:.0f} min")
+        try:                                   # everyone in the meeting gets / updates a people card
+            from .. import people
+            for p in data.get("people", [])[:20]:
+                pid = people.from_line(str(p), source=f"meeting:{title}")
+                if pid:
+                    people.upsert(people.get(pid)["name"], note=f"In meeting '{title}' ({when:%d %b %Y})",
+                                  contact=when.isoformat(timespec="seconds"))
+        except Exception as e:
+            print(f"[meetings] people cards: {e}")
 
         # teach the permanent memory
         for d in data.get("decisions", [])[:8]:

@@ -114,6 +114,9 @@ SCHEMA = [
         {"path": "telegram.allowed_user_ids", "label": "Allowed Telegram user IDs", "type": "tags",
          "help": "Message your bot /id to find yours. Only these IDs can control Nova."},
         {"path": "telegram.voice_replies", "label": "Reply to voice notes with a voice note", "type": "bool"},
+        {"path": "telegram.file_forwards", "label": "File forwarded messages, links and files in my brain", "type": "bool",
+         "default": True, "help": "Forward anything to the bot (links, PDFs, photos, business cards, voice notes) and "
+         "it's summarised and filed. Send a file WITH a caption to ask for something else instead"},
         {"path": "telegram.announce_online", "label": "Message me when Nova starts / stops", "type": "bool",
          "default": True, "help": "🟢 online when run.bat starts Nova, 🔴 when it stops"},
     ]},
@@ -171,6 +174,8 @@ SCHEMA = [
         {"path": "dreaming.consolidate", "label": "Merge duplicate memories", "type": "bool", "default": True},
         {"path": "dreaming.connect", "label": "Find connections between ideas", "type": "bool", "default": True},
         {"path": "dreaming.journal", "label": "Write the day's journal", "type": "bool", "default": True},
+        {"path": "dreaming.people", "label": "Update people cards", "type": "bool", "default": True},
+        {"path": "dreaming.weekly_digest", "label": "Sunday: send 'what's new in your brain'", "type": "bool", "default": True},
         {"path": "dreaming.backup", "label": "Encrypted backup", "type": "bool", "default": True},
         {"path": "dreaming.backup_keep", "label": "Backups to keep", "type": "number", "min": 1, "max": 60, "default": 7},
         {"path": "dreaming.drive_backup", "label": "Also copy backups to Google Drive", "type": "bool", "default": False},

@@ -4,6 +4,25 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.6.0] — 2026-09-30
+### Added
+- **📥 Forward anything to Telegram → filed in your brain.** Forwarded messages, bare links, PDFs/Word/Excel files,
+  photos (whiteboards and slides are transcribed; **business cards become people cards**) and forwarded voice notes
+  (transcribed) are summarised and saved in brain/Inbox, with the people in them carded and the right project
+  linked. `/save <text or link>`, or reply `/save` to any message, does the same. A file sent *with* a caption is
+  still treated as a request. Switch off in Settings → Telegram. "Save this to my brain: <link or file>" works by voice too.
+- **👤 People cards.** Everyone you deal with gets a card: company, role, email, phone, notes, when they were last
+  mentioned, and everything that mentions them — grouped into *Deals & money*, *What Nova knows*, *Notes & meetings*,
+  *Requests*. Cards are made from what you say, meeting notes, business cards and forwards, and the nightly dream
+  catches up on the rest. People appear in the globe linked to their mentions; click one to light up their web.
+  Edit, merge ("Sam" + "Sam Dlamini") or delete cards in their panel; add people from the People list.
+  Voice: "Who is Sam?", "What's Lerato's number?", "Save Johan Pretorius at Nokia, account manager".
+- **🧠 Ask the brain.** Tick **🧠 brain** in the dashboard's ask bar (or ask Nova "what do I know about…") and the
+  answer comes only from your own memories, notes, people cards and creations, with numbered sources you can click.
+- **Weekly digest.** Sunday's dream sends "what's new in your brain" to Telegram and saves it in brain/Digests
+  (Settings → Dreaming). Ask any time: "what's new in my brain this week?"
+- **🕘 Timeline on the globe.** Replay how your brain grew with ▶, drag through time, or show only one month or week.
+
 ## [2.5.1] — 2026-09-30
 ### Changed
 - Dashboard: the left panel (Busy with, Layout, View…) and **Live activity** are now see-through so the brain shows

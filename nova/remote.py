@@ -84,15 +84,45 @@ def status(fresh: bool = False) -> dict:
         if out["running"]:
             code, text = _run(["serve", "status", "--json"])
             served = text if code == 0 else ""
-            out["serving"] = f"127.0.0.1:{_port()}" in served or f"localhost:{_port()}" in served
-            out["globe_serving"] = f":{_globe_port()}" in served
+            m = serve_map(served)
+            if m is not None:                    # exact: which local port each https port really forwards to
+                out["root_target"] = m.get("443", "")
+                out["serving"] = _points_to(m.get("443", ""), _port())
+                out["globe_serving"] = _points_to(m.get(str(GLOBE_HTTPS_PORT), ""), _globe_port())
+            else:
+                out["serving"] = f"127.0.0.1:{_port()}" in served or f"localhost:{_port()}" in served
+                out["globe_serving"] = f":{_globe_port()}" in served
             if out["dns_name"]:
                 out["url"] = f"https://{out['dns_name']}/" if out["serving"] else ""
                 out["globe_url"] = f"https://{out['dns_name']}:{GLOBE_HTTPS_PORT}/" if out["globe_serving"] else ""
-            if not out["serving"]:
+            if not out["serving"] and out.get("root_target"):
+                out["message"] = (f"Your Tailscale address points at {out['root_target']} instead of Nova — "
+                                  "click Set up to fix it.")
+            elif not out["serving"]:
                 out["message"] = "Tailscale is connected. Click Set up to reach Nova from your phone."
     _cache.update(t=time.time(), status=out)
     return out
+
+
+def serve_map(text: str) -> dict | None:
+    """`tailscale serve status --json` → {"443": "http://127.0.0.1:8765", "8443": "…"} (None if not that format)."""
+    try:
+        d = json.loads(text[text.index("{"):]) if "{" in (text or "") else {}
+    except ValueError:
+        return None
+    web = d.get("Web") if isinstance(d, dict) else None
+    if not isinstance(web, dict):
+        return None
+    out = {}
+    for host_port, conf in web.items():
+        handler = ((conf or {}).get("Handlers") or {}).get("/") or {}
+        out[host_port.rsplit(":", 1)[-1]] = str(handler.get("Proxy") or handler.get("Path") or "")
+    return out
+
+
+def _points_to(target: str, port: int) -> bool:
+    t = (target or "").rstrip("/")
+    return t.endswith(f"127.0.0.1:{port}") or t.endswith(f"localhost:{port}") or t == str(port)
 
 
 def allowed_host(host: str) -> bool:

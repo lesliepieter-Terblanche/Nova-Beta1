@@ -194,9 +194,10 @@ def _remote_env() -> dict:
     try:
         from ..remote import status as ts_status
         name = ts_status()["dns_name"]
-        return {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": name} if name else {}
     except Exception:
-        return {}
+        name = ""
+    # ".ts.net" = any Tailscale address, so it also works when the globe starts before Tailscale is connected
+    return {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": ",".join(h for h in (".ts.net", name) if h)}
 
 
 def stop() -> str:

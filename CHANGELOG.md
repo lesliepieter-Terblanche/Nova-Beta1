@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.13.1] — 2026-09-30
+### Fixed — Tailscale: "Blocked request. This host … is not allowed"
+- Nova now reads exactly where your Tailscale address forwards to. If it points at the God's Eye View globe instead
+  of Nova (that's what showed Vite's "Blocked request" page), Settings → Remote access says so and **Set up** — or the
+  next start — puts it back on Nova.
+- The globe accepts any Tailscale address (`.ts.net`), even when it starts before Tailscale is connected.
+
 ## [2.13.0] — 2026-09-30
 ### Added — 🎤 Voice on your phone (Tailscale)
 - **🎤 button on the dashboard's Ask bar**: tap, talk, pause — Nova hears you (transcribed on the PC), answers **out

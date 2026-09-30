@@ -147,7 +147,7 @@ def test_remote_tool(nova, ts):
 def test_globe_allows_the_tailscale_host(nova, ts):
     from nova.skills import globe
     remote.enable()
-    assert globe._remote_env() == {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": "pieter-pc.tail1234.ts.net"}
+    assert globe._remote_env() == {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": ".ts.net,pieter-pc.tail1234.ts.net"}
 
 
 _ = threading
@@ -196,3 +196,29 @@ def test_startup_summary_lines(nova, capsys):
     main.startup_summary(cfg, False, None, {})
     out = capsys.readouterr().out
     assert "Telegram    OFF — add your bot token" in out
+
+
+def test_real_serve_status_and_fixing_a_wrong_mapping(ts, monkeypatch):
+    """Tailscale's real JSON: the address pointed at the globe (Vite said 'Blocked request') → Nova puts it back."""
+    real = {"TCP": {"443": {"HTTPS": True}, "8443": {"HTTPS": True}},
+            "Web": {"pieter-pc.tail1234.ts.net:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}},
+                    "pieter-pc.tail1234.ts.net:8443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}}}}
+    assert remote.serve_map(json.dumps(real)) == {"443": "http://127.0.0.1:4173", "8443": "http://127.0.0.1:4173"}
+    fixed = []
+    orig = remote._run
+
+    def run(args, timeout=20):
+        if args[:3] == ["serve", "status", "--json"]:
+            return 0, json.dumps(real)
+        if args[:2] == ["serve", "--bg"] and not any(a.startswith("--https=") for a in args):
+            real["Web"]["pieter-pc.tail1234.ts.net:443"]["Handlers"]["/"]["Proxy"] = args[-1]
+            fixed.append(args[-1])
+            return 0, ""
+        return orig(args, timeout)
+    monkeypatch.setattr(remote, "_run", run)
+    monkeypatch.setattr(remote, "_serve", lambda args, wait=25: ("ok", run(args)[1]))
+    remote._cache.update(t=0.0, status=None)
+    st = remote.status(fresh=True)
+    assert not st["serving"] and st["globe_serving"] and "instead of Nova" in st["message"]
+    st = remote.ensure()
+    assert fixed == ["http://127.0.0.1:8765"] and st["serving"] and st["url"] == "https://pieter-pc.tail1234.ts.net/"

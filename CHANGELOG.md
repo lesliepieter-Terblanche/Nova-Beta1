@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.5.1] — 2026-09-30
+### Changed
+- Dashboard: the left panel (Busy with, Layout, View…) and **Live activity** are now see-through so the brain shows
+  behind them; they turn solid while your mouse is over them.
+- Both can be **minimised** (‹ / ▾ buttons, or press **M** for both). Minimised, the left panel becomes a small ☰
+  button that glows while Nova is working, and Live activity becomes a pill with a count of new events. Nova
+  remembers your choice on each device.
+
 ## [2.5.0] — 2026-09-30
 ### Added
 - **⚡ Load-shedding** (plugins/loadshedding.py, EskomSePush): "what stage are we on?", your area's schedule, and a

@@ -311,6 +311,34 @@
     border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
   .pcard .close:hover { color: var(--text); border-color: var(--line-strong); }
 
+  /* see-through side panels: the brain shows through; solid again while you use them */
+  .rail, .feed { background: rgba(14, 18, 36, var(--pa, .2)); backdrop-filter: blur(5px) saturate(120%);
+    -webkit-backdrop-filter: blur(5px) saturate(120%); box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    border-color: rgba(160, 175, 255, .09); transition: background .3s, backdrop-filter .3s, width .3s, max-height .3s, opacity .3s; }
+  .rail:hover, .rail:focus-within, .feed:hover { background: rgba(14, 18, 36, .66); backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%); }
+  .rail .busy, .rail .search, .views button, .chip { background: rgba(0,0,0,.1); }
+  .minbtn { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px; z-index: 2;
+    border: 1px solid var(--line); background: rgba(0,0,0,.25); color: var(--muted); cursor: pointer;
+    display: grid; place-items: center; font: 14px/1 var(--body); padding: 0; }
+  .minbtn:hover { color: #fff; border-color: var(--line-strong); }
+  .rail { padding-top: 40px; }
+  .rail .minbtn { top: 9px; }
+  .rail .railhd { position: absolute; top: 14px; left: 18px; font: 600 11px var(--body); letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .rail .railhd i { width: 8px; height: 8px; border-radius: 50%; background: var(--orb, var(--accent)); box-shadow: 0 0 10px var(--orb, var(--accent)); }
+  .rail.min { width: 44px; height: 44px; padding: 0; overflow: hidden; border-radius: 14px; cursor: pointer; }
+  .rail.min > :not(.minbtn) { display: none; }
+  .rail.min .minbtn { top: 8px; right: 8px; }
+  .rail.min.busy-on .minbtn { color: var(--orb, var(--accent)); box-shadow: 0 0 12px var(--orb, var(--accent)); }
+  .feed .minbtn { top: 7px; right: 8px; }
+  .feed.min { width: auto; max-height: none; padding: 10px 44px 10px 14px; cursor: pointer; }
+  .feed.min ul { display: none; }
+  .feed.min h3 { margin: 0; }
+  .feed .newn { display: none; background: var(--accent); color: #070914; border-radius: 999px; padding: 1px 7px;
+    font: 600 10.5px var(--body); letter-spacing: 0; }
+  .feed.min .newn.show { display: inline-block; }
+
   /* phone layout */
   @media (max-width: 900px) {
     header { top: 10px; left: 10px; right: 10px; gap: 8px; flex-wrap: wrap; }
@@ -320,7 +348,8 @@
     .stats { display: none; }
     .gear { width: 42px; height: 42px; }
     .feed { display: none; }
-    .rail { top: auto; bottom: 86px; left: 10px; right: 10px; width: auto; max-height: 36vh; padding: 10px; }
+    .rail { top: auto; bottom: 86px; left: 10px; right: 10px; width: auto; max-height: 36vh; padding: 36px 10px 10px; }
+    .rail.min { right: auto; width: 44px; padding: 0; }
     .rail .search, .rail .results, .rail .views, .rail #chips, .rail h3:not(.keep) { display: none; }
     .rail .busy { margin-bottom: 8px; }
     .ask { bottom: 14px; width: calc(100vw - 20px); padding: 6px 6px 6px 14px; }
@@ -361,7 +390,9 @@
   </div>
 </header>
 
-<aside class="rail glass">
+<aside class="rail glass" id="rail">
+  <div class="railhd"><i></i>Brain</div>
+  <button class="minbtn" id="rail-min" title="Minimise (M)" aria-label="Minimise panel">‹</button>
   <div class="busy" id="busy"><div class="hd"><i></i><span id="busy-h">Busy with</span></div><div id="busy-b" class="muted" style="margin-top:8px">Loading…</div></div>
   <label class="search">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -410,7 +441,8 @@
 </section>
 
 <section class="feed glass" id="feed">
-  <h3><span class="live"></span>Live activity</h3>
+  <button class="minbtn" id="feed-min" title="Minimise" aria-label="Minimise live activity">▾</button>
+  <h3><span class="live"></span>Live activity <span class="newn" id="feed-new"></span></h3>
   <ul id="feed-list"></ul>
 </section>
 
@@ -822,6 +854,29 @@ function setStatus(s) {
   document.documentElement.style.setProperty("--orb", STATUS_COLORS[status] || STATUS_COLORS.idle);
 }
 
+// ── minimise the side panels (remembered on this device) ─
+const store_ = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let feedNew = 0;
+function setMin(id, on) {
+  const el = $(id), btn = $(id + "-min");
+  el.classList.toggle("min", on);
+  store_.set("nova.min." + id, on ? "1" : "0");
+  if (id === "rail") { btn.textContent = on ? "☰" : "‹"; btn.title = on ? "Show panel (M)" : "Minimise (M)"; }
+  else { btn.textContent = on ? "▴" : "▾"; btn.title = on ? "Show live activity" : "Minimise"; if (!on) { feedNew = 0; $("feed-new").classList.remove("show"); } }
+}
+for (const id of ["rail", "feed"]) {
+  $(id + "-min").onclick = (e) => { e.stopPropagation(); setMin(id, !$(id).classList.contains("min")); };
+  $(id).addEventListener("click", () => { if ($(id).classList.contains("min")) setMin(id, false); });
+  if (store_.get("nova.min." + id) === "1") setMin(id, true);
+}
+document.addEventListener("keydown", (e) => {
+  if ((e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
+    const both = !$("rail").classList.contains("min");
+    setMin("rail", both); setMin("feed", both);
+  }
+});
+
 // ── live activity ─────────────────────────────────────
 let lastId = 0;
 const KIND_COLORS = { user: "#4cc9f0", reply: "#8b7bff", tool: "#ffd166", memory: "#52ffa8", artifact: "#ff9f1c", reminder: "#ff5fa2",
@@ -843,6 +898,10 @@ async function poll() {
         ul.prepend(li);
       }
       while (ul.children.length > 80) ul.lastChild.remove();
+      if (!first && $("feed").classList.contains("min")) {
+        feedNew += r.events.length;
+        $("feed-new").textContent = feedNew > 99 ? "99+" : feedNew; $("feed-new").classList.add("show");
+      }
       if (!first && r.events.some((e) => ["memory", "artifact", "user", "mission"].includes(e.kind))) { await loadGraph(); loadStats(); }
       else if (!first) loadStats();
       if (!first) { loadNow(); if (view && view.type !== "skills" && $("panel").classList.contains("open")) refreshSoon(); }
@@ -1222,6 +1281,7 @@ $("pmodal").addEventListener("click", async (e) => {
 async function loadNow() {
   let r; try { r = await api("/api/now"); } catch { return; }
   $("busy").classList.toggle("on", r.busy);
+  $("rail").classList.toggle("busy-on", !!r.busy);
   $("busy-h").textContent = r.busy ? "Working on" : r.status === "listening" ? "Listening" : r.status === "speaking" ? "Speaking" : "Busy with";
   let h = "";
   if (r.turn) {

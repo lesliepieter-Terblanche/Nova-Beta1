@@ -145,3 +145,23 @@ def test_slow_servers_connect_last():
     asyncio.run(m._connect_all())
     assert order[-1] == "canva"
     _ = context
+
+
+def test_finds_client_file_with_hidden_extension_or_in_downloads(tmp_path, monkeypatch):
+    from nova.skills import google_ws
+    monkeypatch.setattr(google_ws.Path, "home", lambda: tmp_path)
+    secret = tmp_path / "Nova" / "secrets" / "credentials.json"
+    secret.parent.mkdir(parents=True)
+    (secret.parent / "credentials.json.json").write_text('{"installed": {"client_id": "a"}}')
+    assert google_ws.find_client_file(secret) == secret and secret.exists()
+    secret.unlink()
+    (secret.parent / "credentials.json.json").unlink()
+    (tmp_path / "Downloads").mkdir()
+    (tmp_path / "Downloads" / "client_secret_123.apps.googleusercontent.com.json").write_text('{"installed": {"client_id": "b"}}')
+    assert google_ws.find_client_file(secret) and '"b"' in secret.read_text()
+    secret.unlink()
+    (tmp_path / "Downloads" / "client_secret_123.apps.googleusercontent.com.json").write_text('{"web": {"client_id": "c"}}')
+    with pytest.raises(RuntimeError, match="Desktop app"):
+        google_ws.find_client_file(secret)
+    (tmp_path / "Downloads" / "client_secret_123.apps.googleusercontent.com.json").unlink()
+    assert google_ws.find_client_file(secret) is None

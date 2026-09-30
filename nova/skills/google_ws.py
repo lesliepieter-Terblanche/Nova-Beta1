@@ -43,6 +43,40 @@ class NeedsReconnect(RuntimeError):
     pass
 
 
+def find_client_file(secret: Path) -> Path | None:
+    """Find the Google OAuth client file even if Windows hid its extension or it's still in Downloads,
+    and put it where Nova expects it (secrets/credentials.json)."""
+    if secret.exists():
+        return secret
+    home = Path.home()
+    places = [secret.parent, home / "Downloads", home / "Desktop", home / "Documents", home / "OneDrive" / "Downloads"]
+    names = ["credentials.json.json", "credentials.json.txt", "credentials", "client_secret*.json", "client_secret*.json.json",
+             "credentials*.json"]
+    found = []
+    for folder in places:
+        if not folder.is_dir():
+            continue
+        for pat in names:
+            found += [f for f in folder.glob(pat) if f.is_file() and f.stat().st_size < 50_000]
+    for f in sorted(set(found), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            import json as _json
+            data = _json.loads(f.read_text(encoding="utf-8-sig"))
+        except Exception:
+            continue
+        if "installed" in data or "web" in data:                     # a real OAuth client file
+            if "web" in data and "installed" not in data:
+                raise RuntimeError(f"{f.name} is a 'Web application' client. Nova needs a 'Desktop app' client: "
+                                   "Google Cloud Console → Credentials → Create credentials → OAuth client ID → "
+                                   "Application type: Desktop app → Download JSON.")
+            secret.parent.mkdir(parents=True, exist_ok=True)
+            import shutil
+            shutil.copy2(f, secret)
+            print(f"[google] found your Google client file ({f}) and copied it to {secret}")
+            return secret
+    return None
+
+
 def login(interactive: bool = True):
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
@@ -64,8 +98,11 @@ def login(interactive: bool = True):
             raise NeedsReconnect("Google needs a one-time reconnect for new permissions (Slides). Click Connect Google "
                                  "in Settings → Google." if missing else
                                  "Google isn't connected yet. Click Connect Google in Settings → Google.")
-        if not secret.exists():
-            raise RuntimeError(f"Missing {secret}. See README -> Connect Google.")
+        if not find_client_file(secret):
+            raise RuntimeError(
+                f"Nova can't find your Google client file. Put the JSON you downloaded from Google Cloud "
+                f"(Credentials → your Desktop app OAuth client → Download JSON) in your Downloads folder or in "
+                f"{secret.parent} and try again — Nova finds it by itself, whatever it's called.")
         from google_auth_oauthlib.flow import InstalledAppFlow
         # offline + consent = Google always hands back a long-lived refresh token, so you sign in once
         creds = InstalledAppFlow.from_client_secrets_file(str(secret), SCOPES).run_local_server(

@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.8.2] — 2026-09-30
+### Fixed
+- Google sign-in: Nova now finds your Google client file by itself — even when Windows hid the extension
+  (`credentials.json.json`) or it's still in Downloads as `client_secret_….json` — and copies it into place.
+  It also tells you if you downloaded a "Web application" client instead of a "Desktop app" one.
+  `run.bat --google-login` shows a clear message instead of crashing.
+
 ## [2.8.1] — 2026-09-30
 ### Changed
 - The main categories (Goals, Decisions, People, Projects…) have a small permanent label on the brain again; single

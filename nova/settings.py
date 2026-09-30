@@ -760,9 +760,10 @@ def run_test(kind: str) -> dict:
             import threading as _t
 
             from .skills import google_ws
-            if not (ROOT / "secrets" / "credentials.json").exists():
-                return {"ok": False, "message": "First put your Google OAuth client file in secrets/credentials.json "
-                        "(README → Connect Google)."}
+            if not google_ws.find_client_file(ROOT / "secrets" / "credentials.json"):
+                return {"ok": False, "message": "Nova can't find your Google client file. Download it from Google "
+                        "Cloud (Credentials → your Desktop app OAuth client → Download JSON) into Downloads, then "
+                        "click Connect Google again — Nova finds it by itself."}
             _t.Thread(target=google_ws.login, kwargs={"interactive": True}, daemon=True).start()
             return {"ok": True, "message": "A Google sign-in page is opening in your browser on this PC — pick your "
                     "account and allow everything once. Then click Check."}

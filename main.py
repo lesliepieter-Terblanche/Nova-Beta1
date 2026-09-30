@@ -214,8 +214,12 @@ def main() -> None:
         return check(cfg)
     if args.google_login:
         from nova.skills.google_ws import login
-        login(interactive=True)
-        print("Google connected. Token saved.")
+        try:
+            login(interactive=True)
+        except Exception as e:
+            print(f"\n[google] Not connected yet: {e}\n")
+            return
+        print("\nGoogle connected. Nova stays signed in — no need to do this again.")
         return
 
     speech = context.speech

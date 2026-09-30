@@ -56,7 +56,7 @@ def test_loadshedding_status_and_warning(plugins, nova, monkeypatch):
     monkeypatch.setenv("ESP_TOKEN", "tok")
     assert "id eskde-10-roodepoort" in REGISTRY["find_loadshedding_area"].run({"place": "Roodepoort"})
     out = REGISTRY["loadshedding_status"].run({"area_id": "eskde-10-roodepoort"})
-    assert "stage 2" in out and "Roodepoort: today" in out
+    assert "stage 2" in out and ("Roodepoort: today" in out or "Roodepoort: tomorrow" in out)   # near midnight
     nova[0]["loadshedding"] = {"area_id": "eskde-10-roodepoort", "warn_minutes": 30}
     said = []
     monkeypatch.setattr(ls.context, "announce", said.append)

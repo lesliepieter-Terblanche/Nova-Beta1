@@ -59,6 +59,23 @@ globe:
 remote:
   enabled: false              # true = reconnect Tailscale and share Nova every time run.bat starts it
 
+# Focus & wellbeing — one thing at a time, routines, night guardrails, private check-ins (encrypted, never sent to AI)
+wellbeing:
+  enabled: true
+  focus_default: false        # open the dashboard in Focus mode
+  nudge_minutes: 50           # gentle "time check" after this long on one thing
+  anchors:                    # "HH:MM Name | step; step"
+    - "07:30 Morning routine | Glass of water; Medication (if any); Pick today's one thing"
+    - "12:30 Lunch — step away from the screen"
+    - "22:30 Wind down | Dim the screens; Write tomorrow's one thing; Bed by 23:15"
+  night: { enabled: true, from: "23:00", to: "06:30", hold_sends: true, release_at: "08:00" }
+  buy_pause: true             # anything that buys waits 24 hours
+  low_energy_auto: true
+  signals: { short_sleep: true, short_sleep_hours: 6, late_nights: true, project_burst: true, burst_count: 4,
+             energy_up: true, low_run: true }
+  signals_telegram: false
+  plan: ""                    # what you agreed with your doctor to do when a heads-up shows
+
 # Load-shedding (EskomSePush) — free token in .env (ESP_TOKEN); say "find my load-shedding area Roodepoort".
 loadshedding:
   area_id: ""

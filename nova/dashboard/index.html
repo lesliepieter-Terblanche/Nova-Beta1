@@ -367,6 +367,68 @@
   .legend.min .railhd { position: static; }
   .panel.open ~ .legend { opacity: 0; pointer-events: none; }
 
+  /* focus mode */
+  .focus { position: fixed; inset: 0; z-index: 9; display: none; overflow-y: auto; padding: 22px 16px 60px;
+    background: radial-gradient(ellipse at 50% 20%, rgba(20,24,48,.9), rgba(3,4,10,.96)); backdrop-filter: blur(10px); }
+  body.focus-on .focus { display: block; }
+  body.focus-on header, body.focus-on .rail, body.focus-on .feed, body.focus-on .legend, body.focus-on .ask,
+  body.focus-on .panel, body.focus-on .tl-bar { visibility: hidden; }
+  body.focus-on .reply { z-index: 10; bottom: 24px; }
+  .fx { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .fx-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .fx-top .clock { font: 600 30px var(--display); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .fx-top .sub { color: var(--muted); font-size: 13px; }
+  .fx-top .sp { flex: 1; }
+  .fbtn { padding: 9px 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.04);
+    color: var(--text); font: 600 13px var(--body); cursor: pointer; }
+  .fbtn:hover { background: rgba(255,255,255,.08); }
+  .fbtn.go { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; border: 0; }
+  .fbtn.on { border-color: var(--accent-2); color: var(--accent-2); }
+  .fbtn.small { padding: 6px 10px; font-size: 12px; font-weight: 500; }
+  .fcard { border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; background: rgba(14,18,36,.55); }
+  .fcard h6 { margin: 0 0 10px; font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 8px; }
+  .fnow { padding: 24px 22px; border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: linear-gradient(160deg, rgba(40,34,90,.55), rgba(14,18,36,.6)); }
+  .fnow .t { font: 600 26px/1.3 var(--display); margin: 2px 0 6px; word-break: break-word; }
+  .fnow .for { color: var(--muted); font-size: 13px; }
+  .fnow .frow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; align-items: center; }
+  .fnow .empty { color: var(--muted); font-size: 15px; }
+  .fnext { display: flex; flex-direction: column; gap: 6px; }
+  .fnext div { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.03); }
+  .fnext div span { flex: 1; font-size: 14px; }
+  .fdump { display: flex; gap: 8px; }
+  .fdump textarea { flex: 1; min-height: 44px; max-height: 160px; resize: vertical; padding: 11px 13px; border-radius: 12px;
+    border: 1px solid var(--line); background: rgba(0,0,0,.28); color: var(--text); font: 14px var(--body); outline: none; }
+  .anchors { display: flex; flex-wrap: wrap; gap: 8px; }
+  .anchor { display: flex; flex-direction: column; gap: 4px; padding: 9px 12px; border-radius: 14px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.03); cursor: pointer; min-width: 150px; flex: 1; text-align: left; color: var(--text); font: 13px var(--body); }
+  .anchor b { font: 600 13px var(--body); } .anchor small { color: var(--muted); }
+  .anchor.done { border-color: color-mix(in srgb, var(--ok) 50%, transparent); background: color-mix(in srgb, var(--ok) 8%, transparent); }
+  .anchor.done b::before { content: "✓ "; color: var(--ok); }
+  .anchor.due:not(.done) { border-color: var(--accent-2); }
+  .scale { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 10px; font-size: 13px; }
+  .scale label { color: var(--muted); min-width: 60px; }
+  .scale button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,.03);
+    color: var(--text); font: 600 14px var(--body); cursor: pointer; }
+  .scale button.on { background: var(--accent); color: #070914; border-color: var(--accent); }
+  .scale input { width: 80px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.28); color: var(--text); font: 14px var(--body); }
+  .headsup { border-color: color-mix(in srgb, #ffd166 45%, transparent); background: rgba(60,48,20,.35); font-size: 14px; line-height: 1.5; }
+  .later-list div { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 13.5px; }
+  .later-list div span { flex: 1; }
+  .ring { width: 54px; height: 54px; flex: none; }
+  .wins { color: var(--ok); font-size: 13.5px; }
+  .fmuted { color: var(--muted); font-size: 12.5px; }
+  details.fcard summary { cursor: pointer; list-style: none; font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  body.low-energy .fx .hide-low { display: none !important; }
+  .trend svg { width: 100%; height: auto; }
+
+  /* calm & night */
+  body.calm .grain { display: none; }
+  body.calm #graph canvas { filter: saturate(.6); }
+  body.night #graph canvas { filter: saturate(.5) brightness(.65) sepia(.25); }
+  body.night .glass { filter: brightness(.9); }
+
   /* people cards */
   .pcardx { display: grid; grid-template-columns: 90px 1fr; gap: 7px 10px; align-items: center; font-size: 12.5px; margin-bottom: 6px; }
   .pcardx label { color: var(--muted); }
@@ -428,6 +490,7 @@
     .reply { bottom: 80px; width: calc(100vw - 20px); }
     .panel { top: 122px; right: 10px; left: 10px; bottom: 80px; width: auto; }
     .gchip, .gcam { display: none !important; }
+    .fnow .t { font-size: 22px; } .fx-top .clock { font-size: 24px; }
     .legend { top: 118px; right: 10px; width: min(236px, calc(100vw - 20px)); max-height: 40vh; }
     .gtoast { top: 70px; }
     .tl-bar { bottom: 80px; width: calc(100vw - 20px); flex-wrap: wrap; gap: 8px; }
@@ -459,6 +522,7 @@
     <div class="stat" data-open="creations" title="Files, sites, videos, ads… Nova made"><div class="n" id="s-art">0</div><div class="l">Creations</div><div class="sub"></div></div>
     <div class="stat" data-open="actions" title="Every request and the steps Nova took"><div class="n" id="s-act">0</div><div class="l">Actions</div><div class="sub"></div></div>
   </div>
+    <button class="gear glass" id="focus-btn" title="Focus mode — one thing at a time (F)" aria-label="Focus mode" style="border:1px solid var(--line);cursor:pointer;font-size:20px;color:var(--text)">◎</button>
     <button class="gear glass" id="phone-btn" title="Open Nova on your phone (Tailscale)" aria-label="Open on phone" style="border:1px solid var(--line);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
     <a class="gear glass" href="/globe" target="_blank" title="God's Eye View — live 3D globe" aria-label="God's Eye View"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></a>
     <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
@@ -529,6 +593,7 @@
   <ul id="feed-list"></ul>
 </section>
 
+<div class="focus" id="focus" aria-label="Focus mode"><div class="fx" id="fx"></div></div>
 <div class="reply glass" id="reply"></div>
 <div class="tl-bar glass" id="tl">
   <button class="play" id="tl-play" title="Play">▶</button>
@@ -908,6 +973,16 @@ function animate() {
 
 // ── theme (Settings → Appearance; applies live) ──────
 let orbitSpeed = 1, themeRev = 0, coreThemed = -1;
+let baseTheme = { bloom: 0.85, orbit: 1 }, themeCalm = false, nightNow = false;
+function applyCalm() {
+  const calm = themeCalm || nightNow || document.body.classList.contains("focus-on") || document.body.classList.contains("low-energy");
+  document.body.classList.toggle("calm", calm);
+  document.body.classList.toggle("night", nightNow);
+  bloom.strength = calm ? Math.min(0.3, baseTheme.bloom) : baseTheme.bloom;
+  orbitSpeed = calm ? 0 : baseTheme.orbit;
+  dust.visible = !calm;
+  Graph.linkDirectionalParticles(calm ? 0 : ((l) => (isHot(l.source) || isHot(l.target) || l.type === "core") ? 2 : 0));
+}
 async function applyTheme() {
   let t;
   try { t = await api("/api/theme"); } catch { return; }
@@ -917,8 +992,9 @@ async function applyTheme() {
   STATUS_COLORS.idle = t.accent; STATUS_COLORS.listening = t.accent2;
   Graph.backgroundColor(t.background);
   scene.fog.color.set(t.background);
-  bloom.strength = Number(t.bloom);
-  orbitSpeed = Number(t.orbit_speed);
+  baseTheme = { bloom: Number(t.bloom), orbit: Number(t.orbit_speed) };
+  themeCalm = !!t.calm;
+  applyCalm();
   document.body.classList.toggle("no-labels", !t.tags);
   if (t.layout && t.layout !== layout) applyLayout(t.layout);
   const want = Math.round(Number(t.stars));
@@ -1011,6 +1087,149 @@ function setStatus(s) {
   status = s || "idle";
   $("status").textContent = status;
   document.documentElement.style.setProperty("--orb", STATUS_COLORS[status] || STATUS_COLORS.idle);
+}
+
+// ── focus mode: one thing now, two next, nothing else ──
+let F = null, fOpen = false;
+const FOCUS_KEY = "nova.focus";
+const mins = (iso) => iso ? Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000)) : 0;
+const inMin = (iso) => { const m = Math.round((Date.parse(iso) - Date.now()) / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
+let timer = (() => { try { return JSON.parse(localStorage.getItem("nova.timer") || "null"); } catch { return null; } })();
+function saveTimer() { try { localStorage.setItem("nova.timer", JSON.stringify(timer)); } catch {} }
+async function loadFocus() {
+  try { F = await api("/api/focus"); } catch { return; }
+  nightNow = !!F.wb.night; document.body.classList.toggle("low-energy", !!F.wb.low_energy); applyCalm();
+  if (fOpen) renderFocus();
+  nudgeCheck();
+}
+function setFocusMode(on) {
+  fOpen = on; document.body.classList.toggle("focus-on", on); applyCalm();
+  try { localStorage.setItem(FOCUS_KEY, on ? "1" : "0"); } catch {}
+  if (on) { renderFocus(); loadFocus(); }
+}
+function ringSvg() {
+  if (!timer) return "";
+  const left = Math.max(0, timer.end - Date.now()), frac = left / (timer.minutes * 60000);
+  const C = 2 * Math.PI * 22;
+  return `<svg class="ring" viewBox="0 0 54 54"><circle cx="27" cy="27" r="22" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="5"/>
+    <circle cx="27" cy="27" r="22" fill="none" stroke="var(--accent-2)" stroke-width="5" stroke-linecap="round" stroke-dasharray="${C}"
+      stroke-dashoffset="${C * (1 - frac)}" transform="rotate(-90 27 27)"/><text x="27" y="31" text-anchor="middle" fill="currentColor"
+      font-size="12" font-family="Inter">${Math.ceil(left / 60000)}m</text></svg>`;
+}
+function renderFocus() {
+  if (!F) { $("fx").innerHTML = `<div class="fmuted">Loading…</div>`; return; }
+  const wb = F.wb, low = wb.low_energy;
+  const d = new Date(), hm = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  let h = `<div class="fx-top"><div><div class="clock">${hm}</div><div class="sub">${F.next_event ? `Next: ${esc(F.next_event.title)} in <b>${inMin(F.next_event.start)}</b>` : d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</div></div>
+    <span class="sp"></span>
+    <button class="fbtn small ${low ? "on" : ""}" data-fa="low" title="Shorter, gentler replies; only one thing on screen">${low ? "🌙 Low-energy on" : "🌙 Low-energy"}</button>
+    <button class="fbtn small" data-fa="exit">Exit focus ✕</button></div>`;
+  if (wb.headsup && !wb.headsup.dismissed) h += `<div class="fcard headsup">🌿 ${esc(wb.headsup.text)}<br><span class="fmuted">${esc(wb.headsup.plan)}</span>
+      <div style="margin-top:10px;display:flex;gap:8px"><button class="fbtn small" data-fa="dismiss">Thanks, noted</button><button class="fbtn small" data-fa="trends">See trends</button></div></div>`;
+  const n = F.now;
+  h += `<div class="fcard fnow"><h6>◎ Now${n?.started ? ` · on it ${mins(n.started)} min` : ""}</h6>` + (n ? `<div class="t">${esc(n.text)}</div>
+      ${n.for ? `<div class="for">first step for: ${esc(n.for)}</div>` : ""}
+      <div class="frow"><button class="fbtn go" data-fa="done" data-id="${n.id}">✓ Done</button>
+        <button class="fbtn" data-fa="breakdown" data-id="${n.id}" title="Get a two-minute first step">🪜 I'm stuck</button>
+        <button class="fbtn" data-fa="later" data-id="${n.id}" title="Park it — no guilt">Not now</button>
+        <span style="flex:1"></span>${timer ? ringSvg() + `<button class="fbtn small" data-fa="stop">Stop</button>` :
+          `<button class="fbtn small" data-fa="t25">⏱ 25</button><button class="fbtn small" data-fa="t50">⏱ 50</button>`}</div>`
+    : `<div class="empty">What's the one thing that matters most right now?</div>
+       <div class="fdump" style="margin-top:12px"><textarea id="fx-now" placeholder="e.g. Send Axiz the Mist pricing" rows="1"></textarea><button class="fbtn go" data-fa="setnow">Focus</button></div>`) + `</div>`;
+  if (F.next.length && !low) h += `<div class="fcard hide-low"><h6>Next${F.more ? ` · ${F.more} more after` : ""}</h6><div class="fnext">${F.next.map((t) =>
+      `<div><span>${esc(t.text)}</span><button class="fbtn small" data-fa="open-now" data-id="${t.id}">Do now</button><button class="fbtn small" data-fa="later" data-id="${t.id}">Later</button></div>`).join("")}</div></div>`;
+  h += `<div class="fcard"><h6>🧺 Brain dump — get it out of your head</h6><div class="fdump"><textarea id="fx-dump" rows="1" placeholder="Anything on your mind… (one per line) — Enter to park it"></textarea><button class="fbtn" data-fa="dump">Park</button></div>
+    <div class="fmuted" style="margin-top:6px">Parked in Later. Nothing gets lost and nothing turns red.</div></div>`;
+  const hmNow = d.toTimeString().slice(0, 5);
+  if (wb.anchors?.length) h += `<div class="fcard hide-low"><h6>🌿 Today's anchors</h6><div class="anchors">${wb.anchors.map((a) =>
+      `<button class="anchor ${a.done ? "done" : ""} ${a.at <= hmNow ? "due" : ""}" data-anchor="${esc(a.name)}" data-done="${a.done ? 1 : 0}"><b>${esc(a.name)}</b><small>${a.at}${a.steps.length ? " · " + a.steps.map(esc).join(" · ") : ""}</small></button>`).join("")}</div></div>`;
+  if (wb.held?.length) h += `<div class="fcard"><h6>⏸ Held for a fresh look</h6><div class="later-list">${wb.held.map((x) =>
+      `<div><span>${esc(x.label)} <span class="fmuted">· ${esc(x.reason)}</span></span><button class="fbtn small" data-fa="send" data-id="${x.id}">Send now</button><button class="fbtn small" data-fa="drop" data-id="${x.id}">Drop</button></div>`).join("")}</div></div>`;
+  if (!wb.checked_in) h += `<div class="fcard" id="ck"><h6>🌿 How are you today? <span class="fmuted" style="text-transform:none;letter-spacing:0">private · stays on this PC</span></h6>
+      <div class="scale" data-k="energy"><label>Energy</label>${[1, 2, 3, 4, 5].map((v) => `<button data-v="${v}">${v}</button>`).join("")}</div>
+      <div class="scale" data-k="mood"><label>Mood</label>${[1, 2, 3, 4, 5].map((v) => `<button data-v="${v}">${v}</button>`).join("")}</div>
+      <div class="scale"><label>Slept</label><input id="ck-sleep" type="number" min="0" max="16" step="0.5" placeholder="hours"> <input id="ck-note" placeholder="a word or two (optional)" style="flex:1;width:auto"></div>
+      <button class="fbtn go" data-fa="checkin">Save</button> <span class="fmuted">1 = low · 5 = high</span></div>`;
+  const w = F.wins.tasks + (wb.anchors || []).filter((a) => a.done).length + (wb.checked_in ? 1 : 0);
+  h += `<div class="fx-top"><span class="wins">🌱 ${w} win${w === 1 ? "" : "s"} today</span><span class="sp"></span>${wb.checked_in ? `<span class="fmuted">Checked in ✓</span>` : ""}<button class="fbtn small" data-fa="trends">📈 Trends</button></div>`;
+  const later = F.later || [], cand = F.from_brain || [];
+  if (later.length || cand.length) h += `<details class="fcard hide-low"><summary>Later (${later.length}${cand.length ? ` · ${cand.length} from your brain` : ""}) — whenever you're ready</summary><div class="later-list" style="margin-top:8px">
+      ${later.map((t) => `<div><span>${esc(t.text)}</span><button class="fbtn small" data-fa="open-next" data-id="${t.id}">Do next</button><button class="fbtn small" data-fa="delete" data-id="${t.id}" title="Remove">✕</button></div>`).join("")}
+      ${cand.map((c) => `<div><span>${esc(nodeById.get(c.item)?.label || c.item)} <span class="fmuted">· ${c.status === "doing" ? "in progress" : "to do"}</span></span><button class="fbtn small" data-fa="adopt" data-item="${esc(c.item)}">Focus on this</button></div>`).join("")}</div></details>`;
+  $("fx").innerHTML = h;
+  document.querySelectorAll("#ck .scale[data-k] button").forEach((b) => { b.onclick = () => { b.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); }; });
+  const dump = $("fx-dump");
+  if (dump) dump.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("fx").querySelector('[data-fa="dump"]').click(); } };
+  const nowIn = $("fx-now");
+  if (nowIn) nowIn.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("fx").querySelector('[data-fa="setnow"]').click(); } };
+}
+$("fx").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-fa], [data-anchor]"); if (!b) return;
+  if (b.dataset.anchor) { await api("/api/wellbeing", { action: "anchor", name: b.dataset.anchor, done: b.dataset.done !== "1" }); return loadFocus(); }
+  const a = b.dataset.fa, id = +b.dataset.id || 0;
+  if (a === "exit") return setFocusMode(false);
+  if (a === "trends") return showTrends();
+  if (a === "t25" || a === "t50") { const m = a === "t25" ? 25 : 50; timer = { end: Date.now() + m * 60000, minutes: m }; saveTimer(); return renderFocus(); }
+  if (a === "stop") { timer = null; saveTimer(); return renderFocus(); }
+  if (a === "low") { await api("/api/wellbeing", { action: "low", on: !F.wb.low_energy }); return loadFocus(); }
+  if (a === "dismiss") { await api("/api/wellbeing", { action: "dismiss" }); return loadFocus(); }
+  if (a === "send" || a === "drop") { if (a === "send" && !confirm("Do this now?")) return; const r = await api("/api/wellbeing", { action: a, id }); flash(r.message || "Done."); return loadFocus(); }
+  if (a === "checkin") {
+    const pick = (k) => +(document.querySelector(`#ck .scale[data-k="${k}"] button.on`)?.dataset.v || 0) || null;
+    await api("/api/wellbeing", { action: "checkin", energy: pick("energy"), mood: pick("mood"), sleep: $("ck-sleep").value || null, note: $("ck-note").value });
+    flash("Thanks for checking in 🌿"); return loadFocus();
+  }
+  if (a === "dump") { const t = $("fx-dump").value.trim(); if (!t) return; await api("/api/focus", { action: "dump", text: t }); flash("Parked — out of your head, not lost."); return loadFocus(); }
+  if (a === "setnow") { const t = $("fx-now").value.trim(); if (!t) return; await api("/api/focus", { action: "add", text: t, where: "now" }); return loadFocus(); }
+  if (a === "adopt") { await api("/api/focus", { action: "add", text: nodeById.get(b.dataset.item)?.label || b.dataset.item, where: "next", source: "item:" + b.dataset.item }); return loadFocus(); }
+  if (a === "breakdown") { b.disabled = true; b.textContent = "Finding a tiny first step…"; }
+  if (a === "done") { flash("Nice. ✓"); timer = null; saveTimer(); }
+  await api("/api/focus", { action: a, id }); loadFocus();
+});
+$("focus-btn").onclick = () => setFocusMode(true);
+document.addEventListener("keydown", (e) => {
+  if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) setFocusMode(!fOpen);
+  if (e.key === "Escape" && fOpen && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || "")) setFocusMode(false);
+});
+// gentle time checks: hyperfocus nudge + focus timer ending
+let lastNudge = 0;
+function chime() { try { const c = new AudioContext(), o = c.createOscillator(), g = c.createGain(); o.frequency.value = 660; g.gain.value = 0.06; o.connect(g); g.connect(c.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 1.2); o.stop(c.currentTime + 1.3); } catch {} }
+function nudgeCheck() {
+  if (timer && Date.now() >= timer.end) { timer = null; saveTimer(); chime(); flash("⏱ Time's up — how did it go? Stretch, sip some water, then pick the next thing."); if (fOpen) renderFocus(); }
+  const n = F?.now, every = (F?.wb?.nudge_minutes || 50);
+  if (n?.started && mins(n.started) >= every && Date.now() - lastNudge > every * 60000) {
+    lastNudge = Date.now();
+    flash(`🌿 You've been on “${n.text.slice(0, 50)}” for ${mins(n.started)} min. Time check — water, stretch, and is this still the one thing?`);
+  }
+}
+setInterval(() => { if (fOpen) renderFocus(); nudgeCheck(); }, 15000);
+setInterval(loadFocus, 60000);
+// trends + doctor summary
+async function showTrends() {
+  const r = await api("/api/wellbeing/trends?days=45");
+  const first = Object.keys(r.checkins).sort()[0];
+  const span = first ? Math.min(45, Math.max(14, Math.ceil((Date.now() - Date.parse(first)) / 864e5) + 1)) : 14;
+  const days = [...Array(span)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - (span - 1) + i); return d.toLocaleDateString("en-CA"); });
+  const line = (k, lo, hi, color) => {
+    const pts = days.map((d, i) => [i, r.checkins[d]?.[k]]).filter((p) => p[1] != null);
+    if (!pts.length) return "";
+    const x = (i) => 10 + i * (580 / (span - 1)), y = (v) => 150 - ((v - lo) / (hi - lo)) * 130;
+    return `<path d="${pts.map(([i, v], j) => `${j ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2.2"/>` +
+      pts.map(([i, v]) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="${color}"/>`).join("");
+  };
+  const n = Object.keys(r.checkins).length;
+  panelHead("#34d399", "Private", "Sleep, energy & mood", `Last ${span} days · ${n} check-in${n === 1 ? "" : "s"} · only on this PC`);
+  $("p-open").parentElement.style.display = "none";
+  $("p-body").innerHTML = (n ? `<div class="trend"><svg viewBox="0 0 600 160">${[20, 85, 150].map((y) => `<line x1="10" x2="590" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.07)"/>`).join("")}
+      ${line("sleep", 0, 12, "#60a5fa")}${line("energy", 1, 5, "#fbbf24")}${line("mood", 1, 5, "#34d399")}</svg></div>
+      <div class="fmuted" style="display:flex;gap:14px;margin:6px 0 14px"><span style="color:#60a5fa">● Sleep (0–12 h)</span><span style="color:#fbbf24">● Energy (1–5)</span><span style="color:#34d399">● Mood (1–5)</span></div>`
+      : `<p class="muted">No check-ins yet. Use the “How are you today?” card in Focus, or send /checkin on Telegram.</p>`) +
+    (r.signals.length ? `<h4>Patterns right now</h4><ul style="margin:4px 0 12px;padding-left:18px">${r.signals.map((s) => `<li>${esc(s.text)}</li>`).join("")}</ul>` : "") +
+    `<h4>Summary for your doctor</h4><p class="muted" style="margin:0 0 10px">A printable page of the last 30 days. Open it, then Ctrl+P → Save as PDF to share — only if you choose to.</p>
+     <div class="prow"><a class="btn" style="text-decoration:none" href="/wellbeing/report?days=30" target="_blank">Open summary</a>
+       <a class="btn" style="text-decoration:none" href="/wellbeing/report?days=30&notes=1" target="_blank">…with my notes</a></div>
+     <p class="muted" style="margin-top:14px">Your check-ins are encrypted on this PC and never sent to any AI model. Heads-ups come from the patterns you switched on in Settings → Focus & wellbeing.</p>`;
+  if (fOpen) setFocusMode(false);
 }
 
 // ── timeline: replay how the brain grew, or look at one month ──
@@ -1624,7 +1843,9 @@ addEventListener("resize", () => { Graph.width(innerWidth).height(innerHeight); 
 Graph.cameraPosition({ x: 0, y: 120, z: 1400 });
 poll.n = 0;
 pollGestures();
-await Promise.all([loadGraph(), loadStats(), applyTheme(), loadNow()]);
+await Promise.all([loadGraph(), loadStats(), applyTheme(), loadNow(), loadFocus()]);
+{ let saved = null; try { saved = localStorage.getItem(FOCUS_KEY); } catch {}
+  if (saved === "1" || (saved == null && F?.wb?.focus_default)) setFocusMode(true); }
 requestAnimationFrame(animate);
 setTimeout(() => {
   $("intro").classList.add("gone");

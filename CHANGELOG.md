@@ -4,6 +4,29 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.7.0] — 2026-09-30
+### Added — Focus & wellbeing (made for ADHD and bipolar II)
+- **◎ Focus mode** (button top right, or press **F**): one screen with the time, your next meeting countdown, the **one
+  thing Now** and the two Next. ✓ Done · 🪜 *I'm stuck* (a two-minute first step, then small steps) · *Not now*
+  (parked in Later, no guilt) · ⏱ 25/50-minute timer with a soft chime. **Brain dump** box parks thoughts instantly.
+  Wins today (tasks done, anchors ticked, check-in) — no streaks that can break, nothing ever turns red.
+- **Gentle time checks:** after 50 minutes on one thing (Settings), "water, stretch — is this still the one thing?"
+- **Calm visuals** (Settings → Focus & wellbeing): no spinning camera, softer glow, no particles, muted colours.
+  Focus mode, low-energy days and night time are always calm; at night the brain dims and warms.
+- **🌙 Low-energy mode:** on by itself when your check-in energy is 1–2 (or tap it): only the one thing on screen, and
+  Nova keeps replies extra short and gentle.
+- **🌿 Private check-in:** energy, mood (1–5), hours slept and a note — in Focus or `/checkin 3 4 7 note` on Telegram.
+  Encrypted on your PC with your backup passphrase; never sent to any AI model, never in the 2nd brain or answers.
+- **Heads-ups you choose:** short sleep, busy after midnight, a burst of new projects, high energy on little sleep,
+  several heavy days — a gentle note with *your own plan* (agreed with your doctor), never a diagnosis.
+- **Night guardrails:** after 23:00 (your choice) emails, invites and submissions are held until 08:00 for a fresh look
+  (Send / Drop in Focus, or "send held #3"); anything that buys waits 24 hours.
+- **Routine anchors** (e.g. "07:30 Morning routine | Water; Medication; Pick today's one thing") — reminded gently,
+  ticked as wins.
+- **📈 Trends + summary for your doctor:** sleep, energy and mood charts, and a printable 30-day page (notes optional).
+- Voice & Telegram: "what should I do?", "I'm stuck on the QBR", "brain dump: …", "I'm done", "not now",
+  `/focus`, `/dump`, `/checkin`.
+
 ## [2.6.1] — 2026-09-30
 ### Changed
 - **A clean brain sphere:** no more name tags floating on the globe (turn them back on in Settings → Appearance →

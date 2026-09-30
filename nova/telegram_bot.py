@@ -54,6 +54,7 @@ class TelegramBot:
             await update.effective_message.reply_text(
                 f"Hi {self.cfg.assistant.owner}, {self.cfg.assistant.name} here. Type or send a voice note.\n"
                 "Forward me anything (links, PDFs, photos, business cards, voice notes) and I'll file it in your brain.\n"
+                "/focus – your one thing   /dump – park thoughts   /checkin – private check-in\n"
                 "/save – file text or a replied-to message   /new – fresh conversation   /status – PC status   /id – your ID")
 
     async def cmd_new(self, update: Update, _):
@@ -74,6 +75,49 @@ class TelegramBot:
             await self._file(update, "text", text=text, from_who=self._forwarded(msg))
             return
         await self._ask(update, text, voice=False)
+
+    async def cmd_checkin(self, update: Update, ctx):
+        """/checkin <energy 1-5> <mood 1-5> <hours slept> [note] — handled on the PC, never sent to an AI model."""
+        if not await self._guard(update):
+            return
+        from . import wellbeing
+        args = list(getattr(ctx, "args", None) or [])
+        nums = []
+        while args and len(nums) < 3:
+            try:
+                nums.append(float(args[0].replace(",", ".")))
+                args.pop(0)
+            except ValueError:
+                break
+        if not nums:
+            await update.effective_message.reply_text(
+                "🌿 Check-in: /checkin energy mood sleep [note]\ne.g. /checkin 3 4 7 slept okay\n"
+                "Energy and mood 1 (low) – 5 (high), sleep in hours. Stays on your PC.")
+            return
+        e, m, sl = (nums + [None, None, None])[:3]
+        await asyncio.to_thread(wellbeing.checkin, int(e) if e else None, int(m) if m else None, sl, " ".join(args))
+        await update.effective_message.reply_text("🌿 Thanks — checked in. Only you can see this, on your PC.")
+
+    async def cmd_focus(self, update: Update, ctx):
+        """/focus — your one thing now; /focus <text> — make that your one thing."""
+        if not await self._guard(update):
+            return
+        from . import focus
+        from .skills.focus import _fmt
+        text = " ".join(getattr(ctx, "args", None) or []).strip()
+        if text:
+            await asyncio.to_thread(focus.add, text, "now", "telegram")
+        await update.effective_message.reply_text("◎ " + await asyncio.to_thread(_fmt))
+
+    async def cmd_dump(self, update: Update, ctx):
+        """/dump a; b; c — park thoughts in Later instantly."""
+        if not await self._guard(update):
+            return
+        from . import focus
+        text = (update.effective_message.text or "").partition(" ")[2]
+        items = await asyncio.to_thread(focus.brain_dump, text)
+        await update.effective_message.reply_text(
+            f"🧺 Parked {len(items)} in Later — out of your head, not lost." if items else "Send /dump followed by your thoughts.")
 
     async def cmd_save(self, update: Update, ctx):
         """/save <text or link>, or reply /save to any message (text, link, photo, file, voice note)."""
@@ -298,6 +342,9 @@ class TelegramBot:
         a.add_handler(CommandHandler("new", self.cmd_new))
         a.add_handler(CommandHandler("status", self.cmd_status))
         a.add_handler(CommandHandler("save", self.cmd_save))
+        a.add_handler(CommandHandler("checkin", self.cmd_checkin))
+        a.add_handler(CommandHandler("focus", self.cmd_focus))
+        a.add_handler(CommandHandler("dump", self.cmd_dump))
         a.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, self.on_voice))
         a.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | filters.VIDEO, self.on_file))
         a.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.on_text))

@@ -147,8 +147,15 @@ class Agent:
             })
             for i, call in enumerate(reply.tool_calls):
                 t = REGISTRY.get(call.name)
+                wait = self._should_hold(t, call.arguments) if t is not None else None
                 if t is None:
                     result = f"ERROR: no tool named {call.name}"
+                elif wait:
+                    from .wellbeing import hold
+                    hid = hold(t.name, call.arguments, *wait)
+                    result = (f"HELD (not done): {wait[0]}. It's saved as held action #{hid} until "
+                              f"{wait[1]:%A %H:%M}. Tell the user kindly in one sentence; they can say 'send held #{hid}' "
+                              "to do it anyway.")
                 elif t.confirm:
                     later = [c.id for c in reply.tool_calls[i + 1:]]
                     self.pending[session] = Pending(t, call.arguments, call.id, messages, tools, smart, later)
@@ -161,6 +168,18 @@ class Agent:
                     result = self._run_tool(session, t, call.arguments)
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": result[:6000]})
         return "I couldn't finish that in a reasonable number of steps. Try breaking it into smaller requests."
+
+    @staticmethod
+    def _should_hold(t: Tool, args: dict):
+        """Night-time sends and purchases wait (Settings → Wellbeing)."""
+        if t.name in ("send_held", "drop_held"):
+            return None
+        try:
+            from .wellbeing import should_hold
+            return should_hold(t.name, args) if context.store else None
+        except Exception as e:
+            print(f"[wellbeing] {e}")
+            return None
 
     def _resume(self, session, text, p: Pending, approved: bool) -> str:
         if context.store and getattr(p, "log_id", None):
@@ -229,5 +248,15 @@ Rules:
 - You have a permanent memory. It learns automatically after each conversation; use the remember tool when
   {a.owner} explicitly asks you to remember something, and correct_memory when you are corrected.
 
+- For "what should I do / I'm stuck / brain dump" use the focus tools: one thing at a time, kindly, never guilt.{self._style()}
+
 What you remember that may be relevant ({a.owner}'s memories and notes):
 {about or "(nothing saved yet)"}{playbook_text}"""
+
+    @staticmethod
+    def _style() -> str:
+        try:
+            from .wellbeing import style_hint
+            return style_hint()
+        except Exception:
+            return ""

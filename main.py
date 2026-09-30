@@ -284,6 +284,11 @@ def main() -> None:
     except Exception as e:
         print(f"[dream] not scheduled: {e}")
     try:
+        from nova import wellbeing
+        wellbeing.start()                # routine anchors, morning release of held actions, heads-ups
+    except Exception as e:
+        print(f"[wellbeing] not started: {e}")
+    try:
         from nova.missions import missions
         missions().start()               # runs scheduled missions (and any that were due while Nova was off)
     except Exception as e:

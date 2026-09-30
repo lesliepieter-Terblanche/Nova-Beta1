@@ -907,6 +907,23 @@ class Dashboard:
                         return self._json(dash.skills())
                     if u.path == "/api/now":
                         return self._json(dash.now())
+                    if u.path == "/api/focus":
+                        from .. import focus, wellbeing
+                        return self._json({**focus.state(), "wb": wellbeing.state()})
+                    if u.path == "/api/wellbeing/trends":
+                        from .. import wellbeing
+                        days = min(120, int(q.get("days", "45")))
+                        return self._json({"checkins": wellbeing.checkins(days=days), "signals": wellbeing.signals()})
+                    if u.path == "/wellbeing/report":
+                        from .. import wellbeing
+                        body = wellbeing.report(min(120, int(q.get("days", "30"))),
+                                                include_notes=q.get("notes", "0") == "1").encode()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/html; charset=utf-8")
+                        self.send_header("Cache-Control", "no-store")
+                        self.send_header("Content-Length", str(len(body)))
+                        self.end_headers()
+                        return self.wfile.write(body)
                     if u.path == "/media":
                         loc = dash.location_of(q.get("id", ""))
                         if not loc:
@@ -994,6 +1011,32 @@ class Dashboard:
                             return self._json({"error": str(e)}, 400)
                     if self.path == "/api/open":
                         return self._json({"message": dash.open_item(body.get("id", ""))})
+                    if self.path == "/api/focus":
+                        from .. import focus
+                        a, tid = body.get("action"), int(body.get("id") or 0)
+                        if a == "add":
+                            focus.add(str(body.get("text", "")), body.get("where", "now"), body.get("source", ""))
+                        elif a == "dump":
+                            focus.brain_dump(str(body.get("text", "")))
+                        elif a == "breakdown":
+                            focus.breakdown(tid)
+                        elif a in ("done", "later", "open-next", "open-now", "delete"):
+                            focus.set_status(tid, a)
+                        return self._json({"ok": True})
+                    if self.path == "/api/wellbeing":
+                        from .. import wellbeing
+                        a = body.get("action")
+                        if a == "checkin":
+                            wellbeing.checkin(body.get("energy"), body.get("mood"), body.get("sleep"), body.get("note", ""))
+                        elif a == "anchor":
+                            wellbeing.tick_anchor(str(body.get("name", "")), bool(body.get("done", True)))
+                        elif a == "dismiss":
+                            wellbeing.dismiss_headsup()
+                        elif a == "low":
+                            wellbeing.set_low_energy(bool(body.get("on")))
+                        elif a in ("send", "drop"):
+                            return self._json({"ok": True, "message": wellbeing.release(int(body.get("id", 0)), a)})
+                        return self._json({"ok": True})
                     if self.path == "/api/ask_brain":
                         from .. import answers
                         return self._json(answers.ask(str(body.get("question", ""))[:1000]))

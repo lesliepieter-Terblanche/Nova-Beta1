@@ -138,6 +138,12 @@
   .ask input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); font: 15px var(--body); padding: 10px 0; }
   .ask input::placeholder { color: var(--muted); }
   .ask .toggle { font: 12px var(--body); color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .ask button.mic { border: 1px solid var(--line); background: none; color: var(--text); border-radius: 999px; width: 42px; height: 42px;
+    font-size: 18px; cursor: pointer; flex: none; transition: background .2s, box-shadow .2s; }
+  .ask button.mic.rec { background: #ff5fa2; border-color: #ff5fa2; box-shadow: 0 0 0 6px rgba(255, 95, 162, .25); animation: micpulse 1.2s infinite; }
+  .ask button.mic.busy { opacity: .6; }
+  @keyframes micpulse { 50% { box-shadow: 0 0 0 12px rgba(255, 95, 162, .08); } }
+  .ask .toggle.spk input:checked + span { color: var(--accent-2); }
   .ask button.send { border: 0; border-radius: 999px; padding: 11px 20px; font: 600 13px var(--body); cursor: pointer;
     background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; }
   .reply { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(720px, calc(100vw - 36px)); z-index: 5;
@@ -493,7 +499,9 @@
     .rail .busy { margin-bottom: 8px; }
     .ask { bottom: 14px; width: calc(100vw - 20px); padding: 6px 6px 6px 14px; }
     .ask input { font-size: 16px; }                     /* stops iPhones zooming in */
-    .ask .toggle:not(.brain) { display: none; }
+    .ask .toggle:not(.brain):not(.spk) { display: none; }
+    .ask .toggle.spk span { font-size: 0; } .ask .toggle.spk span::before { content: "🔊"; font-size: 15px; }
+    .ask .toggle.spk input { display: none; } .ask .toggle.spk input:not(:checked) + span::before { content: "🔇"; }
     .ask .toggle.brain span { font-size: 0; } .ask .toggle.brain span::before { content: "🧠"; font-size: 15px; }
     .reply { bottom: 80px; width: calc(100vw - 20px); }
     .panel { top: 122px; right: 10px; left: 10px; bottom: 80px; width: auto; }
@@ -614,7 +622,8 @@
 <form class="ask glass" id="ask">
   <input id="ask-in" placeholder="Ask Nova or tell it something to remember…" autocomplete="off">
   <label class="toggle brain" title="Answer only from your 2nd brain, with sources"><input type="checkbox" id="brainmode"> <span>🧠 brain</span></label>
-  <label class="toggle"><input type="checkbox" id="speak"> speak</label>
+  <label class="toggle spk" title="Nova answers out loud"><input type="checkbox" id="speak"> <span>🔊 voice</span></label>
+  <button class="mic" type="button" id="mic" title="Talk to Nova (tap, speak, pause — she answers out loud)" aria-label="Talk">🎤</button>
   <button class="send" type="submit">Send</button>
 </form>
 
@@ -817,8 +826,20 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
 function htmlLabel(text, cls, dy) {
   const el = document.createElement("div"); el.className = cls; el.textContent = text;
-  const obj = new CSS2DObject(el); obj.position.set(0, dy, 0); return obj;
+  const obj = new CSS2DObject(el); obj.position.set(0, dy, 0); el._obj = obj; return obj;
 }
+// When the brain refreshes (a new memory, a chat from the phone…) every node is rebuilt. three.js only removes a
+// label's HTML when the label itself is removed, not its node, so old labels stayed frozen on screen while the
+// sphere turned. Sweep away any label whose node is no longer in the scene.
+function sweepLabels() {
+  const root = Graph.scene();
+  for (const el of [...labelRenderer.domElement.children]) {
+    let o = el._obj, live = false;
+    while (o) { if (o === root) { live = true; break; } o = o.parent; }
+    if (!live) el.remove();
+  }
+}
+setInterval(sweepLabels, 1000);
 function colorOf(n) { return n?.color || "#8b7bff"; }
 function visible(n) {
   if (typeof n !== "object") n = nodeById.get(n);
@@ -1042,6 +1063,7 @@ async function loadGraph() {
   data = g;
   nodeById.clear(); g.nodes.forEach((n) => nodeById.set(n.id, n));
   Graph.graphData(g);
+  requestAnimationFrame(() => requestAnimationFrame(sweepLabels));   // once the new nodes are in the scene
   applyLayout(layout, { reheat: false });
   if (focusSet && selected?.isProject) setFocus(clusterOf(selected.id));
   else if (focusSet && selected?.isPerson) setFocus(personCluster(selected.id));
@@ -1877,9 +1899,99 @@ $("ask").addEventListener("submit", async (e) => {
     } catch { flash("Nova is offline."); }
     return;
   }
-  try { const r = await api("/api/ask", { text, speak: $("speak").checked }); flash(r.text || r.error); clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 15000); }
+  unlockAudio();
+  const out = $("speak").checked;
+  try {
+    const r = await api("/api/ask", { text, speak: out && !REMOTE, voice: out && REMOTE });
+    flash(r.text || r.error); clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 15000);
+    if (r.audio) playReply(r.audio);
+  }
   catch { flash("Nova is offline."); }
 });
+
+// ── voice from any device (phone over Tailscale, or this browser) ──
+// Typed questions: "🔊 voice" on = the answer is spoken — on the PC's speakers when you're at the PC, on this device
+// when you're away. 🎤 = speak your question: it stops by itself when you pause, Nova answers out loud, then listens
+// for a follow-up for a few seconds (like "Hey Nova" on the PC). Tap 🎤 again to stop.
+const REMOTE = !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+const VOICE_KEY = "nova.voiceReplies";
+try { const v = localStorage.getItem(VOICE_KEY); $("speak").checked = v === null ? REMOTE : v === "1"; } catch { $("speak").checked = REMOTE; }
+$("speak").onchange = () => { try { localStorage.setItem(VOICE_KEY, $("speak").checked ? "1" : "0"); } catch {} if (!$("speak").checked) player.pause(); };
+const player = new Audio();
+player.preload = "auto";
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+function unlockAudio() {                            // phones only allow sound that starts from a tap: warm the player up now
+  if (unlockAudio.done) return;
+  unlockAudio.done = true;
+  player.src = SILENCE; player.play().catch(() => {});
+}
+function playReply(url, then) {
+  if (!$("speak").checked) { then && then(); return; }
+  player.onended = () => { setStatus("idle"); then && then(); };
+  player.onerror = () => { setStatus("idle"); then && then(); };
+  player.src = url; setStatus("speaking");
+  player.play().catch(() => { setStatus("idle"); flash("Tap 🎤 or Send once to let Nova talk on this device."); then && then(); });
+}
+const mic = { on: false, rec: null, stream: null, ctx: null, timer: null, conversation: false };
+function pickType() {
+  for (const t of ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"]) if (window.MediaRecorder?.isTypeSupported?.(t)) return t;
+  return "";
+}
+function stopListening(send = true) {
+  clearInterval(mic.timer); mic.timer = null;
+  if (mic.rec && mic.rec.state !== "inactive") { mic.rec.sendIt = send; mic.rec.stop(); }
+  mic.stream?.getTracks().forEach((t) => t.stop()); mic.stream = null;
+  mic.ctx?.close().catch(() => {}); mic.ctx = null;
+  mic.on = false; $("mic").classList.remove("rec");
+}
+async function listen(waitForSpeech = 8000) {
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return flash("This browser can't record. Try Chrome or Safari.");
+  if (!window.isSecureContext) return flash("The microphone needs the https:// Tailscale address (Settings → Remote access).");
+  try { mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch { mic.conversation = false; return flash("Allow the microphone for this site to talk to Nova."); }
+  const type = pickType(), chunks = [];
+  const rec = new MediaRecorder(mic.stream, type ? { mimeType: type } : undefined);
+  mic.rec = rec; mic.on = true; $("mic").classList.add("rec"); setStatus("listening"); flash("🎙 Listening…");
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => { if (rec.sendIt && rec.spoke) sendVoice(new Blob(chunks, { type: rec.mimeType || type || "audio/webm" })); else { setStatus("idle"); if (!rec.spoke) { mic.conversation = false; $("reply").classList.remove("show"); } } };
+  rec.start(250);
+  // stop by itself: wait for speech, then stop after a short pause (a phone-sized version of the PC's voice loop)
+  mic.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const an = mic.ctx.createAnalyser(); an.fftSize = 1024;
+  mic.ctx.createMediaStreamSource(mic.stream).connect(an);
+  const buf = new Uint8Array(an.fftSize), t0 = performance.now();
+  let noise = 0.01, spokeAt = 0, lastLoud = 0;
+  mic.timer = setInterval(() => {
+    an.getByteTimeDomainData(buf);
+    let sum = 0; for (const v of buf) sum += ((v - 128) / 128) ** 2;
+    const rms = Math.sqrt(sum / buf.length), now = performance.now();
+    if (!spokeAt && now - t0 < 600) noise = Math.max(noise, rms);          // the room's own hum
+    const loud = rms > Math.max(0.02, noise * 2.5);
+    if (loud) { lastLoud = now; if (!spokeAt) { spokeAt = now; rec.spoke = true; } }
+    if (!spokeAt && now - t0 > waitForSpeech) stopListening(false);        // nobody spoke
+    else if (spokeAt && now - lastLoud > 1300 && now - spokeAt > 500) stopListening(true);
+    else if (now - t0 > 45000) stopListening(true);
+  }, 80);
+}
+async function sendVoice(blob) {
+  $("mic").classList.add("busy"); setStatus("thinking"); flash("Thinking…");
+  try {
+    const r = await fetch("/api/voice", { method: "POST", headers: { "Content-Type": blob.type || "audio/webm" }, body: blob }).then((x) => x.json());
+    if (r.error) { mic.conversation = false; return flash(r.error); }
+    if (!r.heard) { mic.conversation = false; setStatus("idle"); return flash("I didn't catch that — tap 🎤 and try again."); }
+    flash(`🗣 ${r.heard}\n\n${r.text}`); $("reply").style.whiteSpace = "pre-line";
+    clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 30000);
+    const again = () => { if (mic.conversation && !r.end) listen(6000); else mic.conversation = false; };
+    if (r.audio) playReply(r.audio, again); else again();
+  } catch { mic.conversation = false; flash("Nova is offline."); setStatus("idle"); }
+  finally { $("mic").classList.remove("busy"); }
+}
+$("mic").onclick = () => {
+  unlockAudio();
+  if (mic.on) { mic.conversation = false; return stopListening(true); }
+  if (!player.paused) { player.pause(); }
+  mic.conversation = true; listen();
+};
 
 addEventListener("resize", () => { Graph.width(innerWidth).height(innerHeight); bloom.setSize(innerWidth, innerHeight); });
 

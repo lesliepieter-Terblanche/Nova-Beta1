@@ -1,6 +1,6 @@
 """The agent loop: user text in -> tools -> reply out.
 
-Risky tools (send email, delete, run shell...) pause and ask for a yes/no;
+Risky tools (send email, delete, formatting disks…) pause and ask for a yes/no (Settings → Ask me before);
 the next message from the same session answers it.
 """
 from __future__ import annotations
@@ -17,6 +17,33 @@ from . import context
 from .extensions import matching_playbooks
 from .store import learn_from_turn
 from .tools import REGISTRY, Tool, select_tools
+
+# Settings → General → "Ask me before…" (system.confirm):
+#   irreversible (default) — only things that can't be undone or that reach other people
+#   all — every tool marked risky (the old behaviour) · never — nothing, except clearly destructive shell commands
+IRREVERSIBLE = {"delete_path", "gmail_send", "gmail_reply", "calendar_invite", "calendar_delete", "power_action",
+                "browser_submit", "rollback_version"}
+IRREVERSIBLE_NAME = re.compile(r"(send|delete|remove|trash|publish|post|pay|purchase|transfer|cancel|wipe|erase)",
+                               re.I)
+DANGEROUS_SHELL = re.compile(
+    r"(\bformat(-volume)?\s+[a-z]:?|\bdiskpart\b|\bclear-disk\b|\brm\s+-[a-z]*r[a-z]*\s+[/~\\]|\b(rd|rmdir)\s+/s\b|"
+    r"\bdel\s+(/[a-z]\s+)*/s\b|remove-item\b.*-recurse|\breg(\.exe)?\s+delete\b|\bbcdedit\b|\bcipher\s+/w\b|"
+    r"\b(stop|restart)-computer\b|\bshutdown(\.exe)?\b|\bset-executionpolicy\b.*unrestricted|\bnet\s+user\b)", re.I)
+
+
+def needs_yes(t: Tool, args: dict) -> bool:
+    """Should Nova ask before running this tool call?"""
+    mode = str(((context.cfg or {}).get("system") or {}).get("confirm", "irreversible")).lower()
+    if t.name == "run_shell" and DANGEROUS_SHELL.search(str(args.get("command", ""))):
+        return True                                       # formatting disks & co. always ask
+    if not t.confirm or mode == "never":
+        return False
+    if mode == "all":
+        return True
+    return t.name in IRREVERSIBLE or (t.name not in REGISTRY_SAFE and bool(IRREVERSIBLE_NAME.search(t.name)))
+
+
+REGISTRY_SAFE = {"send_held", "send_to_phone"}          # you asked for these by name — no second question
 
 YES = re.compile(r"^\s*(yes|yeah|yep|yup|ja|sure|ok(ay)?|do it|go ahead|confirm(ed)?|please do|affirmative)\b", re.I)
 NO = re.compile(r"^\s*(no|nope|nee|cancel|stop|don'?t|abort|never ?mind)\b", re.I)
@@ -156,7 +183,7 @@ class Agent:
                     result = (f"HELD (not done): {wait[0]}. It's saved as held action #{hid} until "
                               f"{wait[1]:%A %H:%M}. Tell the user kindly in one sentence; they can say 'send held #{hid}' "
                               "to do it anyway.")
-                elif t.confirm:
+                elif needs_yes(t, call.arguments):
                     later = [c.id for c in reply.tool_calls[i + 1:]]
                     self.pending[session] = Pending(t, call.arguments, call.id, messages, tools, smart, later)
                     if context.store:

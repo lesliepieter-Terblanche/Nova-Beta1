@@ -64,7 +64,12 @@ SCHEMA = [
         {"path": "assistant.city", "label": "Home city", "type": "text", "help": "Used for weather in briefings"},
         {"path": "assistant.max_history_turns", "label": "Short-term memory (turns)", "type": "number", "min": 2, "max": 50},
         {"path": "dashboard.open_on_start", "label": "Open dashboard on start", "type": "bool"},
-        {"path": "system.allow_shell", "label": "Allow shell commands (always asks first)", "type": "bool"},
+        {"path": "system.allow_shell", "label": "Allow shell commands", "type": "bool"},
+        {"path": "system.confirm", "label": "Ask me before…", "type": "select", "default": "irreversible",
+         "options": ["irreversible", "all", "never"],
+         "help": "irreversible = only deleting, sending/replying email, invites, shutting down, submitting web forms, "
+                 "rolling back — commands, moves and installs just run · all = every risky step · never = nothing "
+                 "(disk-wiping commands still ask)"},
     ]},
     {"id": "voice", "title": "Voice", "icon": "mic", "fields": [
         {"path": "voice.enabled", "label": "Voice enabled", "type": "bool"},

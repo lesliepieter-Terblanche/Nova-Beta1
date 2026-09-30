@@ -200,7 +200,10 @@ media:
   image_gen_enabled: false           # local Stable Diffusion (requirements-imagegen.txt)
   image_model: runwayml/stable-diffusion-v1-5
 system:
-  allow_shell: true                  # run_shell always asks for confirmation; false disables it entirely
+  allow_shell: true                  # false disables run_shell entirely
+  confirm: irreversible              # ask first for: irreversible (delete, send/reply email, invites, shutdown,
+                                     # submitting web forms, rollback) | all (every risky tool) | never
+                                     # disk-wiping shell commands (format, diskpart, Remove-Item -Recurse…) always ask
 ```
 
 ## MCP servers

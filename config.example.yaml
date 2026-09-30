@@ -253,7 +253,8 @@ web_agent:
   chrome_path: ""            # "" = Chrome (or Edge)
 
 system:
-  allow_shell: true          # shell commands always need a "yes" first
+  allow_shell: true          # Nova may run PowerShell commands
+  confirm: irreversible      # ask first for: irreversible (delete, send/reply email, invites, shutdown, submit) | all | never
 
 # ─────────────────────────────────────────────────────────────
 #  MCP servers — plug in any Model Context Protocol server (docs/MCP.md)

@@ -4,6 +4,22 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.13.0] — 2026-09-30
+### Added — 🎤 Voice on your phone (Tailscale)
+- **🎤 button on the dashboard's Ask bar**: tap, talk, pause — Nova hears you (transcribed on the PC), answers **out
+  loud on the phone** in her own voice, then listens a few seconds for a follow-up, like "Hey Nova" at the PC. Tap 🎤
+  to stop; "thanks / bye" ends it. Works over the https:// Tailscale address (phones only allow the mic on https).
+- **Typed questions are spoken back on the device you're using** when you're away from the PC (🔊 on by default
+  there; 🔇 to mute). At the PC, 🔊 still speaks through the PC's speakers.
+### Changed — ✅ fewer "shall I go ahead?" questions
+- New **Settings → General → Ask me before…** (default *irreversible*): commands, moving files, tidying folders,
+  installs, updates and restarts **just run**. Nova still asks before deleting, sending or replying to email, calendar
+  invites, shutting down, submitting web forms and rolling back. *all* = the old behaviour, *never* = no questions.
+  Disk-wiping commands (format, diskpart, Remove-Item -Recurse, rd /s…) always ask.
+### Fixed
+- **Labels left behind on the 3D brain**: every time the brain refreshed (a new memory, a chat from the phone) the old
+  labels stayed frozen on screen while the sphere turned. They are now cleaned up.
+
 ## [2.12.0] — 2026-09-30
 ### Added — seven open-source add-ons
 - **📄 markitdown** (Microsoft): Nova now reads Word, **PowerPoint**, Excel (.xlsx/.xls), PDF, **Outlook .msg**, EPUB,

@@ -107,7 +107,7 @@ Full walkthrough, including Telegram, Google and GitHub: **[docs/INSTALL.md](doc
 "Any unread emails from Acme? Read me the latest."
 "Draft a reply saying I'll send the quote by Friday."   → saved as a Gmail draft
 "Remember that Sam at Acme owns the network refresh deal."
-"Tidy up my Downloads folder."                        → asks first
+"Tidy up my Downloads folder."                        → just does it (deleting & sending still ask)
 "Find the price list PDF and send it to my phone."
 "Build a landing page for my property site — dark and modern."
 "Take a photo of this and make an ad, price R349, and a video too."

@@ -8,7 +8,9 @@
   /api/now          what Nova is busy with right now (current request and its steps)
   /api/track        set your status / pin / note on an item (POST)
   /api/open         open an item on the PC (POST {"id": ...})
-  /api/ask          talk to Nova by typing (POST {"text": ...})
+  /api/ask          talk to Nova by typing (POST {"text": ..., "voice": true = spoken reply as audio for this device})
+  /api/voice        talk to Nova by voice from any browser (POST the recording; reply text + audio)
+  /api/audio/<id>   a spoken reply (MP3), kept for 30 minutes
   /media?id=        stream an image/video for previews
   /sites/<name>/    previews of websites Nova built
 """
@@ -884,6 +886,10 @@ class Dashboard:
                         from ..gestures import engine
                         e = engine()
                         return self._json({**e.status(), "events": e.recent(int(q.get("since", 0) or 0))})
+                    if u.path.startswith("/api/audio/"):
+                        from .. import phone_voice
+                        f = phone_voice.audio_file(u.path.rsplit("/", 1)[-1])
+                        return self._file(f) if f else self.send_error(404)
                     if u.path == "/api/camera.mjpg":
                         return self._mjpeg()
                     if u.path == "/api/remote":
@@ -965,11 +971,27 @@ class Dashboard:
 
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", 0))
-                body = json.loads(self.rfile.read(length) or b"{}")
                 origin = self.headers.get("Origin", "").split("//")[-1].lower()
                 host = self.headers.get("Host", "").lower()
                 if not self._host_ok() or origin not in ("", host, host.split(":")[0]):
+                    self.rfile.read(length)
                     return self._json({"error": "forbidden"}, 403)
+                if self.path == "/api/voice":                    # 🎤 a recording from the phone / browser
+                    from .. import phone_voice
+                    if length > phone_voice.MAX_BYTES:
+                        return self._json({"error": "That recording is too long."}, 413)
+                    data = self.rfile.read(length)
+                    try:
+                        if context.store:
+                            context.store.set_status("thinking")
+                        return self._json(phone_voice.converse(dash.agent, data,
+                                                               self.headers.get("Content-Type", "")))
+                    except Exception as e:
+                        return self._json({"error": str(e)}, 500)
+                    finally:
+                        if context.store:
+                            context.store.set_status("idle")
+                body = json.loads(self.rfile.read(length) or b"{}")
                 try:
                     if self.path == "/api/settings":
                         try:
@@ -1086,9 +1108,13 @@ class Dashboard:
                         return self._json({"ok": True, "person": _people.update(pid, **fields)})
                     if self.path == "/api/ask":
                         reply = dash.agent.handle(body.get("text", ""), session="dashboard")
-                        if body.get("speak") and context.speech:
+                        if body.get("speak") and context.speech:           # out loud on the PC's speakers
                             threading.Thread(target=context.speech.speak, args=(reply.text,), daemon=True).start()
-                        return self._json({"text": reply.text, "files": reply.files})
+                        audio = None
+                        if body.get("voice"):                              # spoken back on the device you're using
+                            from .. import phone_voice
+                            audio = phone_voice.reply_audio(reply.text)
+                        return self._json({"text": reply.text, "files": reply.files, "audio": audio})
                     self.send_error(404)
                 except Exception as e:
                     self._json({"error": str(e)}, 500)

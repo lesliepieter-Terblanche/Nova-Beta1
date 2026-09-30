@@ -1708,7 +1708,7 @@ async function pollGestures() {
   if (!gOn) { $("gcam").classList.remove("show"); $("g-img").removeAttribute("src"); }
   $("gchip").classList.toggle("hand", r.hand);
   $("g-emoji").textContent = r.hand ? (r.emoji || "🖐") : "✋";
-  $("g-label").textContent = r.error ? r.error : r.hand ? (r.label || "hand seen") + (r.pinching ? " · dragging" : "") : "show your hand";
+  $("g-label").textContent = r.error ? r.error : r.hand ? (r.hover ? r.hover.split("\n")[0] : (r.label || "hand seen") + (r.pinching ? " · pinching" : "")) : "show your hand";
   if (gSeq >= 0) for (const e of r.events) onGesture(e);
   gSeq = r.seq;
   setTimeout(pollGestures, gOn ? 250 : 3000);

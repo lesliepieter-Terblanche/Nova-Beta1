@@ -6,8 +6,12 @@
   ✌️ victory (hold)        start listening (like the push-to-talk hotkey)
   ✊ fist (hold)           Escape (close a panel / leave full screen)
   👋 swipe left / right   turn the 3D brain (or a key you choose in Settings)
-  👉 point                move the mouse pointer
-  🤏 pinch                click — pinch and move to drag (spin the brain or the globe)
+  👉 point                move the mouse pointer — a label shows what's under it (folder, file, link, button…)
+  🤏 pinch                click · 🤏🤏 two quick pinches = double-click (open a file / folder)
+  🤏 pinch and hold       right-click (the menu for that file, link…)
+  🤏 pinch and move       drag (move files, spin the brain or the globe)
+  ✌️ two fingers up/down  scroll
+  👍 on a file or folder  open it (when Nova isn't waiting for a yes)
 
 Hand tracking runs locally with Google MediaPipe (CPU, a few % load). Nothing leaves the PC.
 """
@@ -27,8 +31,8 @@ EMOJI = {"palm": "✋", "thumbs_up": "👍", "thumbs_down": "👎", "victory": "
 LABEL = {"palm": "Open palm", "thumbs_up": "Thumbs up", "thumbs_down": "Thumbs down", "victory": "Victory",
          "fist": "Fist", "point": "Point", "pinch": "Pinch", "swipe_left": "Swipe left", "swipe_right": "Swipe right"}
 DEFAULT_ACTIONS = {"palm": "stop", "thumbs_up": "yes", "thumbs_down": "no", "victory": "listen", "fist": "escape",
-                   "swipe_left": "dashboard", "swipe_right": "dashboard"}
-ACTION_CHOICES = ["stop", "yes", "no", "listen", "escape", "dashboard", "none", "key:alt+left", "key:alt+right",
+                   "swipe_left": "auto", "swipe_right": "auto"}
+ACTION_CHOICES = ["stop", "yes", "no", "listen", "escape", "dashboard", "auto", "none", "key:alt+left", "key:alt+right",
                   "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"]
 HOLD = {"palm": 0.5, "thumbs_up": 0.6, "thumbs_down": 0.6, "victory": 0.6, "fist": 0.6}
 
@@ -99,7 +103,18 @@ def classify(lm, pinching: bool = False) -> str:
 class Tracker:
     """Debounces shapes into one-off gestures and tracks swipes, pointing and pinching."""
     box: tuple = (0.18, 0.12, 0.82, 0.72)        # hand area mapped to the whole screen (x0, y0, x1, y1)
-    smooth: float = 0.35
+    smooth: float = 0.35                          # 1.0 = raw (tests); otherwise the One Euro filter smooths
+    hold_right: float = 0.7                       # pinch held this long without moving = right-click
+    drag_start: float = 0.03                      # pinch moved this far (share of the screen) = drag
+    offset: tuple = (0.0, 0.0)                    # index tip relative to the knuckles (keeps pinches from jumping)
+    pinch_t0: float = 0.0
+    anchor: tuple | None = None
+    dragging: bool = False
+    consumed: bool = False
+    scroll_y: float | None = None
+    scrolled: bool = False
+    fx: object = None
+    fy: object = None
     current: str = "none"
     since: float = 0.0
     fired: str = ""
@@ -115,6 +130,9 @@ class Tracker:
         if lm is None:
             if self.pinching:
                 events.append(("pinch_up",))
+                if self.dragging:
+                    events.append(("drag_end",))
+            self.dragging, self.anchor, self.scroll_y = False, None, None
             if self.current != "none":
                 self.lost_at = t
             self.current, self.fired, self.pinching, self.pinch_frames = "none", "", False, 0
@@ -128,6 +146,7 @@ class Tracker:
             self.pinch_frames += 1
             if self.pinch_frames >= 2:
                 self.pinching = True
+                self.pinch_t0, self.anchor, self.dragging, self.consumed = t, self.pointer, False, False
                 events.append(("pinch_down",))
         elif self.pinching and r > 0.5:
             self.pinch_frames -= 1
@@ -135,6 +154,11 @@ class Tracker:
                 self.pinching = False
                 self.pinch_frames = 0
                 events.append(("pinch_up",))
+                if self.dragging:
+                    events.append(("drag_end",))
+                elif not self.consumed:
+                    events.append(("click",))
+                self.dragging, self.anchor = False, None
         elif not self.pinching:
             self.pinch_frames = 0
 
@@ -163,25 +187,59 @@ class Tracker:
         if hold and not self.fired and t - self.since >= hold:
             still = [p for p in self.trail if t - p[0] <= hold]
             moved = max((_d((p[1], p[2]), (cx, cy)) for p in still), default=0)
-            if moved < 0.07 or g != "palm":
+            if (moved < 0.07 or g not in ("palm", "victory")) and not (g == "victory" and self.scrolled):
                 self.fired = g
                 events.append(("gesture", g))
 
-        # pointer follows the index finger tip (or the pinch point)
+        # ✌️ two fingers moving up/down = scroll
+        if g == "victory":
+            if self.scroll_y is None:
+                self.scroll_y, self.scrolled = cy, False
+            elif abs(cy - self.scroll_y) > 0.035:
+                steps = int((cy - self.scroll_y) / 0.035)
+                self.scroll_y += steps * 0.035
+                self.scrolled = True
+                events.append(("scroll", -steps))            # hand down = page down
+        else:
+            self.scroll_y, self.scrolled = None, False
+
+        # pointer follows the index finger; while pinching it follows the knuckles + the last offset, so the
+        # cursor doesn't jump when the fingertip bends to pinch
+        knuckle = ((lm[INDEX[0]][0] + lm[MIDDLE[0]][0]) / 2, (lm[INDEX[0]][1] + lm[MIDDLE[0]][1]) / 2)
         if g in ("point", "pinch") or self.pinching:
-            px, py = lm[INDEX[2]]
             if self.pinching:
-                px, py = (px + lm[THUMB_TIP][0]) / 2, (py + lm[THUMB_TIP][1]) / 2
+                px, py = knuckle[0] + self.offset[0], knuckle[1] + self.offset[1]
+            else:
+                px, py = lm[INDEX[2]]
+                self.offset = (px - knuckle[0], py - knuckle[1])
             x0, y0, x1, y1 = self.box
             nx = min(1.0, max(0.0, (px - x0) / (x1 - x0)))
             ny = min(1.0, max(0.0, (py - y0) / (y1 - y0)))
-            if self.pointer:
-                a = self.smooth
-                nx, ny = self.pointer[0] + (nx - self.pointer[0]) * a, self.pointer[1] + (ny - self.pointer[1]) * a
+            if self.smooth < 1.0:
+                from .air import OneEuro
+                if self.fx is None:
+                    self.fx, self.fy = OneEuro(), OneEuro()
+                nx, ny = self.fx(nx, t), self.fy(ny, t)
+            if self.pinching and not self.dragging:
+                if self.anchor is None:
+                    self.anchor = (nx, ny)
+                start = self.anchor
+                if _d((nx, ny), start) > self.drag_start and not self.consumed:
+                    self.dragging = True
+                    events.append(("drag_start",))
+                elif not self.consumed and t - self.pinch_t0 >= self.hold_right:
+                    self.consumed = True
+                    events.append(("right_click",))
+                if not self.dragging:
+                    self.pointer = start                     # hold still so the click lands where you aimed
+                    return events
             self.pointer = (nx, ny)
             events.append(("pointer", nx, ny))
         else:
             self.pointer = None
+            if self.fx is not None:
+                self.fx.reset()
+                self.fy.reset()
         return events
 
 
@@ -237,6 +295,9 @@ class GestureEngine:
         self._pinch_at = 0.0
         self._pinch_moved = 0.0
         self._pinch_start = None
+        self._last_click = -10.0
+        self.hover: dict | None = None
+        self._hover = None
         self._lock = threading.Lock()
 
     # settings
@@ -268,6 +329,13 @@ class GestureEngine:
         except Exception as e:
             self.error = f"Couldn't load the hand-tracking model: {e}"
             return self.error
+        reach = float(self._g().get("reach", 0.64))            # smaller = less arm movement
+        self.tracker.box = (0.5 - reach / 2, 0.44 - reach * 0.42, 0.5 + reach / 2, 0.44 + reach * 0.42)
+        if self._g().get("hover_labels", True):
+            from .air import HoverLabels
+            self._hover = HoverLabels(self._cursor, lambda: self.enabled and self.tracker.pointer is not None,
+                                      self._on_label)
+            self._hover.start()
         from .camera import hub
         h = hub(self.cfg)
         h.subscribe("gestures", self.on_frame)
@@ -284,6 +352,10 @@ class GestureEngine:
     def stop(self) -> str:
         from .camera import hub
         hub(self.cfg).unsubscribe("gestures")
+        if self._hover:
+            self._hover.stop()
+            self._hover = None
+        self.hover = None
         if self._down:
             self._mouse_up()
         self.enabled, self.hand, self.gesture = False, False, "none"
@@ -301,7 +373,8 @@ class GestureEngine:
                 "emoji": EMOJI.get(self.gesture, ""), "label": LABEL.get(self.gesture, ""),
                 "fps": round(self.fps, 1), "error": self.error or (_hub.error if _hub else ""),
                 "seq": self._seq, "mouse": bool(self._g().get("mouse", True)),
-                "pointer": self.tracker.pointer, "pinching": self.tracker.pinching}
+                "pointer": self.tracker.pointer, "pinching": self.tracker.pinching,
+                "hover": (self.hover or {}).get("text", "") if self.tracker.pointer else ""}
 
     def recent(self, since: int = 0) -> list[dict]:
         return [e for e in list(self.events) if e["id"] > since]
@@ -338,12 +411,21 @@ class GestureEngine:
                 self.fire(ev[1])
             elif kind == "pointer" and mouse_on:
                 self._move(ev[1], ev[2])
-            elif kind == "pinch_down" and mouse_on:
-                self._pinch_at, self._pinch_moved, self._pinch_start = ts, 0.0, self.tracker.pointer
+            elif kind == "click" and mouse_on:
+                double = ts - self._last_click < 0.6
+                self._last_click = -10.0 if double else ts
+                self._click()
+                self._emit("pinch", "double-click" if double else "click", self._hover_name())
+            elif kind == "right_click" and mouse_on:
+                self._click(right=True)
+                self._emit("pinch", "right-click", self._hover_name())
+            elif kind == "drag_start" and mouse_on:
                 self._mouse_down()
-            elif kind == "pinch_up" and mouse_on:
+            elif kind == "drag_end" and mouse_on:
                 self._mouse_up()
-                self._emit("pinch", "click" if ts - self._pinch_at < 0.35 else "drag")
+                self._emit("pinch", "drag")
+            elif kind == "scroll" and mouse_on:
+                self._ctl().scroll(0, ev[1] * int(self._g().get("scroll_speed", 2)))
 
     def fire(self, gesture: str) -> str:
         action = str(self.actions().get(gesture, "none"))
@@ -368,7 +450,16 @@ class GestureEngine:
                 self._log(f"{EMOJI.get(gesture, '')} Stop")
                 return "stopped"
             if action in ("yes", "no"):
-                return self._answer(action)
+                result = self._answer(action)
+                if result == "nothing to answer" and action == "yes" and self.hover and self.tracker.pointer is not None:
+                    self._click(double=True)                     # 👍 on a file / folder / link = open it
+                    return f"opened {self.hover.get('name', '')}"
+                return result
+            if action == "auto":                                 # swipe = back / forward in a browser or Explorer
+                if gesture in ("swipe_left", "swipe_right") and self._foreground_is_browser_or_explorer():
+                    _press("alt+left" if gesture == "swipe_left" else "alt+right")
+                    return "back" if gesture == "swipe_left" else "forward"
+                return ""
             if action == "listen":
                 v = getattr(context, "voice", None)
                 if v is None:
@@ -407,15 +498,57 @@ class GestureEngine:
         if self._mouse is None:
             from pynput.mouse import Controller
             self._mouse = Controller()
-            self._screen = _screen_size()
+            from .air import virtual_screen
+            self._screen = virtual_screen() if platform.system() == "Windows" else _screen_size()
         return self._mouse
 
     def _move(self, nx: float, ny: float) -> None:
         m = self._ctl()
-        w, h = self._screen
-        if self._pinch_start and self.tracker.pinching:
-            self._pinch_moved = max(self._pinch_moved, _d((nx, ny), self._pinch_start))
-        m.position = (int(nx * (w - 1)), int(ny * (h - 1)))
+        scr = self._screen
+        left, top, w, h = scr if len(scr) == 4 else (0, 0, *scr)
+        m.position = (left + int(nx * (w - 1)), top + int(ny * (h - 1)))
+
+    def _cursor(self):
+        try:
+            return tuple(self._ctl().position)
+        except Exception:
+            return None
+
+    def _on_label(self, label: dict | None) -> None:
+        self.hover = label
+        if label and self._g().get("speak_labels", False) and context.speech:
+            threading.Thread(target=context.speech.speak, args=(f"{label['kind']}, {label['name']}",),
+                             daemon=True).start()
+
+    def _hover_name(self) -> str:
+        return (self.hover or {}).get("name", "") if self.hover else ""
+
+    def _click(self, right: bool = False, double: bool = False) -> None:
+        try:
+            from pynput.mouse import Button
+            b = Button.right if right else Button.left
+        except Exception:
+            b = "right" if right else "left"
+        m = self._ctl()
+        if hasattr(m, "click"):
+            m.click(b, 2 if double else 1)
+        else:
+            for _ in range(2 if double else 1):
+                m.press(b)
+                m.release(b)
+
+    @staticmethod
+    def _foreground_is_browser_or_explorer() -> bool:
+        if platform.system() != "Windows":
+            return False
+        try:
+            import ctypes
+            u = ctypes.windll.user32
+            buf = ctypes.create_unicode_buffer(256)
+            u.GetClassNameW(u.GetForegroundWindow(), buf, 256)
+            return buf.value in ("Chrome_WidgetWin_1", "MozillaWindowClass", "CabinetWClass", "ApplicationFrameWindow")
+        except Exception:
+            return False
 
     @staticmethod
     def _left():

@@ -4,6 +4,20 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.10.0] — 2026-09-30
+### Added — ✋ Air mouse (gesture upgrade)
+- **Smooth, precise cursor** that follows your index finger (One Euro filtering: steady when you hold still, quick when
+  you move), across all monitors, and it **no longer jumps when you pinch**. "Hand area" setting = how far you need
+  to move your arm.
+- **Hover labels:** rest the cursor on something and a small label appears next to it — **📁 Folder · Q3 Deals
+  (12 items)**, **📄 PDF document · Price list.pdf · 2.4 MB · 12 Sep**, **🔗 Link · Juniper Mist**, **🔘 Button · Save** —
+  with the gestures you can use on it. Uses Windows' own accessibility info; the label is click-through. Optional:
+  Nova says it out loud. The dashboard's ✋ chip shows it too.
+- **Gestures act on what you point at:** 🤏 pinch = click · 🤏🤏 two quick pinches = double-click (open) ·
+  🤏 pinch and hold = right-click menu · 🤏 pinch and move = drag · ✌️ two fingers up/down = scroll ·
+  👍 on a file, folder or link = open it (when Nova isn't waiting for a yes) · 👋 swipe = back/forward in a browser
+  or File Explorer.
+
 ## [2.9.0] — 2026-09-30
 ### Added — 🖐 PC hands
 - **Nova uses your PC like you do:** opens any app (also by its Start-menu name, e.g. "open Avaya Workplace"), your

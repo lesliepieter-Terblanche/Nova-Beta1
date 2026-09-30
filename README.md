@@ -50,7 +50,7 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 🚀 **Missions** | Goals Nova works on by itself, once or on a schedule — plans, researches, writes a report to your 2nd brain and briefs you (never sends/deletes on its own) |
 | 👀 **Screen watcher** | "Tell me when the render finishes / the download lands / *Export complete* appears" — local OCR, windows, programs, Downloads, vision; optional follow-up action |
 | 👤 **Presence awareness** | Greets you (and briefs you) when you sit down; pauses, holds messages and can lock the PC when you walk away |
-| ✋ **Gesture control** | Webcam hand gestures: ✋ stop · 👍/👎 yes/no · ✌️ listen · 👉 point = mouse · 🤏 pinch = click/drag the brain or globe (MediaPipe, local) |
+| ✋ **Gesture control** | Webcam hand control: move your hand = cursor (with labels for files, folders, links) · ✊ close = click / drag · 👈 swipe = back · 👉 swipe = dashboard · push/pull = zoom · 👍 Enter · 👎 Delete · ✌️ listen/scroll (MediaPipe, local) |
 | 🌐 **God's Eye View** | Live 3D globe with real planes, ships, satellites, quakes and weather — "show me Cape Town in night vision", "what planes are overhead?" ([gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), needs Node 24) |
 | 🖐 **PC hands** | Opens apps, webcam and folders, manages windows, clicks and types in any app — "do it for me" step by step, stops before sending/paying/deleting, Esc to take over |
 | ◎ **Focus & wellbeing** | Made for ADHD and bipolar II: one thing at a time, "I'm stuck" first steps, brain dump, calm visuals, routine anchors, night guardrails, private encrypted check-ins and a summary for your doctor |

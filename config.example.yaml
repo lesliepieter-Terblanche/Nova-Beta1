@@ -116,9 +116,17 @@ gestures:
   enabled: false              # or say "turn on gestures"
   camera: 0                   # webcam number (0 = the first one)
   mirror: true                # move your hand right -> the pointer goes right
-  mouse: true                 # 👉 point moves the mouse, 🤏 pinch clicks / drags
+  style: hand                 # hand = move your whole hand, ✊ close = click · finger = older point-and-pinch
+  mouse: true                 # the cursor follows your hand
+  zoom: true                  # hand towards the camera = zoom in, pull back = zoom out
   fps: 12                     # hand checks per second (lower = lighter on the CPU)
-  actions:                    # stop | yes | no | listen | escape | dashboard | none | key:<combo> e.g. key:alt+left
+  hand_actions:               # hand mode: enter | delete | back | forward | open_dashboard | listen | stop | none | key:<combo>
+    thumbs_up: enter          # (says "yes" instead when Nova is waiting for an answer)
+    thumbs_down: delete       # (says "no" instead when Nova is waiting for an answer)
+    swipe_left: back
+    swipe_right: open_dashboard
+    victory: listen
+  actions:                    # finger mode: stop | yes | no | listen | escape | dashboard | none | key:<combo>
     palm: stop
     thumbs_up: "yes"
     thumbs_down: "no"

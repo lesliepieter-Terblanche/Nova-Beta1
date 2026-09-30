@@ -4,6 +4,21 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.11.0] — 2026-09-30
+### Changed — 🖐 Whole-hand control (new default "hand" mode)
+- **The cursor follows your whole hand** — move it left, right, up or down (no more pointing with one finger).
+  It tracks the middle of your palm, so it stays put when you close your hand.
+- **✊ Close your hand = click** on the link, file or folder under the cursor (close twice quickly = open).
+  Keep it closed and move = drag; open your hand to let go.
+- **👈 Swipe left = back** (browser, File Explorer…) · **👉 swipe right = the Nova dashboard** (brings it to the front,
+  or opens it). The cursor jumps back to where it was before the swipe.
+- **🔍 Push your hand towards the camera = zoom in, pull it back = zoom out** (Ctrl + wheel: browsers, Office,
+  photos, Explorer, the dashboard). Holding still at the new distance doesn't keep zooming.
+- **👍 hold = Enter · 👎 hold = Delete** — and when Nova is waiting for an answer they still mean yes / no.
+- ✌️ held = listen, ✌️ moving up/down = scroll. Hover labels unchanged.
+- Settings → Gestures: **How it works** (hand / finger), a zoom switch and hand-mode actions. The old point-and-pinch
+  scheme stays available as `style: finger`.
+
 ## [2.10.0] — 2026-09-30
 ### Added — ✋ Air mouse (gesture upgrade)
 - **Smooth, precise cursor** that follows your index finger (One Euro filtering: steady when you hold still, quick when

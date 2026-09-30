@@ -31,6 +31,7 @@ def test_quick_pinch_clicks_and_two_pinches_double_click(nova):
     tr = Tracker(smooth=1.0)
     ev = _feed(tr, point(3) + pinch_frames(3) + point(3) + pinch_frames(3) + point(3))
     assert [e[0] for e in ev].count("click") == 2 and "drag_start" not in [e[0] for e in ev]
+    nova[0]["gestures"] = {"style": "finger"}
     e = GestureEngine(nova[0])
     e._mouse = Mouse()
     e._screen = (1920, 1080)
@@ -89,6 +90,7 @@ class Mouse:
 
 
 def test_engine_drag_scroll_and_thumbs_up_opens_hovered_item(nova):
+    nova[0]["gestures"] = {"style": "finger"}
     e = GestureEngine(nova[0])
     e._mouse, e._screen = Mouse(), (0, 0, 1920, 1080)
     moving = [hand(("index",), "out", pinch=True, dx=i * 0.03) for i in range(8)]

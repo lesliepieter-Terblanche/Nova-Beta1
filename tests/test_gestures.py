@@ -112,6 +112,7 @@ class FakeMouse:
 
 
 def test_engine_moves_mouse_and_clicks(nova):
+    nova[0]["gestures"] = {"style": "finger"}
     e = GestureEngine(nova[0])
     e._mouse, e._screen = FakeMouse(), (1920, 1080)
     for i in range(3):
@@ -127,7 +128,7 @@ def test_engine_moves_mouse_and_clicks(nova):
 
 def test_mouse_can_be_switched_off(nova):
     cfg = nova[0]
-    cfg["gestures"] = {"mouse": False}
+    cfg["gestures"] = {"mouse": False, "style": "finger"}
     e = GestureEngine(cfg)
     e._mouse, e._screen = FakeMouse(), (1920, 1080)
     for i in range(4):
@@ -149,6 +150,7 @@ def test_palm_stops_speech_and_thumbs_up_answers_the_question(nova, monkeypatch)
     assert "Shall I go ahead" in agent.handle("delete old.txt", "voice").text
     assert agent.waiting_session() == "voice"
 
+    cfg["gestures"] = {"style": "finger"}
     e = GestureEngine(cfg)
     for i in range(10):
         e.process(hand(ALL, "out"), i / 12)
@@ -168,7 +170,7 @@ def test_palm_stops_speech_and_thumbs_up_answers_the_question(nova, monkeypatch)
 
 def test_yes_no_from_yaml_booleans(nova):
     cfg = nova[0]
-    cfg["gestures"] = {"actions": {"thumbs_up": True, "thumbs_down": False, "fist": "none"}}
+    cfg["gestures"] = {"style": "finger", "actions": {"thumbs_up": True, "thumbs_down": False, "fist": "none"}}
     a = GestureEngine(cfg).actions()
     assert a["thumbs_up"] == "yes" and a["thumbs_down"] == "no" and a["fist"] == "none" and a["palm"] == "stop"
 
@@ -176,7 +178,8 @@ def test_yes_no_from_yaml_booleans(nova):
 def test_gesture_tool_and_help(nova):
     from nova.tools import REGISTRY, select_tools
     assert "gesture_control" in {t.name for t in select_tools("turn on gesture control")}
-    assert "👍 Thumbs up: say yes" in REGISTRY["gesture_control"].run({"action": "help"})
+    out = REGISTRY["gesture_control"].run({"action": "help"})
+    assert "Move your hand to move the cursor" in out and "👍 Thumbs up: press Enter" in out
     assert "off" in REGISTRY["gesture_control"].run({"action": "status"})
 
 
@@ -280,3 +283,166 @@ def test_camera_hub_shares_frames_and_stops_when_unused(nova, monkeypatch):
             break
         time.sleep(0.02)
     assert not h.running and Cap.released
+
+
+# ── hand mode: whole hand = cursor, ✊ = click, swipes, push/pull = zoom, 👍 Enter, 👎 Delete ──
+from nova.gestures import HandTracker  # noqa: E402
+
+
+def big(lm, k):
+    """The same hand k times bigger (closer to the camera)."""
+    cx, cy = 0.5, 0.7
+    return [(cx + (x - cx) * k, cy + (y - cy) * k) for x, y in lm]
+
+
+OPEN = hand(ALL, "in")                     # a relaxed open hand ("other"), like most people hold it
+
+
+def kinds(ev):
+    return [e[0] if e[0] != "gesture" else e[1] for e in ev]
+
+
+def test_whole_hand_moves_the_pointer():
+    tr = HandTracker(smooth=1.0)
+    ev = _feed(tr, [OPEN, hand(ALL, "out"), hand(ALL, "in", dx=0.05), hand(ALL, "in", dx=0.05, dy=0.05)])
+    ptr = [e for e in ev if e[0] == "pointer"]
+    assert len(ptr) == 4
+    assert ptr[2][1] > ptr[1][1] and ptr[3][2] > ptr[2][2]               # right, then down
+
+
+def test_close_hand_clicks_at_the_aimed_spot_and_opening_lets_go():
+    tr = HandTracker(smooth=1.0)
+    _feed(tr, [OPEN] * 3)
+    aimed = tr.pointer
+    ev = _feed(tr, [hand((), "in")] * 4, t0=1)
+    assert kinds(ev).count("click") == 1 and "pointer" not in kinds(ev)   # cursor holds still for the click
+    assert tr.closed and tr.pointer == aimed
+    ev = _feed(tr, [OPEN] * 3, t0=2)
+    assert "click" not in kinds(ev) and not tr.closed
+    ev = _feed(tr, [hand((), "in")] * 3, t0=3)                            # close again = another click
+    assert kinds(ev).count("click") == 1
+
+
+def test_close_and_move_drags():
+    tr = HandTracker(smooth=1.0)
+    _feed(tr, [OPEN] * 3)
+    ev = _feed(tr, [hand((), "in", dx=0.02 * i) for i in range(8)], t0=1)
+    k = kinds(ev)
+    assert k.index("click") < k.index("drag_start") < len(k) and "pointer" in k[k.index("drag_start"):]
+    ev = _feed(tr, [OPEN] * 3, t0=2)
+    assert "drag_end" in kinds(ev)
+
+
+def test_one_flickering_fist_frame_is_not_a_click():
+    tr = HandTracker(smooth=1.0)
+    ev = _feed(tr, [OPEN, hand((), "in"), OPEN, OPEN])
+    assert "click" not in kinds(ev)
+
+
+def test_swipes_and_cursor_goes_back():
+    tr = HandTracker(smooth=1.0)
+    _feed(tr, [OPEN] * 4)
+    before = tr.pointer
+    ev = _feed(tr, [hand(ALL, "in", dx=0.1 * i) for i in range(4)], t0=1)
+    assert "swipe_right" in kinds(ev)
+    restore = [e for e in ev if e[0] == "restore"][0]
+    assert (restore[1], restore[2]) == before
+    tr2 = HandTracker(smooth=1.0)
+    ev = _feed(tr2, [hand(ALL, "out", dx=0.2 - 0.1 * i) for i in range(4)])
+    assert "swipe_left" in kinds(ev)
+
+
+def test_slow_movement_is_not_a_swipe():
+    tr = HandTracker(smooth=1.0)
+    ev = _feed(tr, [hand(ALL, "in", dx=0.02 * i) for i in range(15)])
+    assert "swipe_right" not in kinds(ev) and "swipe_left" not in kinds(ev)
+
+
+def test_push_forward_zooms_in_pull_back_zooms_out():
+    tr = HandTracker(smooth=1.0)
+    ev = _feed(tr, [OPEN] * 8)
+    assert "zoom" not in kinds(ev)
+    ev = _feed(tr, [big(OPEN, 1.3)] * 3, t0=1)
+    assert [e for e in ev if e[0] == "zoom"] == [("zoom", 1)]
+    ev = _feed(tr, [big(OPEN, 1.3)] * 8, t0=2)                           # holding there = no more zoom
+    assert "zoom" not in kinds(ev)
+    ev = _feed(tr, [OPEN] * 3, t0=3)
+    assert ("zoom", -1) in ev
+
+
+def test_thumbs_up_and_down_in_hand_mode():
+    tr = HandTracker(smooth=1.0)
+    ev = _feed(tr, [hand((), "up")] * 12)
+    assert kinds(ev).count("thumbs_up") == 1 and "click" not in kinds(ev)
+    ev = _feed(HandTracker(smooth=1.0), [hand((), "down")] * 12)
+    assert kinds(ev).count("thumbs_down") == 1
+
+
+class Keys:
+    def __init__(self):
+        self.log = []
+
+
+def test_hand_engine_actions(nova, monkeypatch):
+    import nova.gestures as G
+    cfg = nova[0]
+    cfg["gestures"] = {}
+    e = GestureEngine(cfg)
+    assert e.style() == "hand" and isinstance(e.tracker, HandTracker)
+    a = e.actions()
+    assert a["thumbs_up"] == "enter" and a["thumbs_down"] == "delete"
+    assert a["swipe_left"] == "back" and a["swipe_right"] == "open_dashboard"
+    pressed = []
+    monkeypatch.setattr(G, "_press", pressed.append)
+    opened = []
+    monkeypatch.setattr(e, "_open_dashboard", lambda: opened.append(1) or "dashboard")
+    zooms = []
+    monkeypatch.setattr(e, "_zoom", zooms.append)
+    e._mouse, e._screen = FakeMouse(), (1920, 1080)
+
+    t = 0.0
+    for lm in [OPEN] * 4:
+        e.process(lm, t)
+        t += 1 / 12
+    assert e._mouse.position != (0, 0)
+    for lm in [hand((), "in")] * 3 + [OPEN] * 3:
+        e.process(lm, t)
+        t += 1 / 12
+    assert e._mouse.log == ["down", "up"] and e.recent()[-1]["gesture"] == "grab"
+    for lm in [hand((), "up")] * 10:
+        e.process(lm, t)
+        t += 1 / 12
+    for lm in [None, None] + [hand((), "down")] * 10:
+        e.process(lm, t)
+        t += 1 / 12
+    assert pressed == ["enter", "delete"]
+    for lm in [None] + [OPEN] * 3 + [hand(ALL, "in", dx=-0.12 * i) for i in range(1, 4)]:
+        e.process(lm, t)
+        t += 1 / 12
+    assert pressed[-1] == "alt+left"
+    t += 2
+    for lm in [OPEN] * 3 + [hand(ALL, "in", dx=0.12 * i) for i in range(1, 4)]:
+        e.process(lm, t)
+        t += 1 / 12
+    assert opened == [1]
+    t += 2
+    for lm in [OPEN] * 8 + [big(OPEN, 1.3)] * 3:
+        e.process(lm, t)
+        t += 1 / 12
+    assert zooms == [1]
+    assert e.status()["style"] == "hand"
+
+
+def test_thumbs_up_says_yes_when_nova_is_asking(nova, monkeypatch):
+    import nova.gestures as G
+    cfg, tmp = nova
+    cfg["gestures"] = {}
+    pressed = []
+    monkeypatch.setattr(G, "_press", pressed.append)
+    agent = Agent(cfg, context.llm)
+    monkeypatch.setattr(context, "agent", agent)
+    monkeypatch.setattr(agent, "waiting_session", lambda: "voice")
+    monkeypatch.setattr(agent, "handle", lambda w, s: type("R", (), {"text": w, "files": []})())
+    monkeypatch.setattr(context, "announce", lambda t: None)
+    e = GestureEngine(cfg)
+    assert e.do("enter") == "answered yes" and e.do("delete") == "answered no" and pressed == []

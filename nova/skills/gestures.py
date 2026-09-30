@@ -23,8 +23,15 @@ def gesture_control(action: str = "status") -> str:
     if a == "help":
         acts = e.actions()
         names = {"stop": "stop talking", "yes": "say yes", "no": "say no", "listen": "start listening",
-                 "escape": "press Escape", "dashboard": "turn the 3D brain", "none": "nothing"}
-        parts = [f"{EMOJI[g]} {LABEL[g]}: {names.get(act, act)}" for g, act in acts.items() if g in LABEL]
+                 "escape": "press Escape", "dashboard": "turn the 3D brain", "none": "nothing",
+                 "enter": "press Enter (or yes when I'm asking)", "delete": "press Delete (or no when I'm asking)",
+                 "back": "go back", "forward": "go forward", "open_dashboard": "show the Nova dashboard"}
+        parts = [f"{EMOJI[g]} {LABEL[g]}: {names.get(act, act)}" for g, act in acts.items()
+                 if g in LABEL and act != "none"]
+        if e.style() == "hand":
+            return ("🖐 Move your hand to move the cursor; ✊ close your hand to click (twice = open), keep it closed "
+                    "and move to drag; push your hand towards the camera to zoom in, pull back to zoom out; "
+                    + "; ".join(parts) + "; ✌️ moving up or down scrolls.")
         return "; ".join(parts) + "; 👉 point moves the mouse and 🤏 pinch clicks or drags."
     s = e.status()
     if not s["enabled"]:

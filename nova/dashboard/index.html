@@ -1708,15 +1708,15 @@ async function pollGestures() {
   if (!gOn) { $("gcam").classList.remove("show"); $("g-img").removeAttribute("src"); }
   $("gchip").classList.toggle("hand", r.hand);
   $("g-emoji").textContent = r.hand ? (r.emoji || "🖐") : "✋";
-  $("g-label").textContent = r.error ? r.error : r.hand ? (r.hover ? r.hover.split("\n")[0] : (r.label || "hand seen") + (r.pinching ? " · pinching" : "")) : "show your hand";
+  $("g-label").textContent = r.error ? r.error : r.hand ? (r.hover ? r.hover.split("\n")[0] : (r.label || "hand seen") + (r.pinching ? (r.style === "hand" ? " · grabbing" : " · pinching") : "")) : "show your hand";
   if (gSeq >= 0) for (const e of r.events) onGesture(e);
   gSeq = r.seq;
   setTimeout(pollGestures, gOn ? 250 : 3000);
 }
 function onGesture(e) {
-  if (e.gesture === "pinch") return;
+  if (e.gesture === "pinch" || e.gesture === "grab") return;
   const t = $("gtoast");
-  const what = { stop: "Stop", yes: "Yes", no: "No", listen: "Listening…", escape: "Escape", dashboard: "" }[e.action] ?? e.action;
+  const what = { stop: "Stop", yes: "Yes", no: "No", listen: "Listening…", escape: "Escape", dashboard: "", enter: "Enter", delete: "Delete", back: "Back", forward: "Forward", open_dashboard: "Dashboard", zoom: "" }[e.action] ?? e.action;
   t.textContent = `${e.emoji} ${e.label}${what ? " — " + what : ""}${e.result && !["stopped", "listening", "escape"].includes(e.result) ? " · " + e.result : ""}`;
   t.classList.add("show"); clearTimeout(onGesture.t); onGesture.t = setTimeout(() => t.classList.remove("show"), 1600);
   $("gchip").classList.add("pop"); setTimeout(() => $("gchip").classList.remove("pop"), 300);

@@ -118,7 +118,12 @@ run.bat --check
 | "Couldn't open webcam" | Close Teams/Zoom/Camera app, or set another **Webcam number** in Settings → Gestures. |
 | Model download fails | The first start downloads two small models (`models/vision/`) from Google — check the internet connection. |
 | Pointer jumps / wrong gesture | Good light, hand 40–80 cm from the camera, palm facing it. Lower **Checks per second** if the PC is busy. |
-| Don't want the mouse moved | Untick **Point to move the mouse** in Settings → Gestures. |
+| Cursor doesn't move | Update to 2.11+ (the cursor now follows your whole hand). Check the ✋ chip on the dashboard says "hand seen"; click **Camera** to see the hand box — keep your hand inside it. |
+| Have to stretch to reach the screen edges | Make **Hand area** smaller in Settings → Gestures. |
+| Clicks when I don't want | Keep your fingers loosely open while moving — a curled, fist-like hand counts as a click. |
+| Zooms by accident | Keep roughly the same distance from the camera while moving, or untick **zoom** in Settings → Gestures. |
+| Swipe doesn't trigger | Swipe quicker and flatter (a fast sideways flick of an open hand). |
+| Don't want the mouse moved | Untick **Air mouse** in Settings → Gestures. |
 
 ## Phone access (Tailscale)
 

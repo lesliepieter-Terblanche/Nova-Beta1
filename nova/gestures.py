@@ -1,5 +1,17 @@
-"""Gesture control: steer Nova with your hands through the webcam.
+"""Gesture control: steer Nova and the PC with your hand through the webcam.
 
+Hand mode (the default):
+  🖐 move your hand        the cursor follows it — a label shows what's under it (folder, file, link, button…)
+  ✊ close your hand       click (close twice quickly = open / double-click)
+  ✊ close + move          drag · open the hand to let go
+  👈 swipe left           back (browser, Explorer, …)
+  👉 swipe right          show the Nova dashboard
+  🔍 hand towards camera  zoom in · pull it back = zoom out
+  👍 thumbs up (hold)      Enter ("yes" when Nova is waiting for an answer)
+  👎 thumbs down (hold)    Delete ("no" when Nova is waiting for an answer)
+  ✌️ victory (hold)        start listening · ✌️ moving up/down = scroll
+
+Finger mode (gestures.style: finger — the older scheme):
   ✋ open palm (hold)      stop talking
   👍 thumbs up (hold)      "yes" to the question Nova is waiting on
   👎 thumbs down (hold)    "no"
@@ -26,14 +38,17 @@ from dataclasses import dataclass, field
 
 from . import context
 
-EMOJI = {"palm": "✋", "thumbs_up": "👍", "thumbs_down": "👎", "victory": "✌️", "fist": "✊", "point": "👉",
+EMOJI = {"grab": "✊", "zoom_in": "🔍", "zoom_out": "🔎", "palm": "✋", "thumbs_up": "👍", "thumbs_down": "👎", "victory": "✌️", "fist": "✊", "point": "👉",
          "pinch": "🤏", "swipe_left": "👈", "swipe_right": "👉", "none": "", "other": "🖐"}
-LABEL = {"palm": "Open palm", "thumbs_up": "Thumbs up", "thumbs_down": "Thumbs down", "victory": "Victory",
+LABEL = {"grab": "Grab", "zoom_in": "Zoom in", "zoom_out": "Zoom out", "palm": "Open palm", "thumbs_up": "Thumbs up", "thumbs_down": "Thumbs down", "victory": "Victory",
          "fist": "Fist", "point": "Point", "pinch": "Pinch", "swipe_left": "Swipe left", "swipe_right": "Swipe right"}
 DEFAULT_ACTIONS = {"palm": "stop", "thumbs_up": "yes", "thumbs_down": "no", "victory": "listen", "fist": "escape",
                    "swipe_left": "auto", "swipe_right": "auto"}
-ACTION_CHOICES = ["stop", "yes", "no", "listen", "escape", "dashboard", "auto", "none", "key:alt+left", "key:alt+right",
-                  "key:space", "key:media_play_pause", "key:media_next", "key:media_previous"]
+HAND_ACTIONS = {"thumbs_up": "enter", "thumbs_down": "delete", "swipe_left": "back", "swipe_right": "open_dashboard",
+                "victory": "listen", "palm": "none"}
+ACTION_CHOICES = ["enter", "delete", "back", "forward", "open_dashboard", "stop", "yes", "no", "listen", "escape",
+                  "dashboard", "auto", "none", "key:alt+left", "key:alt+right", "key:space", "key:media_play_pause",
+                  "key:media_next", "key:media_previous"]
 HOLD = {"palm": 0.5, "thumbs_up": 0.6, "thumbs_down": 0.6, "victory": 0.6, "fist": 0.6}
 
 WRIST, THUMB_IP, THUMB_TIP = 0, 3, 4
@@ -243,6 +258,190 @@ class Tracker:
         return events
 
 
+def palm_centre(lm) -> tuple[float, float]:
+    """Wrist + the four knuckles: stays put when the fingers curl, so closing the hand doesn't move the cursor."""
+    return (sum(lm[i][0] for i in (0, 5, 9, 13, 17)) / 5, sum(lm[i][1] for i in (0, 5, 9, 13, 17)) / 5)
+
+
+def palm_size(lm) -> float:
+    """Palm length + width: grows as the hand comes towards the camera, whatever the fingers do."""
+    return _d(lm[WRIST], lm[MIDDLE[0]]) + _d(lm[INDEX[0]], lm[PINKY[0]])
+
+
+HAND_HOLD = {"thumbs_up": 0.6, "thumbs_down": 0.6, "victory": 0.6, "palm": 1.2}
+
+
+@dataclass
+class HandTracker:
+    """Whole-hand air mouse:
+    move the hand = move the cursor · close it (✊) = click, close + move = drag · swipe = gesture ·
+    push towards the camera / pull back = zoom · 👍 / 👎 / ✌️ held = gestures."""
+    box: tuple = (0.18, 0.12, 0.82, 0.72)
+    smooth: float = 0.35
+    holds: dict = field(default_factory=lambda: dict(HAND_HOLD))
+    zoom: bool = True
+    grab_frames: int = 2                      # frames of ✊ before it counts (stops flicker-clicks)
+    drag_start: float = 0.05                  # closed hand moved this far (share of the screen) = drag
+    swipe_dist: float = 0.26                  # share of the camera picture…
+    swipe_time: float = 0.35                  # …covered this fast = swipe
+    zoom_step: float = 0.18                   # hand 18 % bigger / smaller = one zoom step
+    current: str = "none"
+    since: float = 0.0
+    fired: str = ""
+    lost_at: float = 0.0
+    pointer: tuple | None = None
+    closed: bool = False
+    close_frames: int = 0
+    open_frames: int = 0
+    grab_at: tuple | None = None
+    dragging: bool = False
+    base: float | None = None
+    seen_at: float = 0.0
+    zoom_t: float = -10.0
+    last_swipe: float = -10.0
+    quiet_until: float = -10.0
+    scroll_y: float | None = None
+    scrolled: bool = False
+    fx: object = None
+    fy: object = None
+    trail: collections.deque = field(default_factory=lambda: collections.deque(maxlen=30))
+    history: collections.deque = field(default_factory=lambda: collections.deque(maxlen=30))
+
+    @property
+    def pinching(self) -> bool:               # the dashboard chip shows "grabbing"
+        return self.closed
+
+    def _map(self, cx: float, cy: float, t: float) -> tuple[float, float]:
+        x0, y0, x1, y1 = self.box
+        nx = min(1.0, max(0.0, (cx - x0) / (x1 - x0)))
+        ny = min(1.0, max(0.0, (cy - y0) / (y1 - y0)))
+        if self.smooth < 1.0:
+            from .air import OneEuro
+            if self.fx is None:
+                self.fx, self.fy = OneEuro(), OneEuro()
+            nx, ny = self.fx(nx, t), self.fy(ny, t)
+        return nx, ny
+
+    def _reset(self) -> None:
+        self.closed, self.close_frames, self.open_frames, self.dragging, self.grab_at = False, 0, 0, False, None
+        self.base, self.scroll_y, self.scrolled, self.pointer = None, None, False, None
+        self.trail.clear()
+        self.history.clear()
+        if self.fx is not None:
+            self.fx.reset()
+            self.fy.reset()
+
+    def update(self, lm, t: float) -> list[tuple]:
+        events: list[tuple] = []
+        if lm is None:
+            if self.dragging:
+                events.append(("drag_end",))
+            if self.current != "none":
+                self.lost_at = t
+            self.current, self.fired = "none", ""
+            self._reset()
+            return events
+
+        g = classify(lm)
+        if g != self.current:
+            self.current, self.since = g, t
+            if g != self.fired:
+                self.fired = ""
+        if self.base is None:
+            self.seen_at = t
+        cx, cy = palm_centre(lm)
+        size = palm_size(lm)
+        nx, ny = self._map(cx, cy, t)
+        self.trail.append((t, cx, cy, g))
+        self.history.append((t, nx, ny))
+
+        # ✊ close = click · keep it closed and move = drag · open = let go
+        fist = g == "fist"
+        if not self.closed:
+            self.close_frames = self.close_frames + 1 if fist else 0
+            if self.close_frames >= self.grab_frames:
+                self.closed, self.open_frames, self.dragging = True, 0, False
+                self.grab_at = self.pointer or (nx, ny)
+                events.append(("click",))
+        else:
+            if fist:
+                self.open_frames = 0
+                if not self.dragging and _d((nx, ny), self.grab_at) > self.drag_start:
+                    self.dragging = True
+                    events.append(("drag_start",))
+            else:
+                self.open_frames += 1
+                if self.open_frames >= 2:
+                    self.closed = False
+                    self.close_frames = 0
+                    if self.dragging:
+                        events.append(("drag_end",))
+                    self.dragging = False
+                    self.base = None                    # re-measure the hand before zooming again
+
+        # 👋 swipe: an open hand moving fast sideways
+        if not self.closed and t - self.last_swipe > 1.0:
+            recent = [p for p in self.trail if t - p[0] <= self.swipe_time and p[3] in ("palm", "other", "point")]
+            if len(recent) >= 3:
+                dx = recent[-1][1] - recent[0][1]
+                dy = abs(recent[-1][2] - recent[0][2])
+                if abs(dx) > self.swipe_dist and dy < abs(dx) * 0.6:
+                    self.last_swipe, self.quiet_until = t, t + 0.6
+                    self.fired = self.current
+                    self.trail.clear()
+                    events.append(("gesture", "swipe_right" if dx > 0 else "swipe_left"))
+                    t0 = recent[0][0]
+                    before = [h for h in self.history if h[0] < t0] or list(self.history)[:1]
+                    self.pointer = (before[-1][1], before[-1][2])
+                    events.append(("restore", *self.pointer))      # put the cursor back where it was
+                    self.base = None
+                    return events
+
+        # held shapes fire once (👍 👎 ✌️ …)
+        hold = self.holds.get(g)
+        if hold and not self.fired and t - self.since >= hold:
+            still = [p for p in self.trail if t - p[0] <= hold]
+            moved = max((_d((p[1], p[2]), (cx, cy)) for p in still), default=0)
+            if (moved < 0.06 or g not in ("palm", "victory")) and not (g == "victory" and self.scrolled):
+                self.fired = g
+                events.append(("gesture", g))
+
+        # ✌️ two fingers moving up/down = scroll
+        if g == "victory":
+            if self.scroll_y is None:
+                self.scroll_y, self.scrolled = cy, False
+            elif abs(cy - self.scroll_y) > 0.035:
+                steps = int((cy - self.scroll_y) / 0.035)
+                self.scroll_y += steps * 0.035
+                self.scrolled = True
+                events.append(("scroll", -steps))
+        else:
+            self.scroll_y, self.scrolled = None, False
+
+        # 🔍 push the hand towards the camera = zoom in, pull it back = zoom out
+        open_hand = g in ("palm", "other", "point") and not self.closed
+        if self.zoom and open_hand and t >= self.quiet_until:
+            if self.base is None:
+                self.base, self.seen_at = size, t
+            elif t - self.seen_at >= 0.4 and t - self.zoom_t >= 0.3:
+                r = size / self.base
+                if r > 1 + self.zoom_step or r < 1 / (1 + self.zoom_step):
+                    self.zoom_t, self.base = t, size
+                    events.append(("zoom", 1 if r > 1 else -1))
+                else:
+                    self.base += (size - self.base) * 0.04      # slow drift = no zoom
+        elif not open_hand:
+            self.base = None
+
+        # the cursor follows the whole hand (frozen while making 👍 👎 ✌️ or a still ✊ click)
+        frozen = t < self.quiet_until or g in ("thumbs_up", "thumbs_down", "victory") or \
+            (fist and not self.dragging) or (self.closed and not self.dragging)
+        if not frozen:
+            self.pointer = (nx, ny)
+            events.append(("pointer", nx, ny))
+        return events
+
+
 # ── doing things ──────────────────────────────────────────
 def _screen_size() -> tuple[int, int]:
     if platform.system() == "Windows":
@@ -276,7 +475,7 @@ def _press(combo: str) -> None:
 class GestureEngine:
     def __init__(self, cfg=None):
         self.cfg = cfg
-        self.tracker = Tracker()
+        self.tracker = self._new_tracker()
         self.landmarker = None
         self.enabled = False
         self.error = ""
@@ -304,10 +503,25 @@ class GestureEngine:
     def _g(self) -> dict:
         return dict(((self.cfg or context.cfg or {}).get("gestures") or {}))
 
+    def style(self) -> str:
+        return "finger" if str(self._g().get("style", "hand")).lower() == "finger" else "hand"
+
     def actions(self) -> dict:
+        hand = self.style() == "hand"
+        key = "hand_actions" if hand else "actions"
         mine = {k: ("yes" if v is True else "no" if v is False else str(v))       # YAML may read yes/no as booleans
-                for k, v in (self._g().get("actions") or {}).items()}
-        return {**DEFAULT_ACTIONS, **mine}
+                for k, v in (self._g().get(key) or {}).items()}
+        return {**(HAND_ACTIONS if hand else DEFAULT_ACTIONS), **mine}
+
+    def _new_tracker(self):
+        g = self._g()
+        reach = float(g.get("reach", 0.64))                     # smaller = less arm movement
+        box = (0.5 - reach / 2, 0.44 - reach * 0.42, 0.5 + reach / 2, 0.44 + reach * 0.42)
+        if self.style() == "finger":
+            return Tracker(box=box)
+        acts = self.actions()
+        holds = {k: v for k, v in HAND_HOLD.items() if acts.get(k, "none") != "none"}
+        return HandTracker(box=box, holds=holds, zoom=bool(g.get("zoom", True)))
 
     # ── on / off ──────────────────────────────────────────
     def start(self) -> str:
@@ -329,8 +543,7 @@ class GestureEngine:
         except Exception as e:
             self.error = f"Couldn't load the hand-tracking model: {e}"
             return self.error
-        reach = float(self._g().get("reach", 0.64))            # smaller = less arm movement
-        self.tracker.box = (0.5 - reach / 2, 0.44 - reach * 0.42, 0.5 + reach / 2, 0.44 + reach * 0.42)
+        self.tracker = self._new_tracker()
         if self._g().get("hover_labels", True):
             from .air import HoverLabels
             self._hover = HoverLabels(self._cursor, lambda: self.enabled and self.tracker.pointer is not None,
@@ -347,6 +560,9 @@ class GestureEngine:
             self.error = h.error
             return h.error
         self._log("Gesture control on")
+        if self.style() == "hand":
+            return ("Gesture control is on. Move your hand = cursor, ✊ close = click, swipe left = back, "
+                    "swipe right = dashboard, push/pull = zoom, 👍 = Enter, 👎 = Delete.")
         return "Gesture control is on. ✋ palm = stop, 👍/👎 = yes/no, ✌️ = listen, 👉 point + 🤏 pinch = mouse."
 
     def stop(self) -> str:
@@ -372,7 +588,7 @@ class GestureEngine:
         return {"enabled": self.enabled, "hand": self.hand, "gesture": self.gesture,
                 "emoji": EMOJI.get(self.gesture, ""), "label": LABEL.get(self.gesture, ""),
                 "fps": round(self.fps, 1), "error": self.error or (_hub.error if _hub else ""),
-                "seq": self._seq, "mouse": bool(self._g().get("mouse", True)),
+                "seq": self._seq, "mouse": bool(self._g().get("mouse", True)), "style": self.style(),
                 "pointer": self.tracker.pointer, "pinching": self.tracker.pinching,
                 "hover": (self.hover or {}).get("text", "") if self.tracker.pointer else ""}
 
@@ -405,17 +621,21 @@ class GestureEngine:
         events = self.tracker.update(lm, ts)
         self.gesture = self.tracker.current
         mouse_on = bool(self._g().get("mouse", True))
+        hand = isinstance(self.tracker, HandTracker)
         for ev in events:
             kind = ev[0]
             if kind == "gesture":
                 self.fire(ev[1])
-            elif kind == "pointer" and mouse_on:
+            elif kind in ("pointer", "restore") and mouse_on:
                 self._move(ev[1], ev[2])
             elif kind == "click" and mouse_on:
-                double = ts - self._last_click < 0.6
+                double = ts - self._last_click < 0.6          # two quick clicks = the OS sees a double-click
                 self._last_click = -10.0 if double else ts
                 self._click()
-                self._emit("pinch", "double-click" if double else "click", self._hover_name())
+                self._emit("grab" if hand else "pinch", "double-click" if double else "click", self._hover_name())
+            elif kind == "zoom" and mouse_on:
+                self._zoom(ev[1])
+                self._emit("zoom_in" if ev[1] > 0 else "zoom_out", "zoom")
             elif kind == "right_click" and mouse_on:
                 self._click(right=True)
                 self._emit("pinch", "right-click", self._hover_name())
@@ -423,7 +643,7 @@ class GestureEngine:
                 self._mouse_down()
             elif kind == "drag_end" and mouse_on:
                 self._mouse_up()
-                self._emit("pinch", "drag")
+                self._emit("grab" if hand else "pinch", "drag")
             elif kind == "scroll" and mouse_on:
                 self._ctl().scroll(0, ev[1] * int(self._g().get("scroll_speed", 2)))
 
@@ -455,6 +675,17 @@ class GestureEngine:
                     self._click(double=True)                     # 👍 on a file / folder / link = open it
                     return f"opened {self.hover.get('name', '')}"
                 return result
+            if action in ("enter", "delete"):                   # answers Nova first if she's asking
+                result = self._answer("yes" if action == "enter" else "no")
+                if result != "nothing to answer":
+                    return result
+                _press(action)
+                return action
+            if action in ("back", "forward"):
+                _press("alt+left" if action == "back" else "alt+right")
+                return action
+            if action == "open_dashboard":
+                return self._open_dashboard()
             if action == "auto":                                 # swipe = back / forward in a browser or Explorer
                 if gesture in ("swipe_left", "swipe_right") and self._foreground_is_browser_or_explorer():
                     _press("alt+left" if gesture == "swipe_left" else "alt+right")
@@ -536,6 +767,47 @@ class GestureEngine:
             for _ in range(2 if double else 1):
                 m.press(b)
                 m.release(b)
+
+    def _zoom(self, step: int) -> None:
+        """Ctrl + mouse wheel: zooms browsers, Office, Explorer icons, photos, the dashboard…"""
+        try:
+            from pynput.keyboard import Controller, Key
+            kb = Controller()
+            kb.press(Key.ctrl)
+            try:
+                self._ctl().scroll(0, 1 if step > 0 else -1)
+            finally:
+                kb.release(Key.ctrl)
+        except Exception as e:
+            print(f"[gestures] zoom failed: {e}")
+
+    def _open_dashboard(self) -> str:
+        """Bring the Nova dashboard to the front, or open it in the browser."""
+        if platform.system() == "Windows":
+            try:
+                import ctypes
+                u = ctypes.windll.user32                          # type: ignore[attr-defined]
+                found = []
+
+                @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+                def each(hwnd, _):
+                    buf = ctypes.create_unicode_buffer(300)
+                    u.GetWindowTextW(hwnd, buf, 300)
+                    if u.IsWindowVisible(hwnd) and "Nova · Second Brain" in buf.value:
+                        found.append(hwnd)
+                    return True
+                u.EnumWindows(each, 0)
+                if found:
+                    _press("alt")                                  # lets Windows hand over the foreground
+                    u.ShowWindow(found[0], 9)                      # SW_RESTORE
+                    u.SetForegroundWindow(found[0])
+                    return "dashboard"
+            except Exception as e:
+                print(f"[gestures] couldn't focus the dashboard: {e}")
+        import webbrowser
+        port = int((((self.cfg or context.cfg or {}).get("dashboard")) or {}).get("port", 8765))
+        webbrowser.open(f"http://localhost:{port}")
+        return "dashboard"
 
     @staticmethod
     def _foreground_is_browser_or_explorer() -> bool:

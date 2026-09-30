@@ -91,7 +91,8 @@ class MCPManager:
 
     async def _connect_all(self):
         self._stack = AsyncExitStack()
-        for name, spec in self.servers().items():
+        # quick servers first; ones that may wait for a browser sign-in (Canva's first run) last
+        for name, spec in sorted(self.servers().items(), key=lambda kv: float(kv[1].get("timeout", 45)) > 60):
             try:
                 await asyncio.wait_for(self._connect(name, spec), timeout=float(spec.get("timeout", 45)))
             except Exception as e:

@@ -67,10 +67,11 @@ run.bat --check
 
 | Problem | Fix |
 |---|---|
-| `Google isn't connected yet` | `run.bat --google-login` |
+| `Google isn't connected yet` | Settings → Google → **Connect Google** |
+| "needs a one-time reconnect for new permissions (Slides)" | Enable **Google Slides API** in the Cloud Console, then click **Connect Google** once. |
 | `Missing secrets\credentials.json` | Download the **Desktop app** OAuth client JSON, save it with exactly that name. |
 | `access_denied` / "app not verified" blocks you | Add yourself as a test user, or publish the app, then click *Advanced → Go to Nova*. |
-| Logged out every 7 days | Publish the app (OAuth consent screen → Publish). Delete `secrets\token.json` and log in again. |
+| Logged out every 7 days | Publish the app (OAuth consent screen → Publish app), then click **Connect Google** once more. |
 | `insufficient permissions` | You enabled more APIs later. Delete `secrets\token.json` and run `--google-login` again. |
 | `API has not been used in project` | Enable that API in Google Cloud Console → Library. |
 

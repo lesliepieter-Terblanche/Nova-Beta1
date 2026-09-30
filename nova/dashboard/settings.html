@@ -265,7 +265,7 @@ const INTRO = {
   voice: "How Nova listens and how it sounds. Backup voices are used automatically if the main one fails.",
   brain: "Which AI models think for Nova. Everyday requests stay local; hard ones go to the smart models in order.",
   telegram: "Control Nova from your phone. Only the user IDs listed here are allowed.",
-  google: "Gmail, Calendar, Drive, Docs, Sheets and Tasks.",
+  google: "Gmail, Calendar, Drive, Docs, Sheets, Slides and Tasks. Click Connect Google once — Nova keeps a refreshable sign-in token, so you never log in again (your password is never stored). If Google signs you out after about a week, your Google Cloud project is in 'Testing' mode: Google Cloud Console → APIs & Services → OAuth consent screen → Publish app. Do that once and it stays connected.",
   files: "Where Nova may read and write, plus web and video options.",
   remote: "Open Nova's dashboard and the globe on your phone, anywhere, privately. 1) Install Tailscale on this PC and your phone (tailscale.com/download) and sign in with the same account on both. 2) Click Set up. 3) Scan the QR code from the 📱 button on the dashboard. Only your own devices can reach it — nothing is public.",
   wellbeing: "Made for ADHD and bipolar II: one thing at a time, calm visuals, routines that keep you steady, and guardrails for late nights. Your daily check-ins (energy, mood, sleep) are encrypted on this PC and never sent to any AI model. Heads-ups only look for the patterns you switch on below — they're a gentle nudge, not a diagnosis. Your monthly summary for your doctor is on the dashboard (Focus → Trends).",
@@ -279,7 +279,7 @@ const INTRO = {
 };
 const TESTS = { voice: [["voice", "Test voice"], ["elevenlabs", "Check ElevenLabs credits"]],
   brain: [["ollama", "Test local model"], ["gemini", "Test Gemini"], ["groq", "Test Groq"], ["xai", "Test Grok"]],
-  telegram: [["telegram", "Send test message"]], google: [["google", "Check connection"]],
+  telegram: [["telegram", "Send test message"]], google: [["google_connect", "Connect Google"], ["google", "Check"]],
   globe: [["globe", "Check"], ["globe_install", "Install"]],
   gestures: [["gestures", "Try it now"], ["gestures_off", "Turn off"]],
   presence: [["presence", "Try it now"], ["presence_off", "Turn off"]],
@@ -447,7 +447,7 @@ function renderExtensions() {
       <div class="ext"><div class="info"><b>Also load Claude Desktop's MCP servers</b><small>Reads claude_desktop_config.json</small></div>
       <label class="switch"><input type="checkbox" data-ext="mcp_import_claude_desktop" ${x.mcp_import_claude_desktop ? "checked" : ""}><span></span></label></div>
       <p class="note">Other servers: add them in config.yaml (see docs/MCP.md) — they'll appear here.</p></div>
-    <div class="card glass"><h3>Add an MCP server <small style="text-transform:none;letter-spacing:0">— free, one click (installed with Nova's requirements)</small></h3>${
+    <div class="card glass"><h3>Add an MCP server <small style="text-transform:none;letter-spacing:0">— one click, then Save and restart Nova</small></h3>${
       (x.mcp_catalog || []).map((c) => `<div class="ext"><div class="info"><b>${esc(c.title)}</b><small>${esc(c.desc)}</small></div>
         ${c.added ? `<span class="lock">added</span>` : `<button class="btn small" data-mcpadd="${esc(c.name)}">Add</button>`}</div>`).join("")}</div>`;
 }

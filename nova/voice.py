@@ -22,6 +22,17 @@ class VoiceLoop:
         self.noise = deque([300.0] * 20, maxlen=60)
         self.running = True
         self.hotkey = threading.Event()
+        self._vad = None
+        self._vad_tried = False
+
+    def vad(self):
+        """Silero VAD (voice.vad: silero) — or None to judge by loudness (voice.vad: loudness)."""
+        if not self._vad_tried:
+            self._vad_tried = True
+            if str(self.v.get("vad", "silero")).lower() == "silero":
+                from .vad import load
+                self._vad = load(float(self.v.get("vad_threshold", 0.5)))
+        return self._vad
 
     def _load_wakeword(self):
         import openwakeword
@@ -52,12 +63,19 @@ class VoiceLoop:
     def _record(self, stream, start_timeout: float) -> np.ndarray | None:
         """Record until the speaker goes quiet. None if nobody spoke."""
         thr = self._threshold()
+        vad = self.vad()
+        if vad:
+            vad.reset()
         frames, started, silent_for, waited, total = [], False, 0.0, 0.0, 0.0
         block_s = BLOCK / RATE
         while total < self.v.max_record_seconds:
             block = stream.read(BLOCK)[0][:, 0].copy()
             total += block_s
-            loud = self._rms(block) > thr
+            if vad:                                       # real speech, not fans / typing / the TV
+                p = vad.speech_in(block)
+                loud = p >= (vad.threshold if not started else max(0.15, vad.threshold - 0.15))
+            else:
+                loud = self._rms(block) > thr
             if not started:
                 frames = (frames + [block])[-4:]          # keep 320 ms of lead-in
                 if loud:

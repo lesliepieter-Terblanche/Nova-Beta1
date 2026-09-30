@@ -78,6 +78,10 @@ SCHEMA = [
          "options": ["tiny.en", "base.en", "small.en", "base", "small"]},
         {"path": "voice.stt_language", "label": "Language", "type": "select", "options": ["en", "af", ""],
          "help": "Blank = auto-detect (use a multilingual model)", "free": True},
+        {"path": "voice.vad", "label": "How Nova hears you talking", "type": "select", "default": "silero",
+         "options": ["silero", "loudness"], "help": "silero = a small AI that ignores fans, typing and the TV"},
+        {"path": "voice.vad_threshold", "label": "Speech detection sensitivity", "type": "number", "min": 0.2,
+         "max": 0.9, "step": 0.05, "default": 0.5, "help": "Higher = needs clearer speech (fewer false starts)"},
         {"path": "voice.silence_seconds", "label": "Pause that ends a sentence (s)", "type": "number", "min": 0.5, "max": 3, "step": 0.1},
         {"path": "voice.follow_up_seconds", "label": "Follow-up window (s)", "type": "number", "min": 0, "max": 20},
         {"path": "voice.max_spoken_chars", "label": "Longest spoken answer (chars)", "type": "number", "min": 100, "max": 3000},
@@ -208,6 +212,48 @@ SCHEMA = [
         {"path": "wellbeing.signals_telegram", "label": "Also send heads-ups to Telegram", "type": "bool", "default": False},
         {"path": "wellbeing.plan", "label": "My plan when a heads-up shows", "type": "text", "default": "",
          "help": "Best agreed with your doctor, e.g. 'Sleep first, no new projects this week, text Dr M.'"},
+    ]},
+    {"id": "documents", "title": "Documents", "icon": "doc", "fields": [
+        {"path": "documents.docling", "label": "Use docling for PDFs (better tables & scans)", "type": "select",
+         "default": "auto", "options": ["auto", "off"], "help": "auto = use it once installed (button below)"},
+    ]},
+    {"id": "images", "title": "Images (ComfyUI)", "icon": "image", "fields": [
+        {"path": "media.image_provider", "label": "Make images with", "type": "select", "default": "auto",
+         "options": ["auto", "comfyui", "local"], "help": "auto = ComfyUI when it's running"},
+        {"path": "media.comfyui.url", "label": "ComfyUI address", "type": "text", "default": "http://127.0.0.1:8188"},
+        {"path": "media.comfyui.checkpoint", "label": "Model (part of the name)", "type": "text", "default": "",
+         "help": "Blank = the first model in ComfyUI/models/checkpoints"},
+        {"path": "media.comfyui.start_command", "label": "Start ComfyUI with (optional)", "type": "text", "default": "",
+         "help": r"e.g. C:\ComfyUI_windows_portable\run_nvidia_gpu.bat — Nova starts it when needed"},
+        {"path": "media.comfyui.workflow", "label": "Your own workflow (optional)", "type": "text", "default": "",
+         "help": "A ComfyUI 'Export (API)' .json with {{prompt}} {{negative}} {{seed}} {{width}} {{height}}"},
+    ]},
+    {"id": "web_agent", "title": "Web agent", "icon": "cursor", "fields": [
+        {"path": "web_agent.provider", "label": "AI that drives the browser", "type": "select", "default": "auto",
+         "options": ["auto", "gemini", "groq", "xai", "ollama"], "help": "auto = Gemini, then Groq, then Grok"},
+        {"path": "web_agent.model", "label": "Model (optional)", "type": "text", "default": "",
+         "help": "Blank = the provider's default (Gemini 2.5 Flash)"},
+        {"path": "web_agent.max_steps", "label": "Most steps per task", "type": "number", "min": 5, "max": 100,
+         "default": 30},
+        {"path": "web_agent.headless", "label": "Work invisibly (no browser window)", "type": "bool", "default": False},
+        {"path": "web_agent.chrome_path", "label": "Browser to use (optional)", "type": "text", "default": "",
+         "help": "Blank = Chrome, or Edge if there's no Chrome"},
+    ]},
+    {"id": "activitywatch", "title": "Screen time", "icon": "clock", "fields": [
+        {"path": "activitywatch.enabled", "label": "Use ActivityWatch screen time", "type": "bool", "default": True,
+         "help": "Free app from activitywatch.net — data stays on this PC"},
+        {"path": "activitywatch.url", "label": "ActivityWatch address", "type": "text", "default": "http://localhost:5600"},
+        {"path": "activitywatch.nudges", "label": "Gentle nudge when I drift during work hours", "type": "bool",
+         "default": True, "help": "Only when a Focus task is waiting, never at night"},
+        {"path": "activitywatch.nudge_after_minutes", "label": "…after this many minutes of drift", "type": "number",
+         "min": 5, "max": 90, "default": 15},
+        {"path": "activitywatch.nudge_every_minutes", "label": "At most one nudge every (minutes)", "type": "number",
+         "min": 15, "max": 240, "default": 45},
+        {"path": "activitywatch.work_start", "label": "Work day starts", "type": "text", "default": "08:00"},
+        {"path": "activitywatch.work_end", "label": "Work day ends", "type": "text", "default": "17:00"},
+        {"path": "activitywatch.distractions", "label": "What counts as drift", "type": "list",
+         "default": ["youtube", "facebook", "instagram", "tiktok", "netflix", "reddit", "twitter", "x.com", "showmax"],
+         "help": "One per line — matched against app names, window titles and sites"},
     ]},
     {"id": "loadshedding", "title": "Load-shedding", "icon": "bolt", "fields": [
         {"path": "loadshedding.area_id", "label": "Your EskomSePush area id", "type": "text", "default": "",
@@ -715,6 +761,41 @@ def run_test(kind: str) -> dict:
             _ctx.cfg = _ctx.cfg or cfg
             out = mod.loadshedding_status() if kind == "loadshedding" else mod.news_briefing(max_items=3)
             return {"ok": not out.startswith("ERROR"), "message": out.removeprefix("ERROR: ")}
+        if kind in ("docling_install", "web_agent_install"):
+            from . import extras
+            name = "docling" if kind == "docling_install" else "browser_use"
+            st = extras.status(name)
+            if st["installed"]:
+                return {"ok": True, "message": f"{st['title']} is installed ✓"}
+            if st["state"] == "installing":
+                return {"ok": True, "message": " · ".join(st["log"][-2:]) or "Installing…"}
+            return {"ok": True, "message": extras.install(name, extras.announce_done) + " Click again to see progress."}
+        if kind == "web_agent_login":
+            from . import context as _ctx
+            from . import web_agent
+            _ctx.cfg = _ctx.cfg or cfg
+            return {"ok": True, "message": web_agent.open_for_login("https://accounts.google.com")}
+        if kind == "comfyui":
+            from . import comfy
+            from . import context as _ctx
+            _ctx.cfg = _ctx.cfg or cfg
+            if not comfy.running():
+                return {"ok": False, "message": f"ComfyUI isn't running at {comfy.base()}. Start ComfyUI first "
+                        "(or fill in 'Start ComfyUI with')."}
+            names = comfy.checkpoints()
+            if not names:
+                return {"ok": False, "message": "ComfyUI is running but has no models — add one to "
+                        "ComfyUI/models/checkpoints (SD 1.5 or SDXL-Turbo for a 4 GB card)."}
+            return {"ok": True, "message": f"ComfyUI is running with {len(names)} model(s); I'll use "
+                    f"{comfy.pick_checkpoint()}. Say 'make an image of …' to try it."}
+        if kind == "activitywatch":
+            from . import activity
+            from . import context as _ctx
+            _ctx.cfg = _ctx.cfg or cfg
+            if not activity.running():
+                return {"ok": False, "message": f"ActivityWatch isn't running at {activity.base()}. Install it from "
+                        "activitywatch.net and start it (it sits in the system tray)."}
+            return {"ok": True, "message": activity.as_text(activity.summary("today")).replace("\n", " · ")}
         if kind in ("dream", "backup"):
             import threading as _t
 

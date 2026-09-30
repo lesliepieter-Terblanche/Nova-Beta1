@@ -920,6 +920,14 @@ class Dashboard:
                     if u.path == "/api/focus":
                         from .. import focus, wellbeing
                         return self._json({**focus.state(), "wb": wellbeing.state()})
+                    if u.path == "/api/screen_time":
+                        from .. import activity
+                        if not activity.running():
+                            return self._json({"running": False})
+                        try:
+                            return self._json({"running": True, **activity.summary(q.get("period", "today"))})
+                        except Exception as e:
+                            return self._json({"running": True, "error": str(e)})
                     if u.path == "/api/wellbeing/trends":
                         from .. import wellbeing
                         days = min(120, int(q.get("days", "45")))

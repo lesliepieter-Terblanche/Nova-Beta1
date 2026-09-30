@@ -293,6 +293,11 @@ def main() -> None:
     except Exception as e:
         print(f"[wellbeing] not started: {e}")
     try:
+        from nova import activity
+        activity.start()                 # ActivityWatch screen time: gentle drift nudges during work hours
+    except Exception as e:
+        print(f"[activity] not started: {e}")
+    try:
         from nova.missions import missions
         missions().start()               # runs scheduled missions (and any that were due while Nova was off)
     except Exception as e:

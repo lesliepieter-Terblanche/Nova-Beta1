@@ -23,6 +23,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 tools/gods-eye-view/
+tools/browser-use/
+tools/docling/
+models/vad/
 models/vision/
 backups/
 restore/

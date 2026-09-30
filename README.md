@@ -43,6 +43,11 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 🖱 **Browser** | Drives its own Chrome: open, read, click, type, stay logged in, screenshot |
 | 📷 **Webcam → ads** | Photo → product identified → background removed → feed/story ads + caption + ad video |
 | 🎬 **Media** | Narrated videos with burned-in captions and free stock footage · photo slideshows · voice-overs · transcription · trims and conversions |
+| ✂️ **Shorts maker** | Long video → captioned vertical Shorts / Reels / TikToks (AI picks the best moments) · add captions · make vertical · join clips (moviepy) |
+| 🎨 **ComfyUI images** | Free image generation on your own graphics card — posts, ads, thumbnails in any format, or your own ComfyUI workflow |
+| 🌐 **AI web agent** | "Register the deal on the Juniper portal" — works websites in its own Chrome window (browser-use), stops before pay/send/submit |
+| 🧭 **Screen time** | "Where did my day go?" from ActivityWatch, a *Where today went* card on the Focus screen and kind drift nudges in work hours |
+| 📄 **Reads everything** | Word, PowerPoint, Excel, PDF, Outlook .msg, EPUB (markitdown) · optional docling for PDF tables → Excel |
 | 👁 **Vision** | "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?" · describe photos and scans · Gemini, or fully local with Gemma 3 |
 | 📱 **Nova on your phone** | Private access from anywhere with Tailscale — scan the QR code on the dashboard |

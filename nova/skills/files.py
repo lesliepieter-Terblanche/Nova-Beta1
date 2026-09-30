@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -11,7 +12,8 @@ from .. import context
 from ..config import resolve
 from ..tools import register_group, tool
 
-register_group("files", ["file", "folder", "document", "desktop", "download", "pdf", "docx", "move", "copy",
+register_group("files", ["file", "folder", "document", "desktop", "download", "pdf", "docx", "pptx", "powerpoint",
+                         "slides", "table", "markdown", "convert", "move", "copy",
                          "delete", "rename", "organi", "tidy", "clean up", "find my", "where is", "open the",
                          "read the", "save", "spreadsheet", "zip", "send me", "phone"])
 
@@ -49,23 +51,9 @@ def safe(path: str) -> Path:
 
 
 def extract_text(p: Path, limit: int = 60000) -> str:
-    ext = p.suffix.lower()
-    if ext == ".pdf":
-        from pypdf import PdfReader
-        return "\n".join((pg.extract_text() or "") for pg in PdfReader(str(p)).pages)[:limit]
-    if ext == ".docx":
-        import docx
-        return "\n".join(par.text for par in docx.Document(str(p)).paragraphs)[:limit]
-    if ext == ".xlsx":
-        import openpyxl
-        wb = openpyxl.load_workbook(str(p), read_only=True, data_only=True)
-        rows = []
-        for ws in wb.worksheets:
-            rows.append(f"## {ws.title}")
-            for row in ws.iter_rows(values_only=True, max_row=300):
-                rows.append(", ".join("" if v is None else str(v) for v in row))
-        return "\n".join(rows)[:limit]
-    return p.read_text(encoding="utf-8", errors="ignore")[:limit]
+    """Document → text: markitdown / docling when installed, the built-in readers otherwise (see nova/convert.py)."""
+    from ..convert import to_markdown
+    return to_markdown(p, limit)
 
 
 @tool(group="files")
@@ -104,7 +92,7 @@ def find_files(name_contains: str, extension: str = "", folder: str = "") -> lis
 
 @tool(group="files")
 def read_file(path: str) -> str:
-    """Read a text, PDF, Word or Excel file.
+    """Read a document: PDF, Word, PowerPoint, Excel, Outlook .msg, EPUB, HTML, CSV, text…
     Args:
         path: file path
     """
@@ -240,3 +228,59 @@ def send_to_phone(path: str) -> str:
         return "That file is over Telegram's 50 MB bot limit. I can zip it or upload it to Google Drive instead."
     context.attach(p)
     return f"Sending {p.name}."
+
+
+@tool(group="files")
+def document_to_markdown(path: str) -> str:
+    """Convert a document (PDF, Word, PowerPoint, Excel, Outlook .msg, EPUB, HTML…) to a Markdown file.
+    Args:
+        path: the document
+    """
+    from ..convert import to_markdown
+    p = safe(path)
+    text = to_markdown(p, limit=2_000_000)
+    out = resolve("workspace/docs") / f"{p.stem}.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
+    context.record("file", out.name, out, "markdown")
+    context.attach(out)
+    return f"Saved {out} ({len(text.split())} words)."
+
+
+NUM = re.compile(r"-?(\d{1,3}([ ,]\d{3})+|\d+)(\.\d+)?")
+
+
+def _num(v: str):
+    """Plain numbers ('12 000', '1,299.50', '42') become numbers so Excel can add them up; anything else stays text."""
+    t = str(v).strip().replace("\u00a0", " ")
+    if NUM.fullmatch(t):
+        return float(t.replace(" ", "").replace(",", ""))
+    return v
+
+
+@tool(group="files")
+def extract_tables(path: str) -> str:
+    """Pull every table out of a PDF / Word / PowerPoint file into an Excel workbook (one sheet per table).
+    Args:
+        path: the document, e.g. a price list PDF
+    """
+    from ..convert import pdf_tables
+    p = safe(path)
+    tables = pdf_tables(p)
+    if not tables:
+        return f"I couldn't find any tables in {p.name}."
+    import openpyxl
+    out = resolve("workspace/docs") / f"{p.stem} tables.xlsx"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for n, t in enumerate(tables, 1):
+        ws = wb.create_sheet(f"Table {n}")
+        ws.append(t["columns"])
+        for row in t["rows"]:
+            ws.append([_num(v) for v in row])
+    wb.save(out)
+    context.record("file", out.name, out, "tables")
+    context.attach(out)
+    sizes = ", ".join(f"{len(t['rows'])}×{len(t['columns'])}" for t in tables[:6])
+    return f"Found {len(tables)} table(s) ({sizes}) — saved to {out}."

@@ -106,11 +106,11 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 |---|---|---|
 | `system.py` | system | time, apps, URLs, status, screenshots, vision, clipboard, shell 🔒, power 🔒, reminders |
 | `memory.py` | brain | remember, recall, correct, notes, journal, ingest web pages/documents |
-| `files.py` | files | list, find, read (PDF/DOCX/XLSX), write, copy, move 🔒, delete 🔒, tidy 🔒, zip, open, send to phone |
+| `files.py` | files | list, find, read (PDF/Word/PowerPoint/Excel/.msg/EPUB via markitdown, docling optional), to Markdown, tables → Excel, write, copy, move 🔒, delete 🔒, tidy 🔒, zip, open, send to phone |
 | `web.py` | web | search, scrape page/links/tables, build/edit/list/open websites |
 | `browser.py` | browser | open, read, click, type, submit 🔒, scroll, back, keys, screenshot, look |
 | `google_ws.py` | google | Gmail, Calendar, Drive, Docs, Sheets, Tasks |
-| `media.py` | media | explainer videos, slideshows, voice-overs, transcription, trim, convert, local images |
+| `media.py` | media | explainer videos, slideshows, voice-overs, transcription, trim, convert, images (ComfyUI or local SD) |
 | `camera_ads.py` | camera | webcam photo/look, product ads (+ video) |
 | `weather.py` | weather | live forecast, spoken + weather page (Open-Meteo, free) |
 | `globe.py` | globe | God's Eye View 3D globe: fly anywhere, styles, planes overhead, earthquakes, ISS, install 🔒/start/stop |
@@ -120,6 +120,9 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | `missions.py` | missions | start, list, report, pause/resume/run/delete (engine in `nova/missions.py`) |
 | `dreaming.py` | dreaming | dream now, last dream, back up now (engine in `nova/dreaming.py`) |
 | `remote.py` | remote | Tailscale remote access status/on/off (engine in `nova/remote.py`) |
+| `activity.py` | activity | screen time, time spent on an app/site (ActivityWatch; engine + drift nudges in `nova/activity.py`) |
+| `video_edit.py` | video_edit | long video → captioned vertical Shorts, add captions, make vertical, join videos (moviepy) |
+| `web_agent.py` | web_agent | AI web agent (browser-use, own Python via `nova/extras.py`): run/status/stop, log in once, install |
 | `maintenance.py` | maintenance | updates 🔒, versions, rollback 🔒, restart 🔒, dashboard, extensions status |
 
 After adding or changing tools, regenerate the reference: `python scripts/gen_tool_docs.py`.

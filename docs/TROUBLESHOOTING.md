@@ -173,3 +173,17 @@ see messages. The full log of the last run is in `data\logs\nova.log` (and `nova
 
 [Open an issue](../../issues/new?template=bug_report.md) with the output of `run.bat --check` and the console
 lines around the error. Remove keys and personal details first.
+
+## Add-ons (v2.12)
+
+| Problem | Fix |
+|---|---|
+| "No image generator is running" | Start ComfyUI (or fill in **Start ComfyUI with** in Settings → Images). Check it at http://127.0.0.1:8188. |
+| ComfyUI out of memory | On a 4 GB card use SD 1.5 models or SDXL-Turbo, and start ComfyUI with `--lowvram`. |
+| "ActivityWatch isn't running" | Install from activitywatch.net and start it; the tray icon must be there. Website names need its browser extension. |
+| Web agent: "needs a Gemini or Groq key" | Add one in Settings → API keys. The small local model can't drive a browser reliably. |
+| Web agent stops at a login | Settings → Web agent → **Open its browser to log in**, sign in, close the window, ask again. |
+| Web agent install fails | Click **Install web agent** again to see the error. It needs internet and ~400 MB free. |
+| Tables not found in a PDF | Install docling (Settings → Documents). Scanned PDFs work only with docling. |
+| Nova doesn't hear me / starts on noise | Settings → Voice → **Speech detection sensitivity** (lower = hears softer speech). Or switch to **loudness**. |
+| Shorts take long | Normal: about 1-2 minutes per 40-second clip on a laptop CPU. |

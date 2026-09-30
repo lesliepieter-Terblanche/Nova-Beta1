@@ -98,6 +98,13 @@ class Speech:
         segments, _ = m.transcribe(audio, language=lang, beam_size=1, vad_filter=True)
         return [(s.start, s.end, s.text.strip()) for s in segments]
 
+    def transcribe_words(self, audio, model=None) -> list[tuple[float, float, str]]:
+        """[(start, end, word), …] with word-level timing — for captions that pop in as you speak."""
+        lang = self.cfg.voice.get("stt_language") or None
+        m = model or self.stt_model()
+        segments, _ = m.transcribe(audio, language=lang, beam_size=1, vad_filter=True, word_timestamps=True)
+        return [(w.start, w.end, w.word.strip()) for s in segments for w in (s.words or []) if w.word.strip()]
+
     # ── engine order ───────────────────────────────────────
     def engine_order(self) -> list[str]:
         t = self.cfg.tts

@@ -39,17 +39,17 @@ Offered to the model when you say things like: _remember, memory, memories, forg
 | `read_note` | Read a note from the vault by (part of) its title. | `title` |
 | `list_notes` | List the most recently changed notes. | `folder`?, `limit`? |
 | `journal` | Add an entry to today's journal / daily log. | `entry` |
-| `ingest_to_brain` | Save a web page or document into the 2nd brain so it can be searched later. | `source`, `title`? |
+| `ingest_to_brain` | Save a web page or document into the 2nd brain so it can be searched later (summarised, with the people in it getting cards and the right project linked). | `source`, `title`? |
 
 ## Files & folders
 
-Offered to the model when you say things like: _file, folder, document, desktop, download, pdf, docx, move, copy, delete, rename, organi_
+Offered to the model when you say things like: _file, folder, document, desktop, download, pdf, docx, pptx, powerpoint, slides, table, markdown_
 
 | Tool | What it does | Parameters |
 |---|---|---|
 | `list_folder` | List what's in a folder. | `path`?, `pattern`? |
 | `find_files` | Search for files by name in the allowed folders. | `name_contains`, `extension`?, `folder`? |
-| `read_file` | Read a text, PDF, Word or Excel file. | `path` |
+| `read_file` | Read a document: PDF, Word, PowerPoint, Excel, Outlook .msg, EPUB, HTML, CSV, text… | `path` |
 | `write_file` | Create a text file (or append to one). Existing files are backed up before being replaced. | `path`, `content`, `append`? |
 | `create_folder` | Create a folder. | `path` |
 | `copy_path` | Copy a file or folder. | `source`, `destination` |
@@ -59,6 +59,8 @@ Offered to the model when you say things like: _file, folder, document, desktop,
 | `zip_path` | Zip a folder or file. | `path` |
 | `open_path` | Open a file or folder on the PC with its default app. | `path` |
 | `send_to_phone` | Send a file from the PC to the user's phone (Telegram). | `path` |
+| `document_to_markdown` | Convert a document (PDF, Word, PowerPoint, Excel, Outlook .msg, EPUB, HTML…) to a Markdown file. | `path` |
+| `extract_tables` | Pull every table out of a PDF / Word / PowerPoint file into an Excel workbook (one sheet per table). | `path` |
 
 ## Web search, scraping & website builder
 
@@ -116,6 +118,8 @@ Offered to the model when you say things like: _email, e-mail, mail, inbox, gmai
 | `sheets_read` | Read cells from a Google Sheet. | `spreadsheet_id`, `cell_range`? |
 | `sheets_append_row` | Add a row to the bottom of a Google Sheet. | `spreadsheet_id`, `values`, `sheet`? |
 | `sheets_create` | Create a new Google Sheet with a header row. | `title`, `header` |
+| `sheets_create_table` | Create a ready-to-use, nicely formatted Google Sheet (bold coloured header, frozen top row, filters, sized columns, rand formatting) from a header and rows. | `title`, `header`, `rows`?, `currency_columns`? |
+| `slides_create` | Create a Google Slides presentation (and a PowerPoint .pptx copy) from an outline. | `title`, `outline`, `subtitle`?, `export_pptx`? |
 | `tasks_list` | List open Google Tasks (to-dos). | — |
 | `tasks_add` | Add a to-do to Google Tasks. | `title`, `due`?, `notes`? |
 | `tasks_complete` | Mark a Google Task as done. | `task_id` |
@@ -132,7 +136,7 @@ Offered to the model when you say things like: _video, clip, reel, tiktok, short
 | `transcribe_file` | Transcribe an audio or video file (meeting recording, voice memo) to text, saved next to it. | `path` |
 | `trim_media` | Cut a section out of a video or audio file. | `path`, `start`, `end` |
 | `convert_media` | Convert audio/video/image to another format (mp3, mp4, wav, gif, jpg, png, webm…). | `path`, `to_format` |
-| `generate_image` | Generate an image locally with Stable Diffusion (if enabled in config). Slow on a 4 GB GPU (~30-60 s). | `prompt`, `format`? |
+| `generate_image` | Generate images locally with ComfyUI (or the built-in Stable Diffusion). Takes ~10-60 s each on this PC. Write a rich, visual English prompt: subject, setting, style, lighting, colours, camera/shot. | `prompt`, `format`?, `count`? |
 
 ## Webcam & ads
 
@@ -232,6 +236,100 @@ Offered to the model when you say things like: _tailscale, remote access, on my 
 |---|---|---|
 | `remote_access` | Tailscale remote access to Nova's dashboard (and the globe) from the user's phone. | `action`? |
 
+## people
+
+Offered to the model when you say things like: _who is, who's, contact, contacts, person, people, card, phone number, cell number, email address, works at, work at_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `person_card` | Everything about one person: company, role, contact details, notes, what you know, deals and when they were last mentioned. | `name` |
+| `save_person` | Create or update someone's people card (only the details you give are changed). | `name`, `company`?, `role`?, `email`?, `phone`?, `note`? |
+| `list_people` | List people cards, optionally only those at one company. | `company`?, `limit`? |
+| `merge_people` | Merge two cards that are the same person (e.g. "Sam" and "Samuel Dlamini"). | `keep_name`, `duplicate_name` |
+| `build_people_cards` | Read through everything Nova remembers about people and make / update their cards (runs nightly too). | — |
+
+## askbrain
+
+Offered to the model when you say things like: _what do i know, what do we know, what have i, according to my, ask my brain, ask the brain, in my brain, from my brain, my notes say, everything about, history with, brain digest_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `ask_brain` | Answer a question ONLY from the user's own 2nd brain (memories, notes, people cards, creations), with numbered sources. Use for "what do I know about…", "what did Sam say about…", "remind me what we decided…". | `question` |
+| `brain_digest` | What's new in the 2nd brain lately: new memories, notes, people and creations, summarised. | `days`? |
+
+## inbox
+
+Offered to the model when you say things like: _save this, file this, add this to my brain, save to my brain, into my brain, keep this, file it, save it to_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `file_to_brain` | File a link, a file on the PC or a piece of text into the 2nd brain (summarised, people and project linked). | `link_or_text`, `note`? |
+
+## focus
+
+Offered to the model when you say things like: _focus, what should i do, what's next, whats next, one thing, stuck, brain dump, dump, overwhelmed, too much, where was i, to do_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `focus_now` | The user's one thing right now, and the next two — use for "what should I do", "where was I". | — |
+| `focus_add` | Add to the focus list. Several items at once (one per line) is a brain dump. | `text`, `when`? |
+| `focus_done` | Mark the current focus task (or one matching the words) as done. Celebrate briefly. | `which`? |
+| `focus_later` | Move the current task (or one matching the words) to Later — no guilt, it's parked. | `which`? |
+| `break_it_down` | When the user is stuck: turn the task into a two-minute first step plus a few small ones. | `task`? |
+| `held_actions` | List actions Nova held back at night or for the buying pause. | — |
+| `send_held` 🔒 | Do a held action now anyway (the user confirms first). | `held_id` |
+| `drop_held` | Drop a held action — it won't be done. | `held_id` |
+| `low_energy_mode` | Turn today's low-energy mode on or off (shorter, gentler replies; the dashboard shows only one thing). | `on`? |
+
+## desktop
+
+Offered to the model when you say things like: _click, double click, press, type , window, windows, minimise, minimize, maximise, maximize, close the, switch to_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `list_windows` | The windows open on the PC right now. | — |
+| `window_control` | Bring a window to the front, minimise, maximise, restore, snap it left/right, or close it. | `window`, `action`? |
+| `read_window` | List the buttons, fields, menus and links in a window (the active one if empty), with numbers to click. | `window`? |
+| `click_control` | Click a button/field/menu item by its number from read_window. | `number`, `double`? |
+| `click_on_screen` | Look at the screen and click something by describing it (for things without a name, like pictures or canvas content). Prefer read_window + click_control when the thing has a name. | `what`, `double`? |
+| `type_text` | Type text where the cursor is, or into a field (number from read_window). New lines press Enter. | `text`, `field_number`? |
+| `press_keys` | Press a key or shortcut, e.g. "ctrl+s", "alt+tab", "enter", "win+d", "ctrl+shift+t". | `keys` |
+| `scroll` | Scroll the window under the mouse. | `direction`?, `amount`? |
+| `do_on_pc` | Do a job on the PC for the user, step by step, clicking and typing in any app like a person would (e.g. "open Excel, open Q3 deals and sort by Value", "in Outlook, attach the latest price list to a new mail to Sam"). Stops before sending, paying, buying, deleting or submitting unless those words are in `allowed`. | `task`, `allowed`? |
+| `stop_pc_task` | Stop what Nova is doing on the PC right now. | — |
+
+## activity
+
+Offered to the model when you say things like: _screen time, where did my day go, where did my time go, how long was i, how much time, time on, time spent, wasted, distracted, activitywatch, what did i do today, productive_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `screen_time` | How the user spent their screen time (apps, sites, drift), from ActivityWatch on this PC. | `period`? |
+| `time_spent_on` | Time spent on one app, website or document, e.g. 'YouTube', 'Excel', 'Juniper QBR'. | `what`, `period`? |
+
+## video_edit
+
+Offered to the model when you say things like: _shorts, short, reel, reels, tiktok, clips from, cut up, highlights, captions, subtitles, vertical, 9:16_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `video_to_shorts` | Turn a long video (talk, webinar, podcast, YouTube video) into vertical Shorts / Reels / TikToks: finds the best moments from what's said, crops to 9:16 and burns in bold word-by-word captions. | `path`, `count`?, `seconds`?, `captions`? |
+| `add_captions` | Burn bold, word-by-word captions into a video (transcribed on this PC). | `path`, `uppercase`? |
+| `make_vertical` | Make a landscape video vertical (9:16) for TikTok / Reels / Shorts / Stories. | `path`, `mode`? |
+| `join_videos` | Join several videos into one, with a short cross-fade between them. | `paths`, `fade`?, `name`? |
+
+## web_agent
+
+Offered to the model when you say things like: _web agent, browser agent, on the website, on the site, portal, go to the site, fill in the form, fill out, find me the cheapest, compare prices, book a, look up on_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `web_agent` | Give a whole multi-step website task to the AI web agent (its own Chrome window; runs in the background and reports back). Good for portals, forms, searching and comparing across sites, downloading invoices, filling in deal registrations. It stops right before paying, buying, sending, submitting, booking or deleting unless the user explicitly allowed that action. | `task`, `allowed`? |
+| `web_agent_status` | What the web agent is doing right now, or its last result. | — |
+| `stop_web_agent` | Stop the web agent's current task. | — |
+| `web_agent_login` | Open the web agent's own browser so the user can log in to a site once (it remembers the login). | `url`? |
+| `install_web_agent` | Install the AI web agent (browser-use) — one-time, a few minutes, in its own separate Python. | — |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_
@@ -253,3 +351,32 @@ Offered to the model when you say things like: _convert, exchange rate, rand, za
 | Tool | What it does | Parameters |
 |---|---|---|
 | `convert_currency` | Convert money between currencies at today's reference rate. | `amount`, `from_currency`, `to_currency` |
+
+## loadshedding
+
+Offered to the model when you say things like: _load shedding, loadshedding, load-shedding, eskom, power cut, power outage, stage, outage, espush, eskomsepush, lights go off, power off_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `loadshedding_status` | Current load-shedding stage and the next outages for your area. | `area_id`? |
+| `find_loadshedding_area` | Search EskomSePush for your load-shedding area (to get its id). | `place` |
+| `set_loadshedding_area` | Save your load-shedding area so Nova can show your schedule and warn you before outages. | `area_id` |
+
+## news
+
+Offered to the model when you say things like: _news, headlines, what's happening, latest on, any news, vendor news, in the news, press release, announcement, announced_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `news_briefing` | Latest headlines: South African top stories, or news about a topic/company. | `topic`?, `max_items`? |
+| `vendor_news` | News from the last few days about the vendors and companies the user works with (set in Settings → News). | `days`? |
+
+## prices
+
+Offered to the model when you say things like: _price, prices, cheaper, drops below, price drop, on sale, sale, takealot, discount, watch the price, price watch, deal_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `watch_price` | Watch a product's price and tell the user when it drops to (or below) a target. | `url`, `target_price`, `check_every_hours`? |
+| `list_price_watches` | The products whose prices Nova is watching. | — |
+| `stop_price_watch` | Stop watching a price (by number), or all of them (0). | `watch_id`? |

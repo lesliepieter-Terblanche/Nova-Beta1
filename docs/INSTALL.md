@@ -141,6 +141,10 @@ Test by saying: *"What's on my calendar today?"*
 | **"Hey Nova" wake word** | [HEY_NOVA.md](HEY_NOVA.md) (free Colab training, ~1 hour) |
 | **Start with Windows** | `powershell -ExecutionPolicy Bypass -File scripts\autostart.ps1 on` |
 | **Private search** (SearXNG) | Docker Desktop, then `docker run -d --name searxng --restart unless-stopped -p 8888:8080 -v "%cd%\scripts\searxng:/etc/searxng" searxng/searxng` and set `web.searxng_url: http://localhost:8888` |
+| **ComfyUI images** (free, your graphics card) | Download ComfyUI (the Windows portable build from github.com/comfyanonymous/ComfyUI/releases, or ComfyUI Desktop), put a model in `ComfyUI\models\checkpoints` — on a 4 GB card an SD 1.5 model (e.g. DreamShaper 8) or SDXL-Turbo — and start it. Settings → Images (ComfyUI) → Check. Optional: fill in "Start ComfyUI with" so Nova starts it itself |
+| **Screen time** (ActivityWatch) | Install from activitywatch.net (starts with Windows, lives in the tray). Add its browser extension for website names. Settings → Screen time → Show today's screen time |
+| **AI web agent** (browser-use) | Settings → Web agent → **Install web agent** (its own Python, ~400 MB, a few minutes), then **Open its browser to log in** to the sites it should use. Needs a Gemini or Groq key |
+| **Better PDF tables** (docling) | Settings → Documents → **Install docling** (~2 GB incl. PyTorch, 5-15 min, its own Python) |
 | **Local AI images** (Stable Diffusion 1.5) | `.venv\Scripts\pip install -r requirements-imagegen.txt`, then `media.image_gen_enabled: true` |
 | **MCP servers** (Home Assistant, GitHub, Windows apps…) | [MCP.md](MCP.md) |
 | **Use Nova's memory from Claude Desktop** | [MCP.md → Nova as an MCP server](MCP.md#nova-as-an-mcp-server) |

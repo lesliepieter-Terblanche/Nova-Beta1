@@ -17,7 +17,8 @@ from .config import resolve
 
 URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.I)
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".heic"}
-TEXT_EXT = {".pdf", ".docx", ".xlsx", ".txt", ".md", ".csv", ".json", ".html", ".htm", ".rtf", ".xml", ".log", ".eml"}
+TEXT_EXT = {".pdf", ".docx", ".xlsx", ".txt", ".md", ".csv", ".json", ".html", ".htm", ".rtf", ".xml", ".log", ".eml",
+            ".pptx", ".xls", ".msg", ".epub"}
 AUDIO_EXT = {".ogg", ".oga", ".mp3", ".m4a", ".wav", ".opus"}
 
 SUMMARY_PROMPT = """You file things into a personal knowledge base for {owner}. Read this {what} and reply with JSON only:

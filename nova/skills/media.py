@@ -447,14 +447,31 @@ def convert_media(path: str, to_format: str) -> str:
 
 
 @tool(group="media")
-def generate_image(prompt: str, format: str = "square") -> str:
-    """Generate an image locally with Stable Diffusion (if enabled in config). Slow on a 4 GB GPU (~30-60 s).
+def generate_image(prompt: str, format: str = "square", count: int = 1) -> str:
+    """Generate images locally with ComfyUI (or the built-in Stable Diffusion). Takes ~10-60 s each on this PC.
+    Write a rich, visual English prompt: subject, setting, style, lighting, colours, camera/shot.
     Args:
-        prompt: what to draw
-        format: square, landscape or vertical
+        prompt: what to draw, described visually
+        format: square, landscape, vertical (TikTok/Reels/Stories), portrait (4:5 feed post) or banner
+        count: how many variations (1-4)
     """
+    from .. import comfy
+    provider = str(context.cfg.media.get("image_provider", "auto")).lower()
+    if provider in ("auto", "comfyui") and (comfy.running() or comfy.cfg().get("start_command")):
+        try:
+            paths = comfy.generate(prompt, format, max(1, min(4, int(count))))
+        except Exception as e:
+            if provider == "comfyui" or not context.cfg.media.get("image_gen_enabled"):
+                return f"ComfyUI couldn't make it: {e}"
+            paths = []
+        for pth in paths:
+            context.record("image", prompt[:60], pth, prompt)
+            context.attach(pth)
+        if paths:
+            return f"Made {len(paths)} image{'s' if len(paths) > 1 else ''} with ComfyUI: " + ", ".join(str(p) for p in paths)
     if not context.cfg.media.get("image_gen_enabled"):
-        return "Local image generation is off. Enable media.image_gen_enabled in config.yaml and install requirements-imagegen.txt."
+        return ("No image generator is running. Start ComfyUI (free, uses your graphics card — see Settings → Images), "
+                "or enable media.image_gen_enabled for the built-in Stable Diffusion.")
     import httpx
     import torch
     from diffusers import StableDiffusionPipeline

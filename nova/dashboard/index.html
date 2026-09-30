@@ -421,6 +421,11 @@
   .later-list div span { flex: 1; }
   .ring { width: 54px; height: 54px; flex: none; }
   .wins { color: var(--ok); font-size: 13.5px; }
+  .stbars { margin-top: 8px; display: grid; gap: 6px; }
+  .stbars div { display: grid; grid-template-columns: 110px 1fr 70px; align-items: center; gap: 8px; font-size: 13px; }
+  .stbars span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stbars i { display: block; height: 8px; border-radius: 4px; background: var(--accent-2); opacity: .8; }
+  .stbars b { font-weight: 500; text-align: right; color: var(--muted); }
   .fmuted { color: var(--muted); font-size: 12.5px; }
   details.fcard summary { cursor: pointer; list-style: none; font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   body.low-energy .fx .hide-low { display: none !important; }
@@ -1119,6 +1124,10 @@ let timer = (() => { try { return JSON.parse(localStorage.getItem("nova.timer") 
 function saveTimer() { try { localStorage.setItem("nova.timer", JSON.stringify(timer)); } catch {} }
 async function loadFocus() {
   try { F = await api("/api/focus"); } catch { return; }
+  if (Date.now() - (loadFocus.st || 0) > 120000) {        // ActivityWatch screen time, every 2 min at most
+    loadFocus.st = Date.now();
+    try { ST = await api("/api/screen_time"); } catch { ST = null; }
+  }
   nightNow = !!F.wb.night; document.body.classList.toggle("low-energy", !!F.wb.low_energy); applyCalm();
   if (fOpen) renderFocus();
   nudgeCheck();
@@ -1136,6 +1145,13 @@ function ringSvg() {
     <circle cx="27" cy="27" r="22" fill="none" stroke="var(--accent-2)" stroke-width="5" stroke-linecap="round" stroke-dasharray="${C}"
       stroke-dashoffset="${C * (1 - frac)}" transform="rotate(-90 27 27)"/><text x="27" y="31" text-anchor="middle" fill="currentColor"
       font-size="12" font-family="Inter">${Math.ceil(left / 60000)}m</text></svg>`;
+}
+let ST = null;
+function screenCard() {
+  if (!ST || !ST.running || !ST.total) return "";
+  return `<details class="fcard hide-low"><summary>🧭 Where today went · ${esc(ST.total_text)} active${ST.distracted >= 300 ? ` · ${esc(ST.distracted_text)} drift` : ""}</summary>
+    <div class="stbars">${ST.apps.slice(0, 6).map((a) => `<div><span>${esc(a.app)}</span><i style="width:${Math.max(3, a.share)}%"></i><b>${esc(a.text)}</b></div>`).join("")}</div>
+    ${ST.drift?.length ? `<div class="fmuted" style="margin-top:6px">Drift: ${ST.drift.slice(0, 4).map((d) => `${esc(d.what)} ${esc(d.text)}`).join(" · ")} — no judgement, just so you know.</div>` : ""}</details>`;
 }
 function renderFocus() {
   if (!F) { $("fx").innerHTML = `<div class="fmuted">Loading…</div>`; return; }
@@ -1173,6 +1189,7 @@ function renderFocus() {
       <button class="fbtn go" data-fa="checkin">Save</button> <span class="fmuted">1 = low · 5 = high</span></div>`;
   const w = F.wins.tasks + (wb.anchors || []).filter((a) => a.done).length + (wb.checked_in ? 1 : 0);
   h += `<div class="fx-top"><span class="wins">🌱 ${w} win${w === 1 ? "" : "s"} today</span><span class="sp"></span>${wb.checked_in ? `<span class="fmuted">Checked in ✓</span>` : ""}<button class="fbtn small" data-fa="trends">📈 Trends</button></div>`;
+  h += screenCard();
   const later = F.later || [], cand = F.from_brain || [];
   if (later.length || cand.length) h += `<details class="fcard hide-low"><summary>Later (${later.length}${cand.length ? ` · ${cand.length} from your brain` : ""}) — whenever you're ready</summary><div class="later-list" style="margin-top:8px">
       ${later.map((t) => `<div><span>${esc(t.text)}</span><button class="fbtn small" data-fa="open-next" data-id="${t.id}">Do next</button><button class="fbtn small" data-fa="delete" data-id="${t.id}" title="Remove">✕</button></div>`).join("")}

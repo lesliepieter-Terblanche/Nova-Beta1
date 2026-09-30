@@ -101,6 +101,18 @@ dreaming:
   drive_backup: false         # also copy each backup to Google Drive › Nova Backups
 
 # Presence awareness — the webcam notices when you sit down or walk away (face detection, local, nothing saved).
+# Screen time from ActivityWatch (free, activitywatch.net — keeps its data on this PC)
+activitywatch:
+  enabled: true
+  url: http://localhost:5600
+  nudges: true               # kind nudge when you drift during work hours while a Focus task waits (never at night)
+  nudge_after_minutes: 15
+  nudge_every_minutes: 45
+  work_start: "08:00"
+  work_end: "17:00"
+  work_days: [0, 1, 2, 3, 4] # Monday = 0
+  distractions: [youtube, facebook, instagram, tiktok, netflix, reddit, twitter, x.com, showmax]
+
 presence:
   enabled: false              # or say "turn on presence awareness"
   away_seconds: 60            # no face and no typing for this long = you've left
@@ -142,6 +154,8 @@ voice:
   stt_model: base.en         # tiny.en | base.en | small.en | base (multilingual). Runs on CPU.
   stt_language: en           # null = auto-detect (e.g. Afrikaans, with a multilingual model)
   silence_seconds: 1.1       # stop recording after this much silence
+  vad: silero                # silero = small AI that hears real speech (ignores fans/typing) · loudness = old way
+  vad_threshold: 0.5         # higher = needs clearer speech
   max_record_seconds: 25
   follow_up_seconds: 6       # after replying, keep listening this long without needing the wake word
   max_spoken_chars: 450      # longer answers: speak the start, send the full text to Telegram
@@ -219,6 +233,24 @@ media:
   broll: true                # stock footage behind scenes when PEXELS_API_KEY is set (free at pexels.com/api)
   image_gen_enabled: false
   image_model: runwayml/stable-diffusion-v1-5
+  image_provider: auto       # auto = ComfyUI when it's running · comfyui · local (the Stable Diffusion above)
+  comfyui:                   # free local images: github.com/comfyanonymous/ComfyUI (install once, keep it running)
+    url: http://127.0.0.1:8188
+    checkpoint: ""           # part of a model name in ComfyUI/models/checkpoints ("" = the first one)
+    start_command: ""        # e.g. C:\ComfyUI_windows_portable\run_nvidia_gpu.bat — Nova starts it when needed
+    workflow: ""             # your own "Export (API)" workflow .json with {{prompt}} {{negative}} {{seed}} {{width}} {{height}}
+
+# Documents: markitdown reads Word/PowerPoint/Excel/PDF/.msg/EPUB. Docling (optional, ~2 GB) = better PDF tables & scans.
+documents:
+  docling: auto              # auto = use docling once installed (Settings → Documents → Install) · off
+
+# AI web agent (browser-use) — install once in Settings → Web agent. Stops before pay/buy/send/submit/delete.
+web_agent:
+  provider: auto             # auto = Gemini, then Groq, then Grok · or gemini | groq | xai | ollama
+  model: ""                  # "" = the provider's default
+  max_steps: 30
+  headless: false            # true = no visible browser window
+  chrome_path: ""            # "" = Chrome (or Edge)
 
 system:
   allow_shell: true          # shell commands always need a "yes" first

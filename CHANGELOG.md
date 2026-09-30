@@ -4,6 +4,29 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.12.0] — 2026-09-30
+### Added — seven open-source add-ons
+- **📄 markitdown** (Microsoft): Nova now reads Word, **PowerPoint**, Excel (.xlsx/.xls), PDF, **Outlook .msg**, EPUB,
+  HTML, CSV and ZIP as clean Markdown — for "read this", Telegram forwards into the brain and answers. Tables stay tables.
+  New tools: *document to Markdown*.
+- **📑 docling** (IBM, optional): much better PDFs — real tables, columns, scanned pages. New: *extract tables* →
+  "put the tables from this price list into Excel" (numbers stay numbers). Install from Settings → Documents; it lives
+  in its own Python so nothing else is disturbed.
+- **🎙 Silero VAD**: Nova now decides when you start and stop talking with a small speech-detecting AI (2 MB, CPU)
+  instead of loudness — fans, typing and the TV no longer start a recording. Settings → Voice.
+- **🧭 ActivityWatch screen time**: "where did my day go?", "how long was I on YouTube?", a *Where today went* card on
+  the Focus screen, and a kind nudge when you drift during work hours while a Focus task waits (never at night,
+  at most once every 45 min). Settings → Screen time.
+- **🎨 ComfyUI images**: *generate image* now uses ComfyUI on your own graphics card (free) — square, landscape,
+  vertical, 4:5 and banner, 1-4 variations, sensible settings per model (SD 1.5, SDXL, Turbo) or your own exported
+  workflow. Nova can start ComfyUI itself. Settings → Images.
+- **✂️ moviepy video tools**: *video to shorts* (AI picks the best moments from what's said → vertical 9:16 with bold
+  word-by-word captions), *add captions*, *make vertical* (blurred background or crop), *join videos* (cross-fades).
+- **🌐 browser-use web agent**: hand over whole website tasks — portals, forms, deal registrations, invoices, comparing
+  prices — in its own Chrome window, in the background, reporting back by voice/Telegram. Stops right before paying,
+  buying, sending, submitting, booking or deleting unless you allowed it. Log in once to the sites it should use.
+  Install from Settings → Web agent (its own Python, so its pinned packages never clash with Nova's).
+
 ## [2.11.1] — 2026-09-30
 ### Fixed — 📷 Camera preview on the dashboard
 - The **Camera** button on the ✋ chip no longer shows an empty box: if there's no picture it says why

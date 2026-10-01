@@ -108,9 +108,32 @@ def open_url(url: str) -> str:
 
 
 @tool(group="system")
-def system_status() -> dict:
-    """CPU, memory, disk, battery and GPU status of the PC."""
+def show_on_screen(title: str, content: str) -> str:
+    """Show information big in the middle of the dashboard (PC and phone) until the user closes it. Use it when the
+    user asks to SEE something — "show me", "put it on the screen", "display" — or for lists, briefings, comparisons
+    and figures that are easier to read than to hear. Then answer briefly in words as usual.
+    Args:
+        title: short heading
+        content: the information: short lines; "- " for bullets, "## " for sub-headings, "Label: value" for figures
+    """
+    from .. import cards
+    cards.show("info", title.strip()[:80] or "Nova", {"text": content.strip()[:6000]})
+    return "Shown on the dashboard."
+
+
+@tool(group="system")
+def system_status(show: bool = True) -> dict:
+    """CPU, memory, disk, battery and GPU status of the PC — also shown as live circle gauges on the dashboard.
+    Args:
+        show: show the live gauges on the dashboard
+    """
     import psutil
+    if show:
+        from .. import cards
+        try:
+            cards.show("pc", "Your PC", cards.pc_stats())
+        except Exception as e:
+            print(f"[cards] {e}")
     info = {
         "cpu_percent": psutil.cpu_percent(interval=0.5),
         "ram_used_percent": psutil.virtual_memory().percent,

@@ -83,7 +83,12 @@
     form.search input { width: 130px; }
     header .upd { display: none; }
   }
+  /* shown inside the dashboard's centre window: no page background, no navigation */
+  html.embed, html.embed body { background: transparent !important; }
+  html.embed .stars, html.embed header a, html.embed header form.search { display: none; }
+  html.embed .wrap { padding: 4px 6px 16px; }
 </style>
+<script>if (new URLSearchParams(location.search).get("embed")) document.documentElement.classList.add("embed");</script>
 </head>
 <body>
 <div class="stars"></div>

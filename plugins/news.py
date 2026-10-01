@@ -130,6 +130,12 @@ def news_briefing(topic: str = "", max_items: int = 8) -> str:
              for i, it in enumerate(out, 1)]
     context.record("scrape", f"News: {topic or 'top headlines'} {dt.date.today()}", out[0]["link"] or "news",
                    "\n".join(f"{it['title']} — {it['link']}" for it in out))
+    try:
+        from nova import cards
+        cards.show("news", head, {"items": [{"title": it["title"], "source": it["source"], "link": it["link"],
+                                              "ago": _ago(it["when"]) if it["when"] else ""} for it in out]})
+    except Exception:
+        pass
     return head + ":\n" + "\n".join(lines)
 
 

@@ -13,7 +13,8 @@ Always available.
 | `get_time` | Get the current date and time. | — |
 | `open_app` | Open an application on the PC. | `name` |
 | `open_url` | Open a website in the default browser. | `url` |
-| `system_status` | CPU, memory, disk, battery and GPU status of the PC. | — |
+| `show_on_screen` | Show information big in the middle of the dashboard (PC and phone) until the user closes it. Use it when the user asks to SEE something — "show me", "put it on the screen", "display" — or for lists, briefings, comparisons and figures that are easier to read than to hear. Then answer briefly in words as usual. | `title`, `content` |
+| `system_status` | CPU, memory, disk, battery and GPU status of the PC — also shown as live circle gauges on the dashboard. | `show`? |
 | `take_screenshot` | Take a screenshot of the PC screen and send it to the user's phone. | — |
 | `look_at_screen` | Look at what is currently on the PC screen and answer a question about it (uses Gemini vision). | `question`? |
 | `look_at_image` | Look at an image file (photo, screenshot, scan) and answer a question about it (uses Gemini vision). | `path`, `question`? |

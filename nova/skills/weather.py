@@ -132,7 +132,7 @@ def get_weather(place: str = "", day: str = "today", show: bool = True) -> str:
     Args:
         place: city or town; leave empty for the user's home city
         day: today, tomorrow, or a weekday name like friday
-        show: open the weather page in the browser
+        show: show the weather big on the dashboard (or open the weather page)
     """
     try:
         data = fetch(place)
@@ -146,6 +146,9 @@ def get_weather(place: str = "", day: str = "today", show: bool = True) -> str:
             idx = i
             break
     if show:
-        port = (context.cfg.get("dashboard") or {}).get("port", 8765)
-        webbrowser.open(f"http://localhost:{port}/weather?day={idx}")
+        from .. import cards
+        cards.show("weather", f"Weather · {data['short']}", {"day": idx, "place": data["place"]})
+        if not cards.viewer_active():                   # no dashboard open: show the weather page instead
+            port = (context.cfg.get("dashboard") or {}).get("port", 8765)
+            webbrowser.open(f"http://localhost:{port}/weather?day={idx}")
     return spoken(data, idx)

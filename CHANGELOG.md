@@ -4,6 +4,19 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.14.0] — 2026-10-01
+### Added — 🪟 Answers on screen
+- Ask for the **weather, PC stats, screen time, the news, load-shedding** or anything you want to *see*, and Nova
+  shows it in a window in the middle of the dashboard (on the PC and on your phone) — the 3D brain hides until you
+  close it (✕, Esc, or click outside).
+- Each request has its own layout: **PC stats** as live circle gauges (CPU, memory, disk, GPU, video memory, battery —
+  updating every 2 s, pink when something is maxed out) · **weather** as the full weather page · **screen time** as a
+  3D donut with apps · **news** as a headline wall · **load-shedding** as a big stage badge with a 48-hour outage
+  timeline · anything else as tidy facts, headings and bullets (new *show on screen* tool).
+- The window uses your selected theme colours, has a see-through frame and a 3D feel: it swings in, tilts towards
+  your mouse or finger, and its cards float above it.
+- When no dashboard is open, the weather still opens the weather page like before.
+
 ## [2.13.1] — 2026-09-30
 ### Fixed — Tailscale: "Blocked request. This host … is not allowed"
 - Nova now reads exactly where your Tailscale address forwards to. If it points at the God's Eye View globe instead

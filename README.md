@@ -43,6 +43,7 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 🖱 **Browser** | Drives its own Chrome: open, read, click, type, stay logged in, screenshot |
 | 📷 **Webcam → ads** | Photo → product identified → background removed → feed/story ads + caption + ad video |
 | 🎬 **Media** | Narrated videos with burned-in captions and free stock footage · photo slideshows · voice-overs · transcription · trims and conversions |
+| 🪟 **Answers on screen** | Weather, PC stats (live circle gauges), screen time, news, load-shedding and more pop up in a 3D, see-through window in your theme colours — on the PC and the phone |
 | ✂️ **Shorts maker** | Long video → captioned vertical Shorts / Reels / TikToks (AI picks the best moments) · add captions · make vertical · join clips (moviepy) |
 | 🎨 **ComfyUI images** | Free image generation on your own graphics card — posts, ads, thumbnails in any format, or your own ComfyUI workflow |
 | 🌐 **AI web agent** | "Register the deal on the Juniper portal" — works websites in its own Chrome window (browser-use), stops before pay/send/submit |

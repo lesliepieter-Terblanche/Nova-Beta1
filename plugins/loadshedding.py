@@ -93,6 +93,12 @@ def loadshedding_status(area_id: str = "") -> str:
         name, events = area_events(area_id)
     except Exception as e:
         return f"ERROR: {e}"
+    try:
+        from nova import cards
+        cards.show("loadshedding", f"Load-shedding · {name}", {"national": head, "area": name, "events": [
+            {"start": e["start"].isoformat(), "end": e["end"].isoformat(), "note": e.get("note", "")} for e in events[:8]]})
+    except Exception:
+        pass
     if not events:
         return f"{head} No outages scheduled for {name}."
     parts = [f"{_fmt(e['start'])} to {e['end']:%H:%M} ({e['note']})" if e["note"] else f"{_fmt(e['start'])} to {e['end']:%H:%M}"

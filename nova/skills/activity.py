@@ -20,7 +20,11 @@ def screen_time(period: str = "today") -> str:
     """
     if not activity.running():
         return NOT_RUNNING
-    return activity.as_text(activity.summary(period))
+    s = activity.summary(period)
+    if s["total"]:
+        from .. import cards
+        cards.show("screen_time", f"Screen time · {s['label']}", s)
+    return activity.as_text(s)
 
 
 @tool(group="activity")

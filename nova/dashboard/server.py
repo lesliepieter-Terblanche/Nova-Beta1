@@ -913,8 +913,14 @@ class Dashboard:
                     if u.path == "/api/stats":
                         return self._json(dash.stats())
                     if u.path == "/api/activity":
+                        from .. import cards
                         return self._json({"events": context.store.activity(int(q.get("since", 0))),
-                                           "status": context.store.status})
+                                           "status": context.store.status,
+                                           "cards": cards.recent(int(q.get("cards", 0))) if "cards" in q else [],
+                                           "card_seq": cards.latest_id()})
+                    if u.path == "/api/pcstats":
+                        from .. import cards
+                        return self._json(cards.pc_stats())
                     if u.path == "/api/item":
                         return self._json(dash.item(q.get("id", "")))
                     if u.path == "/api/topic":

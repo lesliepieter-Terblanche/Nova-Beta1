@@ -4,6 +4,16 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.14.1] — 2026-10-01
+### Faster voice replies
+- **Phone / Tailscale:** the written answer now appears the moment it's ready, and the voice is made while the phone
+  fetches it — on Android/Chrome it's **streamed from ElevenLabs as she speaks** (starts after the first words, not
+  after the whole answer is made and converted). iPhones get one small MP3, made once.
+- **ElevenLabs keeps one connection open** instead of a new secure handshake to Europe/US for every reply
+  (≈0.3-0.8 s saved from South Africa).
+- **The voice is warmed up at start-up** (Kokoro/Piper loaded, ElevenLabs connection opened), so the first reply of
+  the day isn't the slow one.
+
 ## [2.14.0] — 2026-10-01
 ### Added — 🪟 Answers on screen
 - Ask for the **weather, PC stats, screen time, the news, load-shedding** or anything you want to *see*, and Nova

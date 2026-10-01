@@ -91,6 +91,8 @@ def keep_warm() -> None:
     import time
     context.llm.warm_up()
     context.store.embed(["warm up"])
+    if context.speech:
+        context.speech.warm()             # first spoken reply starts straight away too
     while True:           # Ollama unloads idle models; a tiny ping every 4 minutes keeps them ready
         time.sleep(240)
         try:

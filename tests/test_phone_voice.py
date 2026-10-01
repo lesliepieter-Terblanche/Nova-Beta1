@@ -11,16 +11,28 @@ from nova.tools import REGISTRY
 
 
 # ── spoken replies for the device you're using ────────────
-def test_reply_audio_is_a_small_mp3_and_expires(nova, monkeypatch):
+def test_reply_audio_is_made_when_the_phone_asks(nova, monkeypatch):
     from nova import phone_voice
+    made = []
+    real = context.speech.synth_wav
+    context.speech.synth_wav = lambda text, out: made.append(text) or real(text, out)
     url = phone_voice.reply_audio("Your next meeting is at ten with Axiz.")
-    assert url.startswith("/api/audio/") and url.endswith(".mp3")
-    f = phone_voice.audio_file(url.rsplit("/", 1)[-1])
-    assert f and f.read_bytes()[:3] in (b"ID3", b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")
-    assert phone_voice.audio_file("../../config.yaml") is None and phone_voice.audio_file("x.mp3") is None
-    monkeypatch.setattr(phone_voice, "KEEP_MINUTES", -1)
-    phone_voice.reply_audio("again")
-    assert not f.exists()                                        # old replies are tidied away
+    assert url.startswith("/api/tts/") and made == []                 # nothing made yet: the text shows at once
+    token = url.rsplit("/", 1)[-1]
+    f = phone_voice.render(token)
+    assert f.suffix == ".mp3" and f.read_bytes()[:3] in (b"ID3", b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")
+    assert phone_voice.render(token) == f and len(made) == 1           # asked twice (iPhone ranges): made once
+    assert phone_voice.render("nope") is None and phone_voice.pending_text("../x") is None
+
+
+def test_streaming_only_where_it_works(nova, monkeypatch):
+    from nova import phone_voice
+    assert not phone_voice.can_stream("Mozilla/5.0 (Linux; Android 14) Chrome/129 Mobile")   # fake voice: no ElevenLabs
+    context.speech.el_key = "k"
+    context.speech.engine_order = lambda: ["elevenlabs", "kokoro"]
+    context.speech.elevenlabs_mp3_stream = lambda text: iter([b"ID3", b"chunk"])
+    assert phone_voice.can_stream("Mozilla/5.0 (Linux; Android 14) Chrome/129 Mobile")
+    assert not phone_voice.can_stream("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) Safari/604.1")
 
 
 def test_phone_conversation_turn(nova, monkeypatch):
@@ -35,7 +47,7 @@ def test_phone_conversation_turn(nova, monkeypatch):
     context.llm.queue = [LLMReply("You have a QBR at ten.")]
     r = phone_voice.converse(agent, b"\x1aE\xdf\xa3 not really webm", "audio/webm;codecs=opus")
     assert r["heard"].startswith("What's on my calendar") and r["text"] == "You have a QBR at ten."
-    assert r["audio"].startswith("/api/audio/") and r["end"] is True          # "bye" ends the hands-free loop
+    assert r["audio"].startswith("/api/tts/") and r["end"] is True          # "bye" ends the hands-free loop
     context.speech.transcribe = lambda p: ""
     assert phone_voice.converse(agent, b"...", "audio/mp4")["heard"] == ""
     assert "too long" in phone_voice.converse(agent, b"x" * (phone_voice.MAX_BYTES + 1), "audio/mp4")["error"]
@@ -67,9 +79,17 @@ def test_dashboard_voice_endpoints(dash, nova):
     with urllib.request.urlopen(f"http://127.0.0.1:8797{r['audio']}", timeout=10) as a:
         assert a.headers["Content-Type"] == "audio/mpeg" and len(a.read()) > 500
     r = _post("/api/ask", json.dumps({"text": "hi", "voice": True}).encode(), "application/json")
-    assert r["text"] == "Typed answer." and r["audio"].endswith(".mp3")
-    with pytest.raises(urllib.error.HTTPError):
-        urllib.request.urlopen("http://127.0.0.1:8797/api/audio/..%2F..%2Fconfig.yaml", timeout=5)
+    assert r["text"] == "Typed answer." and r["audio"].startswith("/api/tts/")
+    # Android / Chrome with ElevenLabs: the voice is passed through as ElevenLabs speaks it
+    context.speech.el_key = "k"
+    context.speech.engine_order = lambda: ["elevenlabs"]
+    context.speech.elevenlabs_mp3_stream = lambda text: iter([b"ID3-first", b"-second"])
+    req = urllib.request.Request(f"http://127.0.0.1:8797{r['audio']}", headers={"User-Agent": "Android Chrome/129"})
+    with urllib.request.urlopen(req, timeout=10) as a:
+        assert a.headers["Content-Type"] == "audio/mpeg" and a.read() == b"ID3-first-second"
+    for bad in ("/api/tts/nope", "/api/audio/..%2F..%2Fconfig.yaml"):
+        with pytest.raises(urllib.error.HTTPError):
+            urllib.request.urlopen("http://127.0.0.1:8797" + bad, timeout=5)
 
 
 # ── ask me before… ────────────────────────────────────────

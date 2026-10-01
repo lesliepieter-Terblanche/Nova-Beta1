@@ -78,6 +78,26 @@ class Speech:
         self._stop = threading.Event()
         self.speaking = False
         self.el_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        self._http: httpx.Client | None = None
+
+    def http(self) -> httpx.Client:
+        """One kept-open connection for ElevenLabs: no new handshake (≈0.3-0.8 s from SA) on every reply."""
+        if self._http is None:
+            self._http = httpx.Client(timeout=httpx.Timeout(60, connect=10),
+                                      limits=httpx.Limits(max_keepalive_connections=4, keepalive_expiry=600))
+        return self._http
+
+    def warm(self) -> None:
+        """Get the voice ready at start-up: load Kokoro / Piper, open the ElevenLabs connection."""
+        for engine in self.engine_order()[:2]:
+            try:
+                if engine == "elevenlabs":
+                    self.http().get("https://api.elevenlabs.io/v1/models", headers={"xi-api-key": self.el_key})
+                elif engine in ("kokoro", "piper"):
+                    getattr(self, f"_synth_{engine}")("Ready.")
+                print(f"[tts] {engine} voice ready")
+            except Exception as e:
+                print(f"[tts] couldn't warm up {engine}: {e}")
 
     # ── STT ────────────────────────────────────────────────
     def stt_model(self):
@@ -141,9 +161,18 @@ class Speech:
         }
         return url, body, {"xi-api-key": self.el_key}, {"output_format": f"pcm_{EL_RATE}"}
 
+    def elevenlabs_mp3_stream(self, text: str):
+        """MP3 bytes as ElevenLabs makes them — the phone starts playing after the first chunk."""
+        url, body, headers, _ = self._el_request(clean_for_speech(text), stream=True)
+        with self.http().stream("POST", url, json=body, headers=headers, params={"output_format": "mp3_44100_64"}) as r:
+            if r.status_code != 200:
+                r.read()
+                raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
+            yield from r.iter_bytes(4096)
+
     def _synth_elevenlabs(self, text):
         url, body, headers, params = self._el_request(text, stream=False)
-        r = httpx.post(url, json=body, headers=headers, params=params, timeout=120)
+        r = self.http().post(url, json=body, headers=headers, params=params, timeout=120)
         r.raise_for_status()
         pcm = r.content[: len(r.content) - (len(r.content) % 2)]
         return np.frombuffer(pcm, dtype=np.int16), EL_RATE
@@ -229,7 +258,7 @@ class Speech:
     def _speak_elevenlabs_stream(self, text: str) -> None:
         import sounddevice as sd
         url, body, headers, params = self._el_request(text, stream=True)
-        with httpx.stream("POST", url, json=body, headers=headers, params=params, timeout=60) as r:
+        with self.http().stream("POST", url, json=body, headers=headers, params=params) as r:
             if r.status_code != 200:
                 r.read()
                 raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")

@@ -10,7 +10,7 @@
   /api/open         open an item on the PC (POST {"id": ...})
   /api/ask          talk to Nova by typing (POST {"text": ..., "voice": true = spoken reply as audio for this device})
   /api/voice        talk to Nova by voice from any browser (POST the recording; reply text + audio)
-  /api/audio/<id>   a spoken reply (MP3), kept for 30 minutes
+  /api/tts/<token>  a spoken reply: streamed from ElevenLabs, or made into one MP3 (kept for 30 minutes)
   /media?id=        stream an image/video for previews
   /sites/<name>/    previews of websites Nova built
 """
@@ -886,6 +886,36 @@ class Dashboard:
                         from ..gestures import engine
                         e = engine()
                         return self._json({**e.status(), "events": e.recent(int(q.get("since", 0) or 0))})
+                    if u.path.startswith("/api/tts/"):              # 🔊 a spoken reply, made on request
+                        from .. import phone_voice
+                        token = u.path.rsplit("/", 1)[-1]
+                        if phone_voice.pending_text(token) is None:
+                            return self.send_error(404)
+                        if not self.headers.get("Range") and phone_voice.can_stream(self.headers.get("User-Agent", "")):
+                            chunks = None
+                            try:
+                                chunks = phone_voice.stream(token)
+                                first = next(chunks)
+                            except Exception as e:
+                                print(f"[phone voice] streaming failed, making a file instead: {e}")
+                                first = None
+                            if first is not None:
+                                self.send_response(200)
+                                self.send_header("Content-Type", "audio/mpeg")
+                                self.send_header("Cache-Control", "no-store")
+                                self.send_header("Connection", "close")
+                                self.end_headers()
+                                try:
+                                    self.wfile.write(first)
+                                    for c in chunks:
+                                        self.wfile.write(c)
+                                        self.wfile.flush()
+                                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                                    pass
+                                self.close_connection = True
+                                return
+                        f = phone_voice.render(token)
+                        return self._file(f) if f else self.send_error(500)
                     if u.path.startswith("/api/audio/"):
                         from .. import phone_voice
                         f = phone_voice.audio_file(u.path.rsplit("/", 1)[-1])

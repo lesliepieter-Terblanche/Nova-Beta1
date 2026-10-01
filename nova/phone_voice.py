@@ -1,7 +1,8 @@
 """Voice for the dashboard when you use it away from the PC (phone / laptop over Tailscale).
 
   🎤 you speak into the phone → the recording comes to the PC → transcribed locally (Whisper) → Nova answers
-  🔊 the answer is spoken with Nova's own voice (ElevenLabs / Kokoro / Piper) → sent back as a small MP3 the phone plays
+  🔊 the answer is spoken with Nova's own voice (ElevenLabs / Kokoro / Piper): the written answer comes back at once,
+     the voice follows — streamed from ElevenLabs as it's spoken (Android / Chrome), or as one small MP3 (iPhone)
 
 Nothing plays on the PC's speakers for these, and the audio files are deleted after half an hour.
 """
@@ -9,6 +10,7 @@ from __future__ import annotations
 
 import re
 import tempfile
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -39,29 +41,72 @@ def _tidy() -> None:
             pass
 
 
+_pending: dict[str, dict] = {}            # token -> {"text", "t", "file", "lock"}
+_plock = threading.Lock()
+
+
 def reply_audio(text: str) -> str | None:
-    """Speak `text` into a small MP3 (WAV if ffmpeg can't) and return its URL path, or None."""
+    """A URL the device fetches to hear `text`. Nothing is made yet, so the written answer shows straight away;
+    the voice is made when the device asks for it — streamed from ElevenLabs as it's spoken where possible."""
     if not (context.speech and text and text.strip()):
         return None
     from .speech import trim_for_speech
     limit = int(((context.cfg or {}).get("voice") or {}).get("max_spoken_chars", 450))
     spoken, _ = trim_for_speech(text, limit)
     _tidy()
-    stem = uuid.uuid4().hex
-    wav = folder() / f"{stem}.wav"
-    try:
-        context.speech.synth_wav(spoken, wav)
-    except Exception as e:
-        print(f"[phone voice] couldn't speak the reply: {e}")
+    token = uuid.uuid4().hex
+    with _plock:
+        for k in [k for k, v in _pending.items() if time.time() - v["t"] > KEEP_MINUTES * 60]:
+            _pending.pop(k, None)
+        _pending[token] = {"text": spoken, "t": time.time(), "file": None, "lock": threading.Lock()}
+    return f"/api/tts/{token}"
+
+
+def can_stream(user_agent: str = "") -> bool:
+    """Live-streamed MP3 needs ElevenLabs as the main voice; iPhones/iPads want a finished file."""
+    ua = (user_agent or "").lower()
+    if "iphone" in ua or "ipad" in ua or ("safari" in ua and "chrome" not in ua and "android" not in ua):
+        return False
+    sp = context.speech
+    return bool(sp and getattr(sp, "el_key", "") and sp.engine_order()[:1] == ["elevenlabs"]
+                and hasattr(sp, "elevenlabs_mp3_stream"))
+
+
+def pending_text(token: str) -> str | None:
+    job = _pending.get(token or "")
+    return job["text"] if job else None
+
+
+def stream(token: str):
+    """MP3 chunks straight from ElevenLabs (raises before the first chunk if it can't)."""
+    return context.speech.elevenlabs_mp3_stream(_pending[token]["text"])
+
+
+def render(token: str) -> Path | None:
+    """Make the whole reply into one MP3 (WAV if ffmpeg can't) — once, however often the device asks."""
+    job = _pending.get(token or "")
+    if not job:
         return None
-    try:
-        from . import ffmpeg
-        mp3 = wav.with_suffix(".mp3")
-        ffmpeg.run(["-i", wav, "-ac", "1", "-b:a", "64k", mp3])
-        wav.unlink(missing_ok=True)
-        return f"/api/audio/{mp3.name}"
-    except Exception:
-        return f"/api/audio/{wav.name}"
+    with job["lock"]:
+        if job["file"] and Path(job["file"]).exists():
+            return Path(job["file"])
+        wav = folder() / f"{token}.wav"
+        try:
+            context.speech.synth_wav(job["text"], wav)
+        except Exception as e:
+            print(f"[phone voice] couldn't speak the reply: {e}")
+            return None
+        out = wav
+        try:
+            from . import ffmpeg
+            mp3 = wav.with_suffix(".mp3")
+            ffmpeg.run(["-i", wav, "-ac", "1", "-b:a", "64k", mp3])
+            wav.unlink(missing_ok=True)
+            out = mp3
+        except Exception:
+            pass
+        job["file"] = str(out)
+        return out
 
 
 def audio_file(name: str) -> Path | None:

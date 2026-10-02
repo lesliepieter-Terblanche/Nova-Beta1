@@ -144,6 +144,14 @@
   .ask button.mic.busy { opacity: .6; }
   @keyframes micpulse { 50% { box-shadow: 0 0 0 12px rgba(255, 95, 162, .08); } }
   .ask .toggle.spk input:checked + span { color: var(--accent-2); }
+  .dropzone { position: fixed; inset: 0; z-index: 40; display: none; place-items: center; background: rgba(3,4,10,.72);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .dropzone.show { display: grid; }
+  .dropzone > div { padding: 46px 60px; border-radius: 28px; text-align: center; border: 2px dashed var(--accent-2);
+    background: color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none; }
+  .dropzone b { display: block; font: 600 24px var(--display); margin-bottom: 8px; } .dropzone span { color: var(--muted); font-size: 14px; }
+  .upl { display: grid; gap: 8px; } .upl div { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 13.5px; }
+  .upl small { color: var(--muted); display: block; white-space: pre-line; }
   .ask button.send { border: 0; border-radius: 999px; padding: 11px 20px; font: 600 13px var(--body); cursor: pointer;
     background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; }
   .reply { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); width: min(720px, calc(100vw - 36px)); z-index: 5;
@@ -581,7 +589,8 @@
     .ask { bottom: 14px; width: calc(100vw - 20px); padding: 6px 6px 6px 14px; }
     .ask input { font-size: 16px; }                     /* stops iPhones zooming in */
     .ask .toggle:not(.brain):not(.spk) { display: none; }
-    .ask { gap: 6px; padding-left: 14px; } .ask button.send { padding: 11px 14px; } .ask button.mic { width: 38px; height: 38px; }
+    .ask { gap: 5px; padding-left: 12px; } .ask button.mic { width: 36px; height: 36px; font-size: 16px; }
+    .ask button.send { padding: 0; width: 40px; height: 40px; font-size: 0; flex: none; } .ask button.send::before { content: "➤"; font-size: 15px; }
     .ask .toggle.spk span { font-size: 0; } .ask .toggle.spk span::before { content: "🔊"; font-size: 15px; }
     .ask .toggle.spk input { display: none; } .ask .toggle.spk input:not(:checked) + span::before { content: "🔇"; }
     .ask .toggle.brain span { font-size: 0; } .ask .toggle.brain span::before { content: "🧠"; font-size: 15px; }
@@ -693,6 +702,7 @@
 
 <div class="focus" id="focus" aria-label="Focus mode"><div class="fx" id="fx"></div></div>
 <div class="reply glass" id="reply"></div>
+<div class="dropzone" id="dropzone"><div><b>📥 Drop to file in your 2nd brain</b><span>Documents, PDFs, slides, spreadsheets, photos, voice notes, videos…</span></div></div>
 <div class="stage" id="stage" role="dialog" aria-modal="true" aria-labelledby="stage-title">
   <div class="stage-card">
     <div class="stage-head"><span class="kind" id="stage-kind">✦</span><h2 id="stage-title"></h2><span class="sp"></span><span class="stage-sub" id="stage-sub"></span>
@@ -712,6 +722,8 @@
   <input id="ask-in" placeholder="Ask Nova or tell it something to remember…" autocomplete="off">
   <label class="toggle brain" title="Answer only from your 2nd brain, with sources"><input type="checkbox" id="brainmode"> <span>🧠 brain</span></label>
   <label class="toggle spk" title="Nova answers out loud"><input type="checkbox" id="speak"> <span>🔊 voice</span></label>
+  <button class="mic clip" type="button" id="clip" title="Add files to your 2nd brain (or drop them anywhere on this page)" aria-label="Add files">📎</button>
+  <input type="file" id="up-file" multiple hidden>
   <button class="mic" type="button" id="mic" title="Talk to Nova (tap, speak, pause — she answers out loud)" aria-label="Talk">🎤</button>
   <button class="send" type="submit">Send</button>
 </form>
@@ -2113,6 +2125,39 @@ $("ask").addEventListener("submit", async (e) => {
     if (r.audio) playReply(r.audio);
   }
   catch { flash("Nova is offline."); }
+});
+
+// ── add files to the brain: 📎 button or drop them anywhere ──
+async function uploadFiles(files) {
+  files = [...files].filter((f) => f.size > 0); if (!files.length) return;
+  const note = $("ask-in").value.trim(); $("ask-in").value = "";          // anything typed becomes the note on the files
+  const box = $("reply"), rows = files.map((f) => ({ f, state: "⏳", msg: "waiting…" }));
+  const paint = () => { clearTimeout(flash.t); box.innerHTML = `<div class="upl">${rows.map((r) => `<div><span>${r.state}</span><span><b>${esc(r.f.name)}</b><small>${esc(r.msg)}</small></span></div>`).join("")}</div>`; box.classList.add("show"); };
+  let ok = 0, last = null;
+  for (const r of rows) {
+    r.state = "📤"; r.msg = `uploading ${(r.f.size / 1048576).toFixed(1)} MB… then reading and filing it`; paint(); setStatus("thinking");
+    try {
+      const res = await fetch(`/api/upload?name=${encodeURIComponent(r.f.name)}&note=${encodeURIComponent(note)}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: r.f }).then((x) => x.json());
+      if (res.error) { r.state = "⚠️"; r.msg = res.error; }
+      else { r.state = "✅"; r.msg = (res.message || "Filed.").split("\n").slice(1, 5).join("\n") || "Filed in your brain."; ok++; last = res; }
+    } catch { r.state = "⚠️"; r.msg = "Nova is offline, or the upload was interrupted."; }
+    paint();
+  }
+  setStatus("idle");
+  flash.t = setTimeout(() => box.classList.remove("show"), 20000);
+  if (ok) { await loadGraph(); loadStats(); if (ok === 1 && last?.id) openById(last.id); }
+}
+$("clip").onclick = () => $("up-file").click();
+$("up-file").onchange = (e) => { uploadFiles(e.target.files); e.target.value = ""; };
+let dragDepth = 0;
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+addEventListener("dragenter", (e) => { if (hasFiles(e)) { e.preventDefault(); dragDepth++; $("dropzone").classList.add("show"); } });
+addEventListener("dragover", (e) => { if (hasFiles(e)) e.preventDefault(); });
+addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("dropzone").classList.remove("show"); } });
+addEventListener("drop", (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $("dropzone").classList.remove("show"); uploadFiles(e.dataTransfer.files); });
+addEventListener("paste", (e) => {                 // paste a screenshot or copied file straight in
+  const files = [...(e.clipboardData?.files || [])];
+  if (files.length) { e.preventDefault(); uploadFiles(files); }
 });
 
 // ── voice from any device (phone over Tailscale, or this browser) ──

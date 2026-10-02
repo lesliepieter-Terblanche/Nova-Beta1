@@ -118,3 +118,32 @@ def test_agent_runs_a_command_without_asking(nova, monkeypatch):
                          LLMReply("Done — VLC is installed.")]
     out = agent.handle("install vlc", "voice").text
     assert out == "Done — VLC is installed." and ran and agent.waiting_session() is None
+
+
+# ── 📎 upload files into the brain from the dashboard ─────
+def test_upload_files_into_the_brain(dash, nova):
+    import uuid
+    from urllib.parse import quote
+
+    from nova.config import resolve
+    name = f"Axiz Mist pricing {uuid.uuid4().hex[:6]}"
+    made = []
+    try:
+        body = b"Juniper Mist pricing for Axiz: EX4400 at R48 000 each, valid until 31 October. Contact Sam Dlamini."
+        r = _post(f"/api/upload?name={quote(name + '.txt')}&note={quote('for the Q4 deal')}", body,
+                  "application/octet-stream")
+        assert r["id"].startswith("note:") and "Filed in your brain" in r["message"]
+        note = open(r["path"], encoding="utf-8").read()
+        assert "EX4400 at R48 000" in note and "> for the Q4 deal" in note and "via dashboard" in note
+        made += [resolve("workspace/inbox/uploads") / f"{name}.txt", resolve("workspace/inbox") / f"{name}.txt"]
+        assert all(f.exists() for f in made)                      # the original is kept too
+        # the same name again doesn't overwrite, and path tricks are flattened to a plain file name
+        r2 = _post(f"/api/upload?name={quote('../../evil/' + name + '.txt')}", b"second version of the notes file",
+                   "application/octet-stream")
+        second = resolve("workspace/inbox/uploads") / f"{name} (2).txt"
+        made += [second, resolve("workspace/inbox") / second.name]
+        assert "error" not in r2 and second.exists() and not (resolve("workspace") / "evil").exists()
+        assert context.store.search_notes("EX4400 Mist pricing")  # and it's searchable in the brain
+    finally:
+        for f in made:
+            f.unlink(missing_ok=True)

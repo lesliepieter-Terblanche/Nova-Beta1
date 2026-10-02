@@ -9,6 +9,7 @@
   /api/track        set your status / pin / note on an item (POST)
   /api/open         open an item on the PC (POST {"id": ...})
   /api/ask          talk to Nova by typing (POST {"text": ..., "voice": true = spoken reply as audio for this device})
+  /api/upload       file anything into the brain (POST the file; ?name=…&note=…)
   /api/voice        talk to Nova by voice from any browser (POST the recording; reply text + audio)
   /api/tts/<token>  a spoken reply: streamed from ElevenLabs, or made into one MP3 (kept for 30 minutes)
   /media?id=        stream an image/video for previews
@@ -1012,6 +1013,38 @@ class Dashboard:
                 if not self._host_ok() or origin not in ("", host, host.split(":")[0]):
                     self.rfile.read(length)
                     return self._json({"error": "forbidden"}, 403)
+                if self.path.startswith("/api/upload"):          # 📎 a file dropped on the dashboard → the brain
+                    from .. import inbox
+                    q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+                    limit = int((dash.cfg.get("dashboard") or {}).get("max_upload_mb", 500)) * 1024 * 1024
+                    if length > limit:
+                        self.close_connection = True
+                        return self._json({"error": f"That file is bigger than {limit // (1024 * 1024)} MB."}, 413)
+                    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(q.get("name", "upload")).name).strip(". ")
+                    dest = resolve("workspace/inbox/uploads") / (name[:150] or "upload")
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    n = 2
+                    while dest.exists():
+                        dest = dest.with_name(f"{Path(name).stem} ({n}){Path(name).suffix}")
+                        n += 1
+                    left = length
+                    with open(dest, "wb") as f:
+                        while left > 0:
+                            chunk = self.rfile.read(min(1 << 20, left))
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                            left -= len(chunk)
+                    try:
+                        if context.store:
+                            context.store.set_status("thinking")
+                        r = inbox.file_document(dest, source="dashboard", note=q.get("note", "")[:500])
+                        return self._json({**r, "message": inbox.reply_text(r)})
+                    except Exception as e:
+                        return self._json({"error": f"I saved {dest.name} but couldn't file it: {e}"}, 500)
+                    finally:
+                        if context.store:
+                            context.store.set_status("idle")
                 if self.path == "/api/voice":                    # 🎤 a recording from the phone / browser
                     from .. import phone_voice
                     if length > phone_voice.MAX_BYTES:

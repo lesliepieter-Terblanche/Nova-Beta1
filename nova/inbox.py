@@ -19,7 +19,8 @@ URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.I)
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".heic"}
 TEXT_EXT = {".pdf", ".docx", ".xlsx", ".txt", ".md", ".csv", ".json", ".html", ".htm", ".rtf", ".xml", ".log", ".eml",
             ".pptx", ".xls", ".msg", ".epub"}
-AUDIO_EXT = {".ogg", ".oga", ".mp3", ".m4a", ".wav", ".opus"}
+AUDIO_EXT = {".ogg", ".oga", ".mp3", ".m4a", ".wav", ".opus", ".flac", ".aac"}
+VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"}
 
 SUMMARY_PROMPT = """You file things into a personal knowledge base for {owner}. Read this {what} and reply with JSON only:
 {{"title": "a short, specific title (max 8 words)", "summary": ["3 to 5 short bullet points with the key facts, names,
@@ -56,7 +57,7 @@ def _json(raw: str) -> dict:
         return {}
 
 
-def summarise(text: str, what: str = "text") -> dict:
+def summarise(text: str, what: str = "text", default_title: str = "") -> dict:
     """{"title", "summary": [bullets], "type"} — falls back gracefully when no model is available."""
     owner = (context.cfg.assistant.owner if context.cfg else "") or "the user"
     data = {}
@@ -70,7 +71,7 @@ def summarise(text: str, what: str = "text") -> dict:
     if isinstance(bullets, str):
         bullets = [b.strip("-• ").strip() for b in bullets.splitlines() if b.strip()]
     first = re.sub(r"\s+", " ", text.strip().split("\n")[0])[:60]
-    return {"title": str(data.get("title") or first or what.title()).strip()[:80],
+    return {"title": str(data.get("title") or default_title or first or what.title()).strip()[:80],
             "summary": [str(b) for b in bullets][:6], "type": str(data.get("type") or what)}
 
 
@@ -135,8 +136,8 @@ def _save(title: str, text: str, info: dict, source: str, folder: str = "Inbox",
 
 
 def _finish(text: str, what: str, source: str, folder: str, origin: str = "", attachment: Path | None = None,
-            note: str = "", title: str = "", from_who: str = "") -> dict:
-    info = summarise(text if not note else f"{note}\n\n{text}", what)
+            note: str = "", title: str = "", from_who: str = "", default_title: str = "") -> dict:
+    info = summarise(text if not note else f"{note}\n\n{text}", what, default_title)
     if title:
         info["title"] = title
     if what in ("business card",):
@@ -207,6 +208,18 @@ def file_document(path: str | Path, source: str = "telegram", note: str = "", fo
     if ext in AUDIO_EXT:
         text = context.speech.transcribe(str(p)) if context.speech else ""
         return file_voice(text, source, note, folder)
+    if ext in VIDEO_EXT:                                   # keep the video, file what is said in it
+        try:
+            said = context.speech.transcribe(str(p)) if context.speech else ""
+        except Exception as e:
+            said = ""
+            print(f"[inbox] couldn't transcribe {p.name}: {e}")
+        kept = resolve("workspace/inbox") / p.name
+        if p.resolve() != kept.resolve():
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, kept)
+        text = said or f"(A video, {p.stat().st_size // (1024 * 1024)} MB — no speech found in it.)"
+        return _finish(text, "video", source, folder, origin=str(kept), note=note, title="" if said else p.stem)
     if ext in TEXT_EXT:
         try:
             from .skills.files import extract_text
@@ -220,7 +233,7 @@ def file_document(path: str | Path, source: str = "telegram", note: str = "", fo
         kept.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(p, kept)
     return _finish(text or "(empty)", "document", source, folder, origin=str(kept), note=note,
-                   title=p.stem if not text.strip() else "")
+                   title=p.stem if not text.strip() else "", default_title=p.stem)
 
 
 def file_voice(transcript: str, source: str = "telegram", note: str = "", folder: str = "Inbox",

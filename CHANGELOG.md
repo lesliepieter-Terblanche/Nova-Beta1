@@ -4,6 +4,18 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.16.0] — 2026-10-02
+### Added — 📎 Upload files into your 2nd brain
+- **📎 button on the Ask bar** (PC and phone): pick one or many files — on the phone it opens the normal picker for
+  files, photos or the camera. On the PC you can also **drop files anywhere** on the dashboard or **paste** a
+  screenshot / copied file.
+- Each file is read, summarised and filed like a Telegram forward: documents, PDFs, slides and spreadsheets (text and
+  tables), photos, whiteboards and business cards (read by the vision model; cards become People cards), voice notes
+  and **videos** (what's said is transcribed). The original is kept in `workspace/inbox`, people and the project are
+  linked, and the new note opens on the sphere.
+- Anything you typed in the Ask box first becomes the note attached to the files. Up to 500 MB per file
+  (`dashboard.max_upload_mb`).
+
 ## [2.15.0] — 2026-10-02
 ### Added — 📱 Phone hands (Android, built for the Galaxy S24+)
 - Nova can operate your Android phone over **ADB + Tailscale** — from anywhere, on Wi-Fi or mobile data, no app to

@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.21.0] — 2026-10-02
+### Changed — "framed navy" look
+- Each side has a coloured frame and header band (blue = Personal, green = Work) and every category sits in its own
+  bordered card; a category's card border turns blue or red while something inside is in progress or waiting.
+- The overview, colour key and bottleneck blocks get a matching border. On the phone the Ask-brain toggle is hidden.
+
 ## [2.20.0] — 2026-10-02
 ### Changed — tidier Master Index
 - **Live activity panel removed** — the status lines on the index show what is happening.

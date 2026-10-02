@@ -785,6 +785,20 @@
   @media (max-width: 1250px) { #tree { padding-left: 16px; padding-right: 16px; top: 150px; } .stats { top: 100px; left: 70px; }
     .rcol { display: flex; top: 100px; width: auto; max-width: 236px; } .stats:not(.min), .bneck:not(.min) { z-index: 6; } }
   @media (max-width: 900px) { .ask .toggle.brain { display: none !important; } .stats { display: none; } #tree { top: 118px; } .rcol { top: 66px; right: 10px; } .bneck:not(.has) { display: none; } }
+  /* v2.21 "framed navy": a coloured frame and header band per side, each category in its own card */
+  .pane { background: linear-gradient(180deg, #16243d, #101a2c); border: 2px solid var(--dc); border-radius: 14px; padding-top: 0; overflow: hidden;
+    box-shadow: 0 18px 44px rgba(20,40,80,.28), 0 0 0 4px color-mix(in srgb, var(--dc) 14%, transparent); }
+  .pane .dom { transform: none; width: calc(100% + 36px); margin: 0 -18px; border: 0; border-radius: 0; justify-content: center; padding: 12px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--dc) 55%, #0d1727), color-mix(in srgb, var(--dc) 25%, #0d1727)); box-shadow: none; }
+  .pane .sum { margin-top: 10px; }
+  ul.tree > li { background: rgba(255,255,255,.04); border: 1px solid rgba(150,180,230,.16); border-radius: 10px; padding: 8px 8px 8px 22px; }
+  ul.tree > li::before { left: 6px; top: 8px; }
+  ul.tree > li[data-flow="ip"] { border-color: color-mix(in srgb, var(--st-ip) 55%, transparent); }
+  ul.tree > li[data-flow="wait"] { border-color: color-mix(in srgb, var(--st-wait) 60%, transparent); }
+  body.light .stats, body.light .legend, body.light .bneck:not(.has), body.light .brand { border: 1.5px solid rgba(110,150,220,.5); }
+  body.light .stats:not(.min), body.light .legend:not(.min), body.light .bneck:not(.min) { background: linear-gradient(180deg, #16243d, #101a2c); }
+  @media (max-width: 900px) { .root-wrap { display: none; } .rcol { top: 118px; left: 10px; right: 10px; max-width: none; width: auto; }
+    .bneck { max-width: none; width: 100%; } body.has-bneck #tree { top: 170px; } }
 </style>
 </head>
 <body>
@@ -1135,6 +1149,7 @@ function flyTo(n) {
 function renderBottlenecks() {
   const list = data.bottlenecks || [], el = $("bneck");
   el.classList.toggle("has", list.length > 0);
+  document.body.classList.toggle("has-bneck", list.length > 0);
   $("bneck-n").textContent = list.length;
   $("bneck-list").innerHTML = list.length ? list.map((b, i) =>
     `<li data-i="${i}" class="${b.id ? "link" : ""}"><span class="dm">${b.domain === DOMAINS[0] ? "Personal" : "Work"}</span><span class="t">${esc(b.text)}${b.why ? `<small>${esc(b.why)}</small>` : ""}</span></li>`).join("")

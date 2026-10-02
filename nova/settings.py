@@ -327,6 +327,8 @@ SCHEMA = [
          "options": ["vivid", "light", "dark"],
          "help": "vivid = colourful night look (indigo to teal); light = navy panels on a pale page; "
                  "dark = the same index on the background colour above"},
+        {"path": "dashboard.theme.tilt", "label": "Tilt the panels (3D)", "type": "bool", "default": True,
+         "help": "Vivid look: Personal and Work lean towards each other. Off = flat panels, the raised cards stay"},
         {"path": "dashboard.theme.rows", "label": "Files shown per folder before “more”", "type": "number", "min": 3,
          "max": 40, "step": 1, "default": 6},
     ]},

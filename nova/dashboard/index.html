@@ -850,6 +850,36 @@
   body.vivid .stats:not(.min), body.vivid .legend:not(.min), body.vivid .bneck:not(.min) { background: rgba(255,255,255,.08); }
   body.vivid .stats, body.vivid .legend, body.vivid .bneck:not(.has), body.vivid .brand { border: 1px solid rgba(255,255,255,.18); }
   body.vivid .ctx { background: #241c58; }
+  /* v2.25: glass (the colours glow through the panels) and 3D depth — plain CSS, no 3D engine */
+  body.vivid { background: radial-gradient(700px 520px at 28% 42%, rgba(150,110,255,.75), transparent 62%), radial-gradient(760px 560px at 70% 38%, rgba(255,90,170,.55), transparent 62%),
+      radial-gradient(900px 620px at 62% 88%, rgba(40,220,200,.55), transparent 62%), radial-gradient(700px 500px at 12% 92%, rgba(70,150,255,.5), transparent 62%),
+      linear-gradient(160deg, #1a1446, #0f2147 60%, #0b2c3d); background-attachment: fixed; }
+  body.vivid .glass { background: rgba(255,255,255,.06); }
+  body.vivid .glass.stage-card, body.vivid .panel, body.vivid .ctx { background: rgba(30,24,70,.92); }
+  body.vivid .hero { background: rgba(255,255,255,.07); backdrop-filter: blur(22px) saturate(170%); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 26px 40px -18px rgba(5,0,30,.75); }
+  body.vivid .hero .k { background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.07)); transform: translateY(-3px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 0 rgba(0,0,0,.28), 0 14px 18px -6px rgba(5,0,30,.6); }
+  body.vivid .panes { perspective: 2200px; gap: 34px; }
+  body.vivid .pane { background: rgba(255,255,255,.035); backdrop-filter: blur(22px) saturate(170%); border: 1px solid rgba(255,255,255,.22); transform-style: preserve-3d; overflow: visible;
+    box-shadow: 0 2px 0 rgba(255,255,255,.25) inset, 0 40px 70px -20px rgba(5,0,30,.75), 0 18px 30px -12px rgba(5,0,30,.5); }
+  body.vivid .pane.personal .dom { background: linear-gradient(100deg, rgba(124,92,255,.78), rgba(192,92,255,.7) 60%, rgba(255,95,162,.72)); }
+  body.vivid .pane.work .dom { background: linear-gradient(100deg, rgba(20,184,166,.78), rgba(34,211,238,.7) 60%, rgba(96,165,250,.72)); }
+  body.vivid .pane .dom { border-radius: 19px 19px 0 0; box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -10px 18px rgba(0,0,0,.18); text-shadow: 0 2px 4px rgba(0,0,0,.35); }
+  body.vivid ul.tree > li { transform: translateZ(26px); background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.2); border-left: 4px solid var(--cc, var(--dc));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 14px 22px -10px rgba(5,0,30,.7), 0 3px 0 rgba(0,0,0,.22); }
+  body.vivid .chipi { background: linear-gradient(160deg, color-mix(in srgb, var(--cc) 85%, #fff), color-mix(in srgb, var(--cc) 70%, #000));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -6px 8px rgba(0,0,0,.25), 0 5px 9px rgba(0,0,0,.4); }
+  body.vivid .gear, body.vivid .brand, body.vivid .stats, body.vivid .legend, body.vivid .bneck, body.vivid .ask {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 5px 0 rgba(0,0,0,.25), 0 22px 30px -12px rgba(5,0,30,.7); }
+  body.vivid li.f .stl { box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 3px 0 rgba(0,0,0,.25), 0 6px 10px rgba(0,0,0,.3); }
+  body.vivid li.f[data-status]:has(.stl) > .trow { box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 4px 10px rgba(0,0,0,.35); }
+  body.vivid li.f[data-status="IN-PROGRESS"] > .trow { animation: st-pulse 1.6s ease-out infinite; }
+  body.vivid .donut { box-shadow: 0 4px 8px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.6); }
+  body.vivid .ask button.send { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 4px 0 rgba(0,0,0,.3); }
+  /* the two sides lean towards each other (Settings → Appearance → Tilt the panels) */
+  body.vivid.tilt .pane.personal { transform: rotateY(3.2deg) rotateX(1deg); transform-origin: right center; }
+  body.vivid.tilt .pane.work { transform: rotateY(-3.2deg) rotateX(1deg); transform-origin: left center; }
+  @media (max-width: 900px) { body.vivid.tilt .pane.personal, body.vivid.tilt .pane.work { transform: none; } body.vivid ul.tree > li { transform: none; } }
 </style>
 </head>
 <body>
@@ -1299,6 +1329,7 @@ async function applyTheme() {
   root.setProperty("--accent", t.accent); root.setProperty("--accent-2", t.accent2);
   document.body.classList.toggle("light", light);
   document.body.classList.toggle("vivid", t.style !== "dark" && t.style !== "light");
+  document.body.classList.toggle("tilt", t.tilt !== false);
   if (light) { root.removeProperty("--bg"); document.body.style.background = ""; }
   else { root.setProperty("--bg", t.background); document.body.style.background = t.background; }
   STATUS_COLORS.idle = t.accent; STATUS_COLORS.listening = t.accent2;

@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.25.0] — 2026-10-02
+### Changed — glass and 3D depth for the Vivid look
+- **Glass:** the panels and category cards are see-through, so the purple, pink and teal background glows through.
+- **3D depth:** Personal and Work lean slightly towards each other, the category cards float above their panel, and
+  icons, counters, status pills and buttons are raised and glossy. It is ordinary page styling — no 3D engine.
+- Settings → Appearance → *Tilt the panels (3D)*: off keeps the raised cards but makes the panels flat. On the phone
+  the panels are always flat.
+
 ## [2.24.0] — 2026-10-02
 ### Changed — "Vivid Night" look and a friendlier index
 - **New default look:** deep indigo → teal with colour (gradient headers per side, glass panels) instead of flat navy.

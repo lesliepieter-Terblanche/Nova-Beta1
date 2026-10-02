@@ -218,3 +218,13 @@ lines around the error. Remove keys and personal details first.
 - **Something is filed on the wrong side** — right-click it on the dashboard (long-press on the phone) → *Move to
   01_Personal / 02_Work* and pick the category. Deleted a note by mistake? The file is in `backups/deleted/`; drop it
   back onto the dashboard (📎) to file it again.
+
+## Nova is slow to answer / the voice comes late
+
+- Since 2.22 she speaks the first sentence while still writing the rest (Settings → Voice → *Start speaking while the
+  answer is still being written*). If the voice still starts late, the wait is the model thinking, not the voice.
+- Look at the `[timing]` line in Nova's window after a request: `thinking 6.2s on ollama` means the local model is the
+  slow part. Put a fast cloud model first (Settings → Models → primary: Groq or Gemini) and keep Ollama as the
+  private fallback; simple questions then start within about a second.
+- Requests that use tools (calendar, email, web) need one model step per tool, so they take longer than a plain
+  question whatever the voice does.

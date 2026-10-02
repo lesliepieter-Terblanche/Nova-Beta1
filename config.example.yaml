@@ -165,6 +165,7 @@ voice:
   max_record_seconds: 25
   follow_up_seconds: 6       # after replying, keep listening this long without needing the wake word
   max_spoken_chars: 450      # longer answers: speak the start, send the full text to Telegram
+  live_speech: true          # start speaking with the first sentence, while the rest is still being written
   chime: true                # little beep when Nova starts listening
   barge_in: true             # say the wake word (or press the hotkey) while Nova talks to interrupt it
   hotkey: "<ctrl>+<alt>+<space>"   # push-to-talk from anywhere in Windows; "" to disable

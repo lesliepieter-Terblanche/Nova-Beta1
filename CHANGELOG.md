@@ -4,6 +4,18 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.22.0] — 2026-10-02
+### Changed — voice first: Nova starts talking while she is still writing the answer
+- **Live speech.** The model's answer is now streamed, and the first sentence goes to the voice the moment it is
+  complete; the following sentences are spoken as they arrive. Before, the whole answer had to be written (and shown
+  as text) before the voice even started.
+- Works for "Hey Nova" on the PC (wake word / hotkey still interrupts), for the dashboard with 🔊 voice ticked, and on
+  the phone over Tailscale (Android / Chrome with ElevenLabs: the phone starts playing straight away and the sound is
+  filled in sentence by sentence; iPhone keeps the finished-file way).
+- If a model can't stream, Nova notices once and answers the old way. Long answers still stop at *Longest spoken
+  answer*; the full text is on screen.
+- Settings → Voice → *Start speaking while the answer is still being written* (`voice.live_speech`, on by default).
+
 ## [2.21.0] — 2026-10-02
 ### Changed — "framed navy" look
 - Each side has a coloured frame and header band (blue = Personal, green = Work) and every category sits in its own

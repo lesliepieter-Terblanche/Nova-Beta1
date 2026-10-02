@@ -83,6 +83,7 @@ class Provider:
         self.local = "localhost" in base_url or "127.0.0.1" in base_url
         self.client = OpenAI(base_url=base_url, api_key=api_key, timeout=timeout, max_retries=1)
         self.switched_from = ""          # set when a retired model was replaced automatically
+        self.no_stream = False           # set when this provider can't stream replies
 
     def resolve_model(self) -> str:
         """Swap a missing / 'auto' model for the best one this key can use."""
@@ -93,24 +94,69 @@ class Provider:
             self.switched_from, self.model = self.model, new
         return new
 
-    def chat(self, messages, tools=None, temperature=0.3) -> LLMReply:
+    def chat(self, messages, tools=None, temperature=0.3, on_delta=None) -> LLMReply:
         if self.model in ("", "auto"):
             self.resolve_model()
         try:
-            return self._chat(messages, tools, temperature)
+            return self._chat(messages, tools, temperature, on_delta)
         except Exception as e:
             if self.local or not _model_missing(e):
                 raise
             old = self.model
             if self.resolve_model() == old:
                 raise
-            return self._chat(messages, tools, temperature)
+            return self._chat(messages, tools, temperature, on_delta)
 
-    def _chat(self, messages, tools=None, temperature=0.3) -> LLMReply:
+    def _chat_stream(self, kwargs: dict, tools, on_delta) -> LLMReply:
+        """The same call, streamed: text is passed on as it is written (so the voice can start with the first
+        sentence). Tool calls arrive in pieces and are put together here."""
+        content, calls, sent = "", {}, 0
+        for chunk in self.client.chat.completions.create(stream=True, **kwargs):
+            if not chunk.choices:
+                continue
+            d = chunk.choices[0].delta
+            for c in getattr(d, "tool_calls", None) or []:
+                slot = calls.setdefault(c.index if c.index is not None else len(calls), {"id": "", "name": "", "args": ""})
+                slot["id"] = c.id or slot["id"]
+                if c.function:
+                    slot["name"] += c.function.name or ""
+                    slot["args"] += c.function.arguments or ""
+            piece = getattr(d, "content", None) or ""
+            if piece:
+                content += piece
+                # hold back anything that looks like a tool call written as text, and text that comes with tool calls
+                if not calls and len(content) >= 3 and not content.lstrip().startswith(("{", "[", "```", "<")):
+                    on_delta(content[sent:])
+                    sent = len(content)
+        out = []
+        for slot in calls.values():
+            try:
+                args = json.loads(slot["args"] or "{}")
+            except json.JSONDecodeError:
+                raise ValueError(f"{self.name} returned malformed tool arguments")
+            out.append(ToolCall(slot["id"] or uuid.uuid4().hex[:8], slot["name"], args or {}))
+        if not out and tools:
+            out = _salvage_tool_call(content, {t["function"]["name"] for t in tools})
+            if out:
+                content = ""
+        if not out and sent < len(content):
+            on_delta(content[sent:])
+        return LLMReply(content.strip(), out, self.name)
+
+    def _chat(self, messages, tools=None, temperature=0.3, on_delta=None) -> LLMReply:
         kwargs = dict(model=self.model, messages=messages, temperature=temperature)
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
+        if on_delta is not None and not self.no_stream:
+            said = []
+            try:
+                return self._chat_stream(kwargs, tools, lambda t: (said.append(1), on_delta(t)))
+            except Exception as e:
+                if said:                         # part of it was already spoken: don't start over
+                    raise
+                print(f"[llm] {self.name}: streaming not available ({str(e)[:120]}); answering in one piece")
+                self.no_stream = True
         resp = self.client.chat.completions.create(**kwargs)
         msg = resp.choices[0].message
         calls = []
@@ -203,11 +249,11 @@ class LLM:
                 out.append(self.providers[n])
         return out
 
-    def chat(self, messages, tools=None, prefer_smart=False, temperature=0.3) -> LLMReply:
+    def chat(self, messages, tools=None, prefer_smart=False, temperature=0.3, on_delta=None) -> LLMReply:
         errors = []
         for p in self.order(prefer_smart):
             try:
-                reply = p.chat(messages, tools, temperature)
+                reply = p.chat(messages, tools, temperature, on_delta) if on_delta else p.chat(messages, tools, temperature)
                 if not reply.content and not reply.tool_calls:
                     raise ValueError("empty reply")
                 self.last_provider = p.name

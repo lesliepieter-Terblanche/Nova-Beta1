@@ -938,7 +938,32 @@ class Dashboard:
                         from .. import phone_voice
                         token = u.path.rsplit("/", 1)[-1]
                         if phone_voice.pending_text(token) is None:
-                            return self.send_error(404)
+                            if not (phone_voice.wants_live(token) and phone_voice.can_stream(self.headers.get("User-Agent", ""))):
+                                return self.send_error(404)
+                            chunks = phone_voice.live_stream(token)      # 🔊 spoken while the answer is written
+                            try:
+                                first = next(chunks)
+                            except StopIteration:
+                                return self.send_error(404)
+                            except Exception as e:
+                                print(f"[phone voice] live voice failed: {e}")
+                                return self.send_error(503)
+                            self.send_response(200)
+                            self.send_header("Content-Type", "audio/mpeg")
+                            self.send_header("Cache-Control", "no-store")
+                            self.send_header("Connection", "close")
+                            self.end_headers()
+                            try:
+                                self.wfile.write(first)
+                                for c in chunks:
+                                    self.wfile.write(c)
+                                    self.wfile.flush()
+                            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                                pass
+                            except Exception as e:
+                                print(f"[phone voice] live voice stopped: {e}")
+                            self.close_connection = True
+                            return
                         if not self.headers.get("Range") and phone_voice.can_stream(self.headers.get("User-Agent", "")):
                             chunks = None
                             try:
@@ -989,7 +1014,10 @@ class Dashboard:
                     if u.path == "/api/graph":
                         return self._json(dash.graph())
                     if u.path == "/api/stats":
-                        return self._json(dash.stats())
+                        from .. import phone_voice
+                        live = bool((dash.cfg.get("voice") or {}).get("live_speech", True)) and \
+                            phone_voice.can_stream(self.headers.get("User-Agent", ""))
+                        return self._json({**dash.stats(), "live_voice": live})
                     if u.path == "/api/activity":
                         from .. import cards
                         return self._json({"events": context.store.activity(int(q.get("since", 0))),
@@ -1099,7 +1127,7 @@ class Dashboard:
                     finally:
                         if context.store:
                             context.store.set_status("idle")
-                if self.path == "/api/voice":                    # 🎤 a recording from the phone / browser
+                if self.path.split("?")[0] == "/api/voice":      # 🎤 a recording from the phone / browser
                     from .. import phone_voice
                     if length > phone_voice.MAX_BYTES:
                         return self._json({"error": "That recording is too long."}, 413)
@@ -1107,8 +1135,9 @@ class Dashboard:
                     try:
                         if context.store:
                             context.store.set_status("thinking")
+                        tok = (parse_qs(urlparse(self.path).query).get("live") or [""])[0]
                         return self._json(phone_voice.converse(dash.agent, data,
-                                                               self.headers.get("Content-Type", "")))
+                                                               self.headers.get("Content-Type", ""), tok))
                     except Exception as e:
                         return self._json({"error": str(e)}, 500)
                     finally:
@@ -1261,14 +1290,33 @@ class Dashboard:
                             return self._json({"ok": True, **taxonomy.apply_plan(bool(body.get("include_unanswered")))})
                         return self._json({"error": "unknown action"}, 400)
                     if self.path == "/api/ask":
-                        reply = dash.agent.handle(body.get("text", ""), session="dashboard")
-                        if body.get("speak") and context.speech:           # out loud on the PC's speakers
+                        # the voice starts with the first sentence, while the rest is still being written
+                        speaker = feed = None
+                        live_ok = bool((self_cfg_voice := (dash.cfg.get("voice") or {})).get("live_speech", True))
+                        if body.get("speak") and context.speech and live_ok:       # out loud on the PC's speakers
+                            from ..live_speech import LiveSpeaker
+                            speaker = LiveSpeaker(context.speech, int(self_cfg_voice.get("max_spoken_chars", 450)))
+                            feed = speaker.feed
+                        elif body.get("voice") and body.get("live") and live_ok:   # on the device you're using
+                            from .. import phone_voice
+                            feed = phone_voice.open_live(str(body.get("live")))
+                        try:
+                            reply = dash.agent.handle(body.get("text", ""), session="dashboard",
+                                                      **({"on_delta": feed} if feed else {}))
+                        except Exception:
+                            if feed:
+                                feed.finish()
+                            raise
+                        if feed:
+                            feed.finish(reply.text)
+                        elif body.get("speak") and context.speech:
                             threading.Thread(target=context.speech.speak, args=(reply.text,), daemon=True).start()
                         audio = None
-                        if body.get("voice"):                              # spoken back on the device you're using
+                        if body.get("voice"):                              # a finished file too, in case live didn't play
                             from .. import phone_voice
                             audio = phone_voice.reply_audio(reply.text)
-                        return self._json({"text": reply.text, "files": reply.files, "audio": audio})
+                        return self._json({"text": reply.text, "files": reply.files, "audio": audio,
+                                           "live": bool(feed and not speaker)})
                     self.send_error(404)
                 except Exception as e:
                     self._json({"error": str(e)}, 500)

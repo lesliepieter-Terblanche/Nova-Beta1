@@ -76,9 +76,11 @@ class Agent:
         self.lock = threading.Lock()      # one request at a time (one GPU)
 
     # ── public ─────────────────────────────────────────────
-    def handle(self, text: str, session: str = "voice", prefer_smart: bool = False) -> Reply:
+    def handle(self, text: str, session: str = "voice", prefer_smart: bool = False, on_delta=None) -> Reply:
+        """on_delta(text): called with each new piece of the answer while it is being written (live speech)."""
         store = context.store
         with self.lock:
+            self._on_delta = on_delta
             context.begin_turn()
             self._tools_used = []
             self._model_ms = 0
@@ -156,7 +158,8 @@ class Agent:
             # If the local model is going round in circles, hand over to the smart one.
             smart = prefer_smart or round_no >= 3
             t = time.perf_counter()
-            reply = self.llm.chat(messages, schemas, prefer_smart=smart)
+            live = {"on_delta": self._on_delta} if getattr(self, "_on_delta", None) else {}
+            reply = self.llm.chat(messages, schemas, prefer_smart=smart, **live)
             self._model_ms = getattr(self, "_model_ms", 0) + int((time.perf_counter() - t) * 1000)
             self._rounds = getattr(self, "_rounds", 0) + 1
             if not reply.tool_calls:

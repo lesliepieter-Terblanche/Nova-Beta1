@@ -151,6 +151,41 @@ class VoiceLoop:
         oww.reset()
         return interrupted
 
+    def _answer_live(self, stream, oww, text: str):
+        """Think and speak at the same time: the first sentence is spoken while the rest is still being written.
+        The wake word / hotkey still cuts in. Returns (reply, interrupted)."""
+        from .live_speech import LiveSpeaker
+        sp = LiveSpeaker(self.speech, int(self.v.get("max_spoken_chars", 450)))
+        box = {}
+
+        def think():
+            try:
+                box["reply"] = self.agent.handle(text, session="voice", on_delta=sp.feed)
+            finally:
+                r = box.get("reply")
+                sp.finish(r.text if r else "Sorry, something went wrong.")
+
+        t = threading.Thread(target=think, daemon=True)
+        t.start()
+        self.hotkey.clear()
+        oww.reset()
+        barge = self.v.get("barge_in", True)
+        threshold = min(0.95, float(self.v.wake_threshold) + 0.1)
+        interrupted = False
+        while t.is_alive() or sp.alive():
+            block = stream.read(BLOCK)[0][:, 0]              # keeps the microphone drained while she talks
+            if sp.started.is_set() and context.store and context.store.status != "speaking" and not t.is_alive():
+                context.store.set_status("speaking")
+            if barge and sp.started.is_set() and (self.hotkey.is_set() or max(oww.predict(block).values(), default=0) >= threshold):
+                interrupted = True
+                self.hotkey.clear()
+                sp.stop()
+                break
+        t.join(timeout=120)
+        sp.wait(timeout=3)
+        oww.reset()
+        return box.get("reply"), interrupted, sp.feed.trimmed
+
     def _conversation(self, stream, oww) -> None:
         store = context.store
         if self.v.get("chime", True):
@@ -167,14 +202,22 @@ class VoiceLoop:
             if not text or len(text) < 2:
                 break
             print(f"\n🗣  {text}")
-            reply = self.agent.handle(text, session="voice")
-            print(f"🤖 {reply.text}\n")
-            spoken, trimmed = trim_for_speech(reply.text, int(self.v.get("max_spoken_chars", 450)))
-            if trimmed or reply.files:
-                context.push(reply.text, reply.files)       # full answer + files to Telegram
-            if store:
-                store.set_status("speaking")
-            interrupted = self._speak(stream, oww, spoken)
+            if self.v.get("live_speech", True):             # speak the first sentence while the rest is written
+                reply, interrupted, trimmed = self._answer_live(stream, oww, text)
+                if reply is None:
+                    break
+                print(f"🤖 {reply.text}\n")
+                if trimmed or reply.files:
+                    context.push(reply.text, reply.files)   # full answer + files to Telegram
+            else:
+                reply = self.agent.handle(text, session="voice")
+                print(f"🤖 {reply.text}\n")
+                spoken, trimmed = trim_for_speech(reply.text, int(self.v.get("max_spoken_chars", 450)))
+                if trimmed or reply.files:
+                    context.push(reply.text, reply.files)   # full answer + files to Telegram
+                if store:
+                    store.set_status("speaking")
+                interrupted = self._speak(stream, oww, spoken)
             self._drain(stream)
             if interrupted:                                 # you cut in: listen straight away
                 self.speech.beep(660)

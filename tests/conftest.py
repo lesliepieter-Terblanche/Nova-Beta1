@@ -26,9 +26,14 @@ class FakeLLM:
     def should_escalate(self, text):
         return False
 
-    def chat(self, messages, tools=None, prefer_smart=False, temperature=0.3):
+    def chat(self, messages, tools=None, prefer_smart=False, temperature=0.3, on_delta=None):
         r = self.queue.pop(0)
-        return r(messages) if callable(r) else r
+        r = r(messages) if callable(r) else r
+        if on_delta and r.content and not r.tool_calls:          # "streamed": a few words at a time
+            words = r.content.split(" ")
+            for i in range(0, len(words), 3):
+                on_delta(" ".join(words[i:i + 3]) + (" " if i + 3 < len(words) else ""))
+        return r
 
     def complete(self, prompt, system="", prefer_smart=True, temperature=0.5):
         if "executive assistant" in prompt:

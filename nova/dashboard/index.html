@@ -1269,6 +1269,7 @@ async function loadStats() {
   countTo($("s-proj"), s.projects?.active || 0); countTo($("s-skills"), s.skills || 0);
   $("s-proj-sub").textContent = s.projects?.doing ? `${s.projects.doing} in progress` : "";
   $("s-skills-sub").textContent = s.models?.primary ? `brain: ${s.models.primary}` : "";
+  LIVE_VOICE = !!s.live_voice;
   setStatus(s.status);
 }
 function countTo(el, v) {
@@ -2224,9 +2225,12 @@ $("ask").addEventListener("submit", async (e) => {
   unlockAudio();
   const out = $("speak").checked;
   try {
-    const r = await api("/api/ask", { text, speak: out && !REMOTE, voice: out && REMOTE });
+    const live = out && REMOTE && LIVE_VOICE ? startLive() : null;      // the voice starts before the text is finished
+    if (live) flash("…");
+    const r = await api("/api/ask", { text, speak: out && !REMOTE, voice: out && REMOTE, live: live?.token });
     flash(r.text || r.error); clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 15000);
-    if (r.audio) playReply(r.audio);
+    if (live) finishLive(live, r.live ? r.audio : r.audio);
+    else if (r.audio) playReply(r.audio);
   }
   catch { flash("Nova is offline."); }
 });
@@ -2280,6 +2284,26 @@ function unlockAudio() {                            // phones only allow sound t
   unlockAudio.done = true;
   player.src = SILENCE; player.play().catch(() => {});
 }
+// live voice: this device asks for the audio straight away; Nova fills it sentence by sentence while she thinks
+let LIVE_VOICE = false;
+function startLive() {
+  if (!$("speak").checked) return null;
+  const token = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const st = { token, started: false, failed: false, ended: false, onend: null, onfail: null };
+  player.onplaying = () => { st.started = true; setStatus("speaking"); };
+  player.onended = () => { st.ended = true; setStatus("idle"); st.onend && st.onend(); };
+  player.onerror = () => { st.failed = true; st.onfail && st.onfail(); };
+  player.src = `/api/tts/${token}`;
+  player.play().catch(() => { st.failed = true; st.onfail && st.onfail(); });
+  return st;
+}
+function finishLive(st, url, then) {          // the answer is in: let the live voice finish, or fall back to the file
+  const fallback = () => { if (st.started) { setStatus("idle"); then && then(); } else if (url) playReply(url, then); else then && then(); };
+  if (st.failed) return fallback();
+  if (st.ended) return st.started ? (then && then()) : fallback();
+  st.onend = () => (st.started ? (then && then()) : fallback());
+  st.onfail = fallback;
+}
 function playReply(url, then) {
   if (!$("speak").checked) { then && then(); return; }
   player.onended = () => { setStatus("idle"); then && then(); };
@@ -2331,13 +2355,14 @@ async function listen(waitForSpeech = 8000) {
 async function sendVoice(blob) {
   $("mic").classList.add("busy"); setStatus("thinking"); flash("Thinking…");
   try {
-    const r = await fetch("/api/voice", { method: "POST", headers: { "Content-Type": blob.type || "audio/webm" }, body: blob }).then((x) => x.json());
+    const live = LIVE_VOICE ? startLive() : null;
+    const r = await fetch("/api/voice" + (live ? "?live=" + live.token : ""), { method: "POST", headers: { "Content-Type": blob.type || "audio/webm" }, body: blob }).then((x) => x.json());
     if (r.error) { mic.conversation = false; return flash(r.error); }
     if (!r.heard) { mic.conversation = false; setStatus("idle"); return flash("I didn't catch that — tap 🎤 and try again."); }
     flash(`🗣 ${r.heard}\n\n${r.text}`); $("reply").style.whiteSpace = "pre-line";
     clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 30000);
     const again = () => { if (mic.conversation && !r.end) listen(6000); else mic.conversation = false; };
-    if (r.audio) playReply(r.audio, again); else again();
+    if (live) finishLive(live, r.audio, again); else if (r.audio) playReply(r.audio, again); else again();
   } catch { mic.conversation = false; flash("Nova is offline."); setStatus("idle"); }
   finally { $("mic").classList.remove("busy"); }
 }

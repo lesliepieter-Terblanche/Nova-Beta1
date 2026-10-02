@@ -30,7 +30,7 @@ def test_provider_switches_from_retired_model(monkeypatch):
     p = Provider("groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "gsk_test", 5)
     calls = []
 
-    def fake_chat(messages, tools=None, temperature=0.3):
+    def fake_chat(messages, tools=None, temperature=0.3, on_delta=None):
         calls.append(p.model)
         if p.model == "llama-3.3-70b-versatile":
             raise Exception("Error code: 404 - model_not_found: does not exist")

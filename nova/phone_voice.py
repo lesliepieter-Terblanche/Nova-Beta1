@@ -62,6 +62,48 @@ def reply_audio(text: str) -> str | None:
     return f"/api/tts/{token}"
 
 
+# ── live: the voice starts while the answer is still being written ──
+_live: dict[str, dict] = {}                 # token -> {"feed": SentenceFeed, "t": started}
+TOKEN = re.compile(r"^[a-f0-9]{32}$")
+
+
+def open_live(token: str):
+    """The device chose `token` and is already asking for /api/tts/<token>; sentences put into the returned feed
+    are spoken there as they arrive. None if the token is unusable."""
+    if not TOKEN.match(token or "") or token in _live or token in _pending:
+        return None
+    from .live_speech import SentenceFeed
+    limit = int(((context.cfg or {}).get("voice") or {}).get("max_spoken_chars", 450))
+    with _plock:
+        for k in [k for k, v in _live.items() if time.time() - v["t"] > 300]:
+            _live.pop(k, None)
+        _live[token] = {"feed": SentenceFeed(limit), "t": time.time()}
+    return _live[token]["feed"]
+
+
+def live_stream(token: str, wait: float = 6.0):
+    """MP3 for a live reply: each batch of finished sentences is streamed from ElevenLabs, one after the other.
+    Yields nothing if the token never shows up."""
+    end = time.time() + wait
+    while token not in _live and time.time() < end:      # the audio request can beat the question by a moment
+        time.sleep(0.05)
+    job = _live.get(token)
+    if not job or job.get("taken"):
+        return
+    job["taken"] = True
+    try:
+        for text in job["feed"].batches():
+            for chunk in context.speech.elevenlabs_mp3_stream(text):
+                job["sent"] = True
+                yield chunk
+    finally:
+        _live.pop(token, None)
+
+
+def wants_live(token: str) -> bool:
+    return bool(TOKEN.match(token or "")) and token not in _pending
+
+
 def can_stream(user_agent: str = "") -> bool:
     """Live-streamed MP3 needs ElevenLabs as the main voice; iPhones/iPads want a finished file."""
     ua = (user_agent or "").lower()
@@ -138,14 +180,22 @@ def transcribe(data: bytes, content_type: str) -> str:
         tmp.rmdir()
 
 
-def converse(agent, data: bytes, content_type: str) -> dict:
-    """One spoken turn from the phone: what Nova heard, her answer (text + audio), and whether you said goodbye."""
-    if len(data) > MAX_BYTES:
-        return {"error": "That recording is too long."}
-    heard = transcribe(data, content_type)
-    if len(heard) < 2:
-        return {"heard": "", "text": "", "audio": None, "end": False}
-    reply = agent.handle(heard, session="phone")
-    from .voice import re_goodbye
-    return {"heard": heard, "text": reply.text, "files": reply.files, "audio": reply_audio(reply.text),
-            "end": re_goodbye(heard)}
+def converse(agent, data: bytes, content_type: str, live_token: str = "") -> dict:
+    """One spoken turn from the phone: what Nova heard, her answer (text + audio), and whether you said goodbye.
+    With a live token the voice is already playing on the device while the answer is being written."""
+    feed = open_live(live_token) if live_token else None
+    try:
+        if len(data) > MAX_BYTES:
+            return {"error": "That recording is too long."}
+        heard = transcribe(data, content_type)
+        if len(heard) < 2:
+            return {"heard": "", "text": "", "audio": None, "end": False}
+        reply = agent.handle(heard, session="phone", **({"on_delta": feed} if feed else {}))
+        if feed:
+            feed.finish(reply.text)
+        from .voice import re_goodbye
+        return {"heard": heard, "text": reply.text, "files": reply.files, "audio": reply_audio(reply.text),
+                "live": bool(feed), "end": re_goodbye(heard)}
+    finally:
+        if feed:
+            feed.finish()

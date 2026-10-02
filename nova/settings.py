@@ -90,6 +90,8 @@ SCHEMA = [
         {"path": "voice.silence_seconds", "label": "Pause that ends a sentence (s)", "type": "number", "min": 0.5, "max": 3, "step": 0.1},
         {"path": "voice.follow_up_seconds", "label": "Follow-up window (s)", "type": "number", "min": 0, "max": 20},
         {"path": "voice.max_spoken_chars", "label": "Longest spoken answer (chars)", "type": "number", "min": 100, "max": 3000},
+        {"path": "voice.live_speech", "label": "Start speaking while the answer is still being written", "type": "bool",
+         "default": True, "help": "The first sentence is spoken straight away; off = wait for the whole answer first"},
         {"path": "voice.chime", "label": "Chime when listening", "type": "bool"},
         {"path": "tts.engine", "label": "Main voice", "type": "select", "options": ["elevenlabs", "kokoro", "piper", "windows"]},
         {"path": "tts.fallback", "label": "Backup voices (in order)", "type": "list", "help": "One per line: kokoro, piper, windows"},

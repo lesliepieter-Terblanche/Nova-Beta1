@@ -880,6 +880,10 @@
   body.vivid.tilt .pane.personal { transform: rotateY(3.2deg) rotateX(1deg); transform-origin: right center; }
   body.vivid.tilt .pane.work { transform: rotateY(-3.2deg) rotateX(1deg); transform-origin: left center; }
   @media (max-width: 900px) { body.vivid.tilt .pane.personal, body.vivid.tilt .pane.work { transform: none; } body.vivid ul.tree > li { transform: none; } }
+  .notice { position: fixed; left: 50%; top: 92px; transform: translateX(-50%); z-index: 12; display: none; max-width: min(760px, calc(100vw - 24px)); padding: 12px 44px 12px 18px;
+    border-radius: 14px; font-size: 14px; line-height: 1.45; color: var(--text); border: 1px solid var(--st-ip); background: rgba(30,24,70,.95) !important; cursor: pointer; }
+  .notice.show { display: block; }
+  .notice button { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line-strong); background: none; color: var(--text); cursor: pointer; }
 </style>
 </head>
 <body>
@@ -971,6 +975,7 @@
   <button class="minbtn" id="legend-min" title="Minimise" aria-label="Minimise colour key">▾</button>
   <div id="legend-body"><div class="lk c">✓ Completed</div><div class="lk i">● In progress</div><div class="lk w">● Waiting on you</div><div class="lk b">○ Backlog</div></div>
 </section>
+<div class="notice glass" id="notice" role="status"><span id="notice-text"></span><button id="notice-x" aria-label="Close">✕</button></div>
 <div class="ctx glass" id="ctx" role="menu"></div>
 <div class="ticker" id="ticker"><span class="tab" id="ticker-state">System optimized</span><span class="msg" id="ticker-text">MONITORING ACTIVE.</span></div>
 
@@ -1232,6 +1237,18 @@ menu.addEventListener("click", async (e) => {
   await loadGraph(); loadStats(); loadFiling();
   if (a === "move" && r.id) { const m = nodeById.get(r.id); if (m) flyTo(m); }
 });
+// messages from Nova (the reorganisation plan is ready, a model was switched…) stay on screen until you close them
+const notices = [];
+const noticeSeen = () => { try { return +localStorage.getItem("nova.notice.seen") || 0; } catch { return 0; } };
+const noticeDone = () => { try { localStorage.setItem("nova.notice.seen", Math.max(noticeSeen(), ...notices.map((n) => n.id))); } catch {} notices.length = 0; showNotices(); };
+function showNotices() {
+  const el = $("notice"), n = notices[notices.length - 1];
+  if (!n) { el.classList.remove("show"); return; }
+  $("notice-text").textContent = n.detail || n.title;
+  el.classList.add("show");
+}
+$("notice-x").onclick = noticeDone;
+$("notice").addEventListener("click", (e) => { if (!e.target.closest("#notice-x") && /🗂/.test($("notice-text").textContent)) { loadFiling(true); noticeDone(); } });
 function applyLayout() { schedule(); }
 function fit() { treeEl.scrollTo({ top: 0, behavior: "smooth" }); }
 function flyTo(n) {
@@ -1806,6 +1823,7 @@ async function poll() {
       lastId = r.events[r.events.length - 1].id;
       const ul = $("feed-list");
       for (const e of r.events) {
+        if (e.kind === "notice" && e.id > noticeSeen() && (!first || Date.now() - Date.parse(e.ts) < 30 * 60000)) notices.push(e);   // Nova has something to tell you
         const li = document.createElement("li");
         const target = e.ref && !e.ref.startsWith("turn:") ? e.ref : (e.turn ? `turn:${e.turn}` : e.ref);
         if (target) { li.classList.add("link"); li.onclick = () => openById(target); }
@@ -1818,6 +1836,7 @@ async function poll() {
         feedNew += r.events.length;
         $("feed-new").textContent = feedNew > 99 ? "99+" : feedNew; $("feed-new").classList.add("show");
       }
+      showNotices();
       const changed = graphRev !== null && r.rev !== graphRev; graphRev = r.rev;
       if (!first && (changed || r.events.some((e) => ["memory", "artifact", "user", "mission"].includes(e.kind)))) { await loadGraph(); loadStats(); }
       else if (!first) loadStats();

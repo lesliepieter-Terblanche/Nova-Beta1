@@ -47,6 +47,11 @@ def attachments() -> list[str]:
 
 
 def push(text: str, files: list[str] | None = None) -> None:
+    try:                                  # shown on the dashboard too (a banner), not only on Telegram
+        if store is not None:
+            store.log("notice", "system", text[:200], text, turn=0)
+    except Exception:
+        pass
     if notify:
         notify(text, files or [])
     else:

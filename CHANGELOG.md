@@ -4,6 +4,11 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.25.1] — 2026-10-02
+### Fixed
+- Messages from Nova (the reorganisation plan is ready, the everyday model was switched…) now also appear as a banner
+  at the top of the dashboard and stay until you close them. Before, they only went to Telegram or Nova's window.
+
 ## [2.25.0] — 2026-10-02
 ### Changed — glass and 3D depth for the Vivid look
 - **Glass:** the panels and category cards are see-through, so the purple, pink and teal background glows through.

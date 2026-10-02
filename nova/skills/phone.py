@@ -753,8 +753,13 @@ def phone_send_message(to: str, text: str, app: str = "", send: bool = True) -> 
     if again := _one_task():
         return again
     name = ph.MESSAGE_APPS.get((app or "whatsapp").lower().strip(), app or "WhatsApp")
-    return ph.run_task(ph.message_task(to.strip(), text.strip(), app or "whatsapp", send), "send" if send else "",
-                       only={"Messages": "messages"}.get(name, name.lower()), to=to.strip())
+    out = ph.run_task(ph.message_task(to.strip(), text.strip(), app or "whatsapp", send), "send" if send else "",
+                      only={"Messages": "messages"}.get(name, name.lower()), to=to.strip())
+    if send and out.startswith("Done on your phone"):
+        from .. import undo
+        undo.record(f"sent {to.strip()} a {name} message", "none", why="a sent message can't be unsent from here; "
+                    "delete it for everyone in the app")
+    return out
 
 
 # ── saved routines ────────────────────────────────────────

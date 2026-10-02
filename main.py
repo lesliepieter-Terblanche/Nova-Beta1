@@ -322,6 +322,11 @@ def main() -> None:
     except Exception as e:
         print(f"[brain] structure check not started: {e}")
     try:
+        from nova import reports
+        reports.start()                  # Friday's weekly report and Sunday's activity review
+    except Exception as e:
+        print(f"[reports] not started: {e}")
+    try:
         from nova import phone_watch
         phone_watch.start()              # keeps the phone connected, its health card fresh, and announces messages
     except Exception as e:

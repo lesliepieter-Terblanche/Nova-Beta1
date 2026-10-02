@@ -280,8 +280,11 @@ def set_reminder(text: str, when: str) -> str:
     at = parse_when(when)
     with _rem_lock:
         items = _load_rem()
-        items.append({"id": uuid.uuid4().hex[:6], "text": text, "at": at.isoformat()})
+        rid = uuid.uuid4().hex[:6]
+        items.append({"id": rid, "text": text, "at": at.isoformat()})
         _save_rem(items)
+    from .. import undo
+    undo.record(f"set a reminder: {text[:60]}", "reminder", id=rid)
     return f"Reminder set for {at:%a %d %b %H:%M}: {text}"
 
 

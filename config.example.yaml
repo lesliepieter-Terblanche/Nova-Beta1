@@ -10,6 +10,8 @@ assistant:
   timezone: UTC                 # IANA name, e.g. Africa/Johannesburg, Europe/London, America/New_York
   city: ""                      # used for weather in briefings
   max_history_turns: 12
+  personality: witty            # witty | warm | professional | minimal — stays as set until you change it
+  swearing: true                # witty only: a mild swear word now and then (never in anything written for others)
 
 llm:
   # Hybrid: local Ollama for everyday requests. Hard tasks / failures go down the "smart" list.
@@ -120,6 +122,16 @@ phone:
   mirror_size: 1280          # the phone's live screen on the PC (smaller = smoother over mobile data)
   mirror_on_top: false
   scrcpy_path: ""            # "" = Nova's own copy (downloaded the first time)
+
+# Weekly work report and the weekly "what Nova did for me" review
+reports:
+  weekly: true
+  weekly_day: fri
+  weekly_time: "16:00"
+  manager_email: ""          # also put the report in Gmail as a DRAFT to this address (never sent)
+  review: true
+  review_day: sun
+  review_time: "18:00"
 
 # Screen time from ActivityWatch (free, activitywatch.net — keeps its data on this PC)
 activitywatch:

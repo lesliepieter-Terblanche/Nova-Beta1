@@ -65,6 +65,9 @@ It remembers everything permanently and shows its whole second brain as a live m
 | 📷 **Webcam → ads** | Photo → product identified → background removed → feed/story ads + caption + ad video |
 | 🎬 **Media** | Narrated videos with burned-in captions and free stock footage · photo slideshows · voice-overs · transcription · trims and conversions |
 | 📱 **Phone hands** | Operates your Android phone over Tailscale — apps, taps, typing, screenshots, photos, files; reads, replies to and schedules messages (WhatsApp, SMS, Telegram, email…); announces messages and calls, answers / declines by voice, calls contacts by name; the phone's live screen in a window on the PC; quick switches, routines that can start by themselves, navigation, one-time codes, media; ring / locate my phone; a health card on the dashboard; reconnects by herself; stops before paying/deleting |
+| 💳 **Budget & slips** | Photograph a slip or invoice — Nova reads it, files it under Personal and tracks the month against your budgets; claims are followed until they are paid and exported as a pack |
+| ↩ **Undo & learning** | "Undo that" puts back her last change; she learns from your corrections (filing, shop categories, how you like things done) |
+| 🗓 **Weekly report & review** | A Friday work report (moved / stuck / next week) and a Sunday review of what Nova did for you, what failed and what you never use |
 | 🪟 **Answers on screen** | Weather, PC stats (live circle gauges), screen time, news, load-shedding and more pop up in a 3D, see-through window in your theme colours — on the PC and the phone |
 | ✂️ **Shorts maker** | Long video → captioned vertical Shorts / Reels / TikToks (AI picks the best moments) · add captions · make vertical · join clips (moviepy) |
 | 🎨 **ComfyUI images** | Free image generation on your own graphics card — posts, ads, thumbnails in any format, or your own ComfyUI workflow |

@@ -33,6 +33,11 @@ def remember(text: str, kind: str = "fact", important: bool = False) -> str:
         important: true if it should always be kept in mind
     """
     msg = context.store.add_memory(text, kind, "told", 3 if important else 2)
+    import re as _re
+    made = _re.search(r"#(\d+)", msg or "")
+    if made and "Already knew" not in msg:
+        from .. import undo
+        undo.record(f"remembered \"{text[:60]}\"", "memory", id=int(made.group(1)))
     context.store.export_markdown(vault())
     if kind == "person":
         from .. import people

@@ -110,10 +110,15 @@ def write_file(path: str, content: str, append: bool = False) -> str:
     """
     p = safe(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    if p.exists() and not append:
-        shutil.copy2(p, p.with_suffix(p.suffix + ".bak"))
+    existed, backup = p.exists(), ""
+    if existed:
+        backup = str(p.with_suffix(p.suffix + ".bak"))
+        shutil.copy2(p, backup)
     with open(p, "a" if append else "w", encoding="utf-8") as f:
         f.write(content)
+    from .. import undo
+    undo.record(f"{'added to' if append and existed else 'wrote'} {p.name}", "file_write", path=str(p), backup=backup,
+                created=not existed)
     context.record("file", p.name, p)
     return f"Saved {p}"
 
@@ -125,7 +130,11 @@ def create_folder(path: str) -> str:
         path: folder path
     """
     p = safe(path)
+    new = not p.exists()
     p.mkdir(parents=True, exist_ok=True)
+    if new:
+        from .. import undo
+        undo.record(f"created the folder {p.name}", "folder", path=str(p))
     return f"Created {p}"
 
 
@@ -154,6 +163,8 @@ def move_path(source: str, destination: str) -> str:
     if d.is_dir():
         d = d / s.name
     shutil.move(str(s), str(d))
+    from .. import undo
+    undo.record(f"moved {s.name} to {d.parent.name or d.parent}", "file_move", src=str(s), dst=str(d))
     return f"Moved to {d}"
 
 
@@ -166,6 +177,8 @@ def delete_path(path: str) -> str:
     from send2trash import send2trash
     p = safe(path)
     send2trash(str(p))
+    from .. import undo
+    undo.record(f"deleted {p.name}", "none", why="it's in the Recycle Bin — restore it from there")
     return f"Moved {p.name} to the Recycle Bin."
 
 

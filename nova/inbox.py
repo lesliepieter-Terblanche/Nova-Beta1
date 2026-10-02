@@ -177,6 +177,23 @@ def file_url(url: str, source: str = "telegram", note: str = "", folder: str = "
                    title=(page_title or "")[:80] if page_title and len(text or "") < 200 else "")
 
 
+def _slip(p: Path, note: str = "") -> dict | None:
+    """Hand a slip to the budget. None when it couldn't be read as one (it is then filed as an ordinary picture)."""
+    from . import budget
+    try:
+        e = budget.add_slip(p, note=note)
+    except Exception as ex:
+        print(f"[inbox] couldn't add the slip to the budget: {ex}")
+        return None
+    if e.get("error"):
+        return None
+    claim = f" — to claim from {e['claim_for']}" if e.get("claim_for") else ""
+    return {"title": f"Slip — {e['merchant'] or 'shop'} {budget.money(e['amount'])}", "people": [], "project": "",
+            "summary": [f"{e['date']} · {e['category']}{claim}",
+                        f"This month so far: {budget.money(budget.summary(e['date'][:7])['total'])}",
+                        "Filed under Personal → Finance & Budgets"], "path": e.get("file", ""), "type": "slip"}
+
+
 def file_image(path: str | Path, source: str = "telegram", note: str = "", folder: str = "Inbox") -> dict:
     src = Path(path)
     from . import taxonomy
@@ -209,6 +226,11 @@ def file_image(path: str | Path, source: str = "telegram", note: str = "", folde
         return out
     m = re.match(r"\s*TYPE:\s*([^\n]+)\n?(.*)", seen or "", re.S)
     what, body = (m.group(1).strip().lower(), m.group(2).strip()) if m else ("photo", (seen or "").strip())
+    if re.search(r"receipt|till slip|invoice", what):       # a slip, even though nobody said so: it's for the budget
+        slip = _slip(src, note)
+        if slip:
+            dest.unlink(missing_ok=True)
+            return slip
     return _finish(body or "(no text found)", what if what in ("whiteboard", "receipt", "screenshot", "slide",
                                                               "document", "handwritten notes") else "photo",
                    source, folder, attachment=dest, note=note)
@@ -217,6 +239,11 @@ def file_image(path: str | Path, source: str = "telegram", note: str = "", folde
 def file_document(path: str | Path, source: str = "telegram", note: str = "", folder: str = "Inbox") -> dict:
     p = Path(path)
     ext = p.suffix.lower()
+    from . import budget
+    if (ext in IMAGE_EXT) and budget.SLIP_WORDS.search(f"{note} {p.stem.replace('_', ' ')}"):
+        slip = _slip(p, note)                           # "slip" / "receipt" / "claim" in the note: it's for the budget
+        if slip:
+            return slip
     if ext in IMAGE_EXT:
         return file_image(p, source, note, folder)
     if ext in AUDIO_EXT:

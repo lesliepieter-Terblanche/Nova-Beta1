@@ -253,10 +253,22 @@ def classify_full(title: str, text: str = "", llm=None) -> dict:
     """{"domain", "category", "sub", "confidence", "reason"} for a note. AI model first, keywords as fallback."""
     llm = None if llm is False else (llm if llm is not None else context.llm)
     owner = (context.cfg.assistant.owner if context.cfg else "") or "the user"
+    taught = ""
+    try:
+        from . import lessons
+        hit = lessons.filing(title)
+        if hit and hit[0] in TREE and hit[1] in TREE[hit[0]]:
+            return {"domain": hit[0], "category": hit[1], "sub": "", "confidence": 0.9,
+                    "reason": "you filed something like this here before"}
+        taught = lessons.filing_examples()
+    except Exception:
+        pass
     if llm:
         try:
             raw = llm.complete(CLASSIFY_PROMPT.format(owner=owner, personal=_listing(PERSONAL), work=_listing(WORK),
-                                                      title=title, text=(text or "")[:2500]),
+                                                      title=title, text=(text or "")[:2500])
+                               + (f"\n\n{owner} corrected earlier filing like this — follow the same thinking:\n{taught}"
+                                  if taught else ""),
                                prefer_smart=False, temperature=0.0)
             m = re.search(r"\{.*\}", raw or "", re.S)
             d = json.loads(m.group(0)) if m else {}
@@ -904,6 +916,13 @@ def move_item(item: str, domain: str, category: str = "", sub: str = "") -> dict
             return {"ok": True, "where": dst.relative_to(v).as_posix(), "id": item}
         old_rel = "/".join(rel)
         new = move_note(src, dst)
+        try:                                            # undo, and a lesson: "notes like this belong here"
+            from . import lessons, undo
+            undo.record(f"moved the note {src.stem.replace('_', ' ')} to {found[1]}", "note_move", old=str(src), new=str(new))
+            if len(rel) < 2 or (rel[0], rel[1]) != (domain, found[1]):
+                lessons.learn("filing", src.stem.replace("_", " "), f"{domain}|{found[1]}")
+        except Exception as e:
+            print(f"[brain] couldn't note the correction: {e}")
         plan = load_plan()                              # it no longer needs a question or a check
         plan["items"] = [i for i in plan.get("items", []) if i["rel"] != old_rel]
         plan["checks"] = [c for c in plan.get("checks", []) if c["rel"] != old_rel]
@@ -916,11 +935,21 @@ def move_item(item: str, domain: str, category: str = "", sub: str = "") -> dict
         return {"ok": True, "where": new.relative_to(v).as_posix(), "id": f"note:{new}"}
     if s is None:
         raise ValueError("The brain isn't ready.")
-    _placements()
+    was = _placements().get(item)
     with s.lock:
         s.db.execute("INSERT OR REPLACE INTO placement(item, domain, category) VALUES(?,?,?)",
                      (item, domain, found[1] if found else ""))
         s.db.commit()
+    try:
+        from . import lessons, undo
+        undo.record(f"moved an item to {found[1] if found else domain}", "placement", item=item, was=list(was) if was else None)
+        if item.startswith("memory:") and found:
+            with s.lock:
+                row = s.db.execute("SELECT text FROM memories WHERE id=?", (item[7:],)).fetchone()
+            if row:
+                lessons.learn("filing", row["text"][:80], f"{domain}|{found[1]}")
+    except Exception as e:
+        print(f"[brain] couldn't note the correction: {e}")
     write_status_boards()
     return {"ok": True, "where": "/".join(x for x in (domain, found[1] if found else "") if x), "id": item}
 
@@ -949,6 +978,11 @@ def delete_item(item: str) -> dict:
         dst = unique(bin_ / f"{dt.datetime.now():%Y%m%d-%H%M%S}_{src.name}")
         rel = src.resolve().relative_to(vault().resolve()).as_posix()
         shutil.move(str(src), str(dst))
+        try:
+            from . import undo
+            undo.record(f"deleted the note {src.stem.replace('_', ' ')}", "note_delete", old=str(src), kept=str(dst))
+        except Exception:
+            pass
         if s:
             with s.lock:
                 s.db.execute("DELETE FROM chunks WHERE path=?", (str(src),))

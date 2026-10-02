@@ -4,6 +4,34 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.31.0] — 2026-10-02
+### Added
+- **Personal budget with slips and claims.** Send a photo of a till slip or invoice (Telegram, the 📎 on the
+  dashboard, or "add this slip") and Nova reads the shop, date, total and items, files the picture with a small note
+  under **Personal → Finance & Budgets → Slips**, and adds it to the month. Say it's a claim ("slip for my work
+  claim", "medical aid claim") and it goes to **Claims**, shows as *waiting on you* until you mark it submitted,
+  then paid. "How much have I spent this month?" shows a card with a bar per category against its budget;
+  "set my groceries budget to 6000"; "export my work claims" makes a folder with a spreadsheet and the slips.
+  A receipt is recognised even when you don't say it is one. Pictures only for now — a PDF invoice is filed as a
+  document, add its amount by hand.
+- **Undo.** "Undo that" puts back the last thing Nova changed: a moved, written or created file or folder, a note
+  she moved or deleted in the brain, something she remembered, a reminder, a budget entry, her personality. What
+  can't be taken back (a sent message, a file in the Recycle Bin) she says plainly. "What can I undo?" lists it.
+- **Learns from your corrections.** Move a note she misfiled and notes like it go to the right place next time
+  (and the filing model sees your corrections). Change a slip's category and that shop keeps it. Tell her how you
+  want something done and it is kept as a standing preference that is always in her instructions.
+  "What have you learned?" lists it; "forget the lesson about …" removes one.
+- **Weekly report.** Fridays at 16:00 (Settings → Reports) or "write my weekly report": what moved, what's stuck,
+  what's due next week — from your tracked work items, meetings, new work documents and next week's calendar.
+  Saved under Work → Meetings & Reports → Weekly_Reports; optionally also a Gmail **draft** to your manager (never
+  sent). Personal items are left out, and it is written without jokes.
+- **Activity review.** Sundays at 18:00 or "what did you do for me this week": how many requests and from where,
+  how fast, what was used most, what keeps failing, what you undid, and which skills you haven't touched in a month.
+- **Personality: witty, and it stays that way.** Dry humour, the odd joke, a mild swear word now and then — never
+  aimed at you, never in anything written for other people, and not when you sound stressed or it's late.
+  Settings → General → Personality (witty / warm / professional / minimal, swearing on or off), or just say
+  "be professional" / "stop swearing".
+
 ## [2.30.0] — 2026-10-02
 ### Added
 - **The phone connection restores itself after a phone restart.** A restart switches the network connection off.

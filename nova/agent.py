@@ -77,6 +77,9 @@ DIRECT = [
                 r"(?:phone|cell ?phone|galaxy)(?: please| now)?[.!?]?$", re.I), "phone_ring"),
     (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:locate|track|where(?:'s| is)) my "
                 r"(?:phone|cell ?phone|galaxy)(?: please| now| right now)?[.!?]?$", re.I), "phone_locate"),
+    (re.compile(r"^(?:hey |ok |please |no[,!]? ?|oops[,!]? ?)?(?:nova[,!]? )?(?:please )?(?:undo|revert|take (?:that|it) back|"
+                r"put (?:that|it) back)(?: (?:that|it|this|the last (?:thing|one|action|change)|what you (?:just )?did))?"
+                r"(?: please| now)?[.!]?$", re.I), "undo_last"),
     (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:show|open|mirror|display) (?:me )?(?:my|the) "
                 r"(?:phone|phone'?s|galaxy|cell ?phone)(?:'s)? ?(?:screen)?(?: on (?:the|my) (?:pc|computer|screen))?"
                 r"(?: please| now)?[.!]?$", re.I), "phone_show_screen"),
@@ -379,7 +382,10 @@ Rules:
 
 - The dashboard shows the weather, PC stats, screen time and headlines by itself when you use those tools. For other
   information the user wants to SEE (lists, figures, comparisons, briefings), also call show_on_screen.
-- For "what should I do / I'm stuck / brain dump" use the focus tools: one thing at a time, kindly, never guilt.{self._style()}
+- For "what should I do / I'm stuck / brain dump" use the focus tools: one thing at a time, kindly, never guilt.
+- When {a.owner} corrects HOW you did something (too long, wrong tone, wrong format, "always…", "never…"), fix it and
+  save the rule with remember(kind="preference") so you get it right next time.
+- A photo of a slip, receipt or invoice goes to add_slip. "Undo that" is undo_last.{self._persona()}{self._style()}{self._learned()}
 
 What you remember that may be relevant ({a.owner}'s memories and notes):
 {about or "(nothing saved yet)"}{playbook_text}"""
@@ -389,5 +395,34 @@ What you remember that may be relevant ({a.owner}'s memories and notes):
         try:
             from .wellbeing import style_hint
             return style_hint()
+        except Exception:
+            return ""
+
+    def _persona(self) -> str:
+        """Nova's standing personality (Settings → General). Witty unless changed."""
+        a = self.cfg.assistant
+        style = str(a.get("personality", "witty") or "witty").lower()
+        if style == "professional":
+            return "\nPersonality: businesslike and to the point. No jokes, no swearing."
+        if style == "minimal":
+            return "\nPersonality: as few words as possible. No jokes, no swearing."
+        if style == "warm":
+            return "\nPersonality: friendly and encouraging, a light touch of humour now and then. No swearing."
+        swear = (" An occasional mild swear word (damn, bloody, hell, crap, bugger, shit) is welcome for emphasis or "
+                 f"sympathy — sparingly, never aimed at {a.owner}, never slurs or anything crude."
+                 if a.get("swearing", True) else " No swearing.")
+        return (f"\nPersonality: quick, dry wit — a sharp friend who happens to run {a.owner}'s life. Drop in a joke, a "
+                "tease or a wry aside now and then (about one reply in three), never forced and never instead of the "
+                f"answer.{swear} Keep ALL humour and swearing out of anything written for other people (messages, "
+                f"emails, documents, reports), out of yes/no confirmations, and out of moments when {a.owner} sounds "
+                "stressed, upset or unwell — then be plain and kind.")
+
+    @staticmethod
+    def _learned() -> str:
+        try:
+            from . import lessons
+            prefs = lessons.preferences(8)
+            return ("\n\nHow the user wants things done (learned from their corrections — always follow):\n"
+                    + "\n".join(f"- {p}" for p in prefs)) if prefs else ""
         except Exception:
             return ""

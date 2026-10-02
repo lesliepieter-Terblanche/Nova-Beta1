@@ -402,6 +402,11 @@
   .step summary .ms { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
   .step pre { font-size: 12px !important; margin-top: 8px !important; max-height: 220px; overflow: auto; background: rgba(0,0,0,.25); padding: 8px; border-radius: 8px; }
   .quote { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
+  .bud-top { display: flex; align-items: baseline; gap: 12px; margin: 2px 0 16px; } .bud-top b { font: 700 34px var(--display, var(--body)); color: #fff; } .bud-top span { color: var(--muted); font-size: 13.5px; }
+  .bud-row { margin: 0 0 12px; } .bud-hd { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 5px; } .bud-hd i { font-style: normal; color: var(--muted); font-weight: 400; }
+  .bud-bar { position: relative; height: 10px; border-radius: 99px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .bud-bar u { position: absolute; inset: 0 auto 0 0; background: rgba(255,255,255,.14); border-radius: 99px; } .bud-bar s { position: absolute; inset: 0 auto 0 0; border-radius: 99px; text-decoration: none; }
+  .bud-top b.over, .bud-hd b.over { color: #fca5a5; }
   .bars { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.06); margin: 6px 0 4px; }
   .bars span { display: block; height: 100%; }
   .skill { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: rgba(255,255,255,.025); }
@@ -1818,7 +1823,7 @@ function showCard(c) {
   closeStage(true);
   const d = c.data || {}, body = $("stage-body");
   stage.kind = c.kind; $("stage-title").textContent = c.title || "Nova"; $("stage-sub").textContent = "";
-  $("stage-kind").textContent = { weather: "⛅", pc: "🖥", screen_time: "🧭", news: "📰", loadshedding: "⚡", image: "🖼" }[c.kind] || "✦";
+  $("stage-kind").textContent = { weather: "⛅", pc: "🖥", screen_time: "🧭", news: "📰", loadshedding: "⚡", image: "🖼", budget: "💳" }[c.kind] || "✦";
   const PAL = palette();
   if (c.kind === "weather") {
     body.innerHTML = `<iframe title="Weather" src="/weather?embed=1&day=${+d.day || 0}" allowtransparency="true" class="lift"></iframe>`;
@@ -1862,6 +1867,17 @@ function showCard(c) {
     body.innerHTML = `<div class="donut-wrap">${donutSvg(apps.map((a) => ({ v: a.seconds })))}<div class="donut-legend">${apps.map((a, i) =>
       `<div class="lift" style="box-shadow:none"><i style="background:${PAL[i % PAL.length]}"></i><span>${esc(a.app)}</span><b>${esc(a.text)} · ${a.share}%</b></div>`).join("")}</div></div>` +
       (d.drift?.length ? `<div class="stage-foot">Drift: ${d.drift.map((x) => `${esc(x.what)} ${esc(x.text)}`).join(" · ")}</div>` : "");
+  } else if (c.kind === "budget") {                          // this month's spending: a bar per category against its budget
+    const R = (v) => "R" + Number(v || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const cats = d.categories || [], top = Math.max(1, ...cats.map((x) => Math.max(x.spent, x.budget || 0)));
+    $("stage-sub").textContent = d.month_name || "";
+    const over = d.budget && d.total > d.budget;
+    body.innerHTML = `<div class="bud-top"><b class="${over ? "over" : ""}">${R(d.total)}</b><span>${d.budget ? `of ${R(d.budget)} budget · ${over ? R(d.total - d.budget) + " over" : R(d.budget - d.total) + " left"}` : "spent so far"}</span></div>` +
+      (cats.length ? cats.map((x, i) => { const bad = x.budget && x.spent > x.budget;
+        return `<div class="bud-row"><div class="bud-hd"><span>${esc(x.category)}</span><b class="${bad ? "over" : ""}">${R(x.spent)}${x.budget ? ` <i>/ ${R(x.budget)}</i>` : ""}</b></div>` +
+          `<div class="bud-bar"><u style="width:${x.budget ? (100 * x.budget / top).toFixed(1) : 0}%"></u><s style="width:${(100 * x.spent / top).toFixed(1)}%;background:${bad ? "#f87171" : PAL[i % PAL.length]}"></s></div></div>`; }).join("")
+        : `<div class="muted">Nothing recorded yet — send a photo of a slip.</div>`) +
+      (d.claims?.to_claim || d.claims?.submitted ? `<div class="stage-foot">${[d.claims.to_claim ? `🧾 Still to claim: ${R(d.claims.to_claim.total)} (${d.claims.to_claim.count})` : "", d.claims.submitted ? `⏳ Claimed, not yet paid: ${R(d.claims.submitted.total)}` : ""].filter(Boolean).join(" · ")}</div>` : "");
   } else {
     body.innerHTML = infoHtml(d.text);
   }

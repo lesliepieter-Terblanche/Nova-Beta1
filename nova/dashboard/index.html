@@ -142,8 +142,6 @@
       radial-gradient(ellipse 60% 45% at 6% 75%, rgba(175,205,230,.45), transparent 70%), linear-gradient(160deg, #f6f9fc, #e3ecf4 60%, #edf3f8); }
   body.light .vignette, body.light .grain { display: none; }
   body.light .empty { color: #4a5d75; }
-  @media (max-width: 1250px) { #tree { padding-right: 16px; padding-left: 16px; } .rcol { display: none; }
-    .rcol.show { display: flex; top: auto; bottom: 92px; max-height: 60vh; } .rcol.show #tiles { display: none; } }
   @media (max-width: 900px) {
     #tree { top: 118px; bottom: 106px; padding: 4px 10px 12px; }
     .panes { grid-template-columns: 1fr; gap: 30px; } .elbows { width: 0; height: 10px; }
@@ -752,7 +750,6 @@
   .legend.min { padding: 10px 44px 10px 14px; }
   .ask { bottom: 40px; }
   .feed { bottom: 96px; }
-  @media (min-width: 1251px) and (max-width: 1640px) { .bchip { display: none; } }
   @media (max-width: 900px) { .ask { bottom: 36px; } .rail { bottom: 108px; } }
   .ctx { position: fixed; z-index: 30; display: none; min-width: 230px; max-width: 300px; max-height: 80vh; overflow-y: auto; padding: 6px;
     border-radius: 12px; background: var(--glass-strong); border: 1px solid var(--line-strong); }
@@ -769,10 +766,30 @@
   .dir small.act { color: #fff; } .dir small.act.ip { background: var(--st-ip); color: #06202e; } .dir small.act.wait { background: var(--st-wait); }
   .pane .sum .fold { background: none; border: 0; padding: 0; color: var(--muted); font: inherit; cursor: pointer; text-decoration: underline dotted; }
   .pane .sum .fold:hover { color: #fff; }
+  /* v2.20: title top-centre, overview on the left, bottlenecks only top-right */
+  .mtitle { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 3; flex: none; padding: 0; visibility: visible !important; }
+  @media (max-width: 1180px) { .mtitle { display: none; } }
+  #tree { top: 96px; }
+  .root-wrap .stem { width: 2px; height: 10px; background: linear-gradient(var(--personal), var(--work)); display: block; }
+  .elbows { height: 22px; } .elbows i { margin-top: 0 !important; }
+  .stats { position: fixed; left: 18px; top: 156px; width: 236px; z-index: 3; display: block; padding: 38px 8px 8px; }
+  .stats .railhd { position: absolute; top: 13px; left: 14px; font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .stats .statlist { display: grid; gap: 2px; }
+  .stats .stat { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 10px; padding: 7px 10px; min-width: 0; border-radius: 10px; }
+  .stats .stat .l { margin: 0; grid-column: 1; grid-row: 1; font-size: 11.5px; }
+  .stats .stat .n { grid-column: 2; grid-row: 1; font-size: 19px; color: #6fc3ff; }
+  .stats .stat .sub { grid-column: 1 / -1; min-height: 0; margin: 0; } .stats .stat .sub:empty { display: none; }
+  .stats.min { width: auto; padding: 10px 44px 10px 14px; cursor: pointer; } .stats.min .statlist { display: none; } .stats.min .railhd { position: static; }
+  .rail:not(.min) { z-index: 6; }
+  .rcol { max-height: none; }
+  @media (max-width: 1250px) { #tree { padding-left: 16px; padding-right: 16px; top: 150px; } .stats { top: 100px; left: 70px; }
+    .rcol { display: flex; top: 100px; width: auto; max-width: 236px; } .stats:not(.min), .bneck:not(.min) { z-index: 6; } }
+  @media (max-width: 900px) { .stats { display: none; } #tree { top: 118px; } .rcol { top: 66px; right: 10px; } .bneck:not(.has) { display: none; } }
 </style>
 </head>
 <body>
 <main id="tree" aria-label="Second Brain master index"></main>
+<div class="mtitle"><b>SECOND BRAIN</b><span>OPERATIONAL DASHBOARD · MASTER INDEX</span></div>
 <div class="vignette"></div>
 <div class="grain"></div>
 
@@ -784,16 +801,7 @@
       <div class="status">Status: <b id="status">connecting</b> <span class="aud">| Domain audit: <b id="audit">…</b></span></div>
     </div>
   </div>
-  <div class="mtitle" aria-hidden="true"><b>SECOND BRAIN</b><span>OPERATIONAL DASHBOARD · MASTER INDEX</span></div>
   <div class="right">
-  <div class="stats glass">
-    <div class="stat" data-open="project" title="Projects you haven't marked done — click to see and track them"><div class="n" id="s-proj">0</div><div class="l">Projects</div><div class="sub" id="s-proj-sub"></div></div>
-    <div class="stat" data-open="skills" title="Skills Nova can use — click for what each one does"><div class="n" id="s-skills">0</div><div class="l">Skills</div><div class="sub" id="s-skills-sub"></div></div>
-    <div class="stat" data-open="memories" title="Everything Nova has learned"><div class="n" id="s-mem">0</div><div class="l">Memories</div><div class="sub"></div></div>
-    <div class="stat" data-open="notes" title="Notes in your 2nd-brain vault"><div class="n" id="s-notes">0</div><div class="l">Notes</div><div class="sub"></div></div>
-    <div class="stat" data-open="creations" title="Files, sites, videos, ads… Nova made"><div class="n" id="s-art">0</div><div class="l">Creations</div><div class="sub"></div></div>
-    <div class="stat" data-open="actions" title="Every request and the steps Nova took"><div class="n" id="s-act">0</div><div class="l">Actions</div><div class="sub"></div></div>
-  </div>
     <button class="gear glass" id="filing-btn" title="Brain filing: 01_Personal / 02_Work — review moves and questions" aria-label="Brain filing" style="border:1px solid var(--line);cursor:pointer;font-size:18px;color:var(--text);position:relative">🗂<span class="badge" id="filing-badge"></span></button>
     <button class="gear glass" id="focus-btn" title="Focus mode — one thing at a time (F)" aria-label="Focus mode" style="border:1px solid var(--line);cursor:pointer;font-size:20px;color:var(--text)">◎</button>
     <button class="gear glass" id="phone-btn" title="Open Nova on your phone (Tailscale)" aria-label="Open on phone" style="border:1px solid var(--line);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
@@ -801,6 +809,21 @@
     <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
   </div>
 </header>
+
+<aside class="stats glass" id="stats" aria-label="Overview">
+  <div class="railhd">Overview</div>
+  <button class="minbtn" id="stats-min" title="Minimise" aria-label="Minimise overview">▾</button>
+  <div class="statlist">
+    <div class="stat" data-open="project" title="Projects you haven't marked done — click to see and track them"><div class="n" id="s-proj">0</div><div class="l">Projects</div><div class="sub" id="s-proj-sub"></div></div>
+    <div class="stat" data-open="skills" title="Skills Nova can use — click for what each one does"><div class="n" id="s-skills">0</div><div class="l">Skills</div><div class="sub" id="s-skills-sub"></div></div>
+    <div class="stat" data-open="memories" title="Everything Nova has learned"><div class="n" id="s-mem">0</div><div class="l">Memories</div><div class="sub"></div></div>
+    <div class="stat" data-open="notes" title="Notes in your 2nd-brain vault"><div class="n" id="s-notes">0</div><div class="l">Notes</div><div class="sub"></div></div>
+    <div class="stat" data-open="creations" title="Files, sites, videos, ads… Nova made"><div class="n" id="s-art">0</div><div class="l">Creations</div><div class="sub"></div></div>
+    <div class="stat" data-open="actions" title="Every request and the steps Nova took"><div class="n" id="s-act">0</div><div class="l">Actions</div><div class="sub"></div></div>
+    <div class="stat" data-open="people" title="Everyone you deal with — one card each"><div class="n" id="s-people">0</div><div class="l">People</div><div class="sub"></div></div>
+    <div class="stat" data-open="missions" title="Goals Nova works on by itself"><div class="n" id="s-miss">0</div><div class="l">Missions</div><div class="sub"></div></div>
+  </div>
+</aside>
 
 <aside class="rail glass" id="rail">
   <div class="railhd"><i></i>Brain</div>
@@ -846,7 +869,6 @@
   <button class="minbtn" id="bneck-min" title="Minimise" aria-label="Minimise bottlenecks">▾</button>
   <ul id="bneck-list"></ul>
 </section>
-<div id="tiles"></div>
 </div>
 
 <section class="legend glass" id="legend" aria-label="Colour legend key">
@@ -854,15 +876,10 @@
   <button class="minbtn" id="legend-min" title="Minimise" aria-label="Minimise colour key">▾</button>
   <div id="legend-body"><div class="lk c">Green = [COMPLETED]</div><div class="lk i">Blue = [IN-PROGRESS]</div><div class="lk w">Red = [WAITING-ON-USER]</div><div class="lk b">Grey = [BACKLOG]</div></div>
 </section>
-<button class="bchip glass" id="bneck-chip">ACTIVE BOTTLENECKS: 0</button>
 <div class="ctx glass" id="ctx" role="menu"></div>
 <div class="ticker" id="ticker"><span class="tab" id="ticker-state">System optimized</span><span class="msg" id="ticker-text">MONITORING ACTIVE.</span></div>
 
-<section class="feed glass" id="feed">
-  <button class="minbtn" id="feed-min" title="Minimise" aria-label="Minimise live activity">▾</button>
-  <h3><span class="live"></span>Live activity <span class="newn" id="feed-new"></span></h3>
-  <ul id="feed-list"></ul>
-</section>
+<section id="feed" hidden><span id="feed-new"></span><ul id="feed-list"></ul></section>
 
 <div class="focus" id="focus" aria-label="Focus mode"><div class="fx" id="fx"></div></div>
 <div class="reply glass" id="reply"></div>
@@ -1014,8 +1031,7 @@ function renderTree() {
         m.unfiled.sort(order).slice(0, rowLimit).map(rowHtml).join("")}${m.unfiled.length > rowLimit ? `<li class="f more"><button class="trow" data-filing="1">+ ${m.unfiled.length - rowLimit} more — open the filing review</button></li>` : ""}</ul></li>` : "") +
       dirs.map((x) => dirHtml(x, 0)).join("") + `</ul></section>`;
   }
-  const root = `<div class="root-wrap"><button class="rootb" id="rootb">${FOLDER}<span>Second Brain</span></button>` +
-    `<div class="elbows"><i class="l"${flows[DOMAINS[0]] ? ` data-flow="${flows[DOMAINS[0]]}"` : ""}></i><i class="r"${flows[DOMAINS[1]] ? ` data-flow="${flows[DOMAINS[1]]}"` : ""}></i></div></div>`;
+  const root = `<div class="root-wrap"><i class="stem"></i><div class="elbows"><i class="l"${flows[DOMAINS[0]] ? ` data-flow="${flows[DOMAINS[0]]}"` : ""}></i><i class="r"${flows[DOMAINS[1]] ? ` data-flow="${flows[DOMAINS[1]]}"` : ""}></i></div></div>`;
   const html = root + `<div class="panes">${h}</div>`;
   if (html !== lastHtml) {
     const keep = [...treeEl.querySelectorAll(".pane")].map((p) => p.scrollTop), top = treeEl.scrollTop;
@@ -1046,7 +1062,6 @@ treeEl.addEventListener("click", (e) => {
   if (filing) return loadFiling(true);
   if (more) { const id = more.dataset.more; expanded.has(id) ? expanded.delete(id) : expanded.add(id); return renderTree(); }
   if (dom) { dom.closest(".pane").scrollTo({ top: 0, behavior: "smooth" }); return; }
-  if (e.target.closest("#rootb")) { closePanel(); treeEl.scrollTo({ top: 0, behavior: "smooth" }); return; }
   const dir = e.target.closest("button.dir");
   if (dir) {
     const id = dir.parentElement.dataset.dir;
@@ -1120,10 +1135,7 @@ function flyTo(n) {
 function renderBottlenecks() {
   const list = data.bottlenecks || [], el = $("bneck");
   el.classList.toggle("has", list.length > 0);
-  const first = list[0] ? ` (${list[0].text.length > 26 ? list[0].text.slice(0, 25) + "…" : list[0].text})` : "";
   $("bneck-n").textContent = list.length;
-  $("bneck-chip").textContent = `ACTIVE BOTTLENECKS: ${list.length}${first}`;
-  $("bneck-chip").classList.toggle("has", list.length > 0);
   $("bneck-list").innerHTML = list.length ? list.map((b, i) =>
     `<li data-i="${i}" class="${b.id ? "link" : ""}"><span class="dm">${b.domain === DOMAINS[0] ? "Personal" : "Work"}</span><span class="t">${esc(b.text)}${b.why ? `<small>${esc(b.why)}</small>` : ""}</span></li>`).join("")
     : `<li class="none">Nothing is waiting on you.</li>`;
@@ -1134,9 +1146,7 @@ function renderBottlenecks() {
   $("ticker-text").textContent = `${pending ? `REALIGNMENT PENDING: ${pending} ITEM${pending === 1 ? "" : "S"} AWAIT YOUR APPROVAL.` : "REALIGNMENT COMPLETE."} MONITORING ACTIVE. SYSTEM STATUS: ${list.length ? `${list.length} BOTTLENECK${list.length === 1 ? "" : "S"}` : "STABLE"}.`;
   $("ticker").classList.toggle("warn", list.length > 0 || !!pending);
   const count = (f) => data.nodes.filter(f).length;
-  const tiles = [["project", "Projects", count((n) => n.isProject || n.kind === "project")], ["memories", "Memories", count((n) => MEMORY_KINDS.includes(n.kind) && !n.isPerson)],
-    ["people", "People", count((n) => n.isPerson)], ["creations", "Creations", count((n) => familyOf(n.kind) === "cube")], ["missions", "Missions", count((n) => n.kind === "mission")]];
-  $("tiles").innerHTML = tiles.map(([k, label, n], i) => `<button class="tile glass" data-open="${k}"><span class="tn">0${i + 1}</span><span class="tl">${label}</span><b>${n}</b></button>`).join("");
+  $("s-people").textContent = count((n) => n.isPerson); $("s-miss").textContent = count((n) => n.kind === "mission");
 }
 function openBottleneck(i) {
   const b = (data.bottlenecks || [])[i]; if (!b?.id) return;
@@ -1144,12 +1154,9 @@ function openBottleneck(i) {
   const n = nodeById.get(b.id); if (n) { flyTo(n); select(n); } else openById(b.id);
 }
 $("bneck-list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) openBottleneck(+li.dataset.i); });
-$("bneck-chip").onclick = () => {
-  if ((data.bottlenecks || []).length === 1) return openBottleneck(0);
-  $("bneck").classList.remove("min"); document.querySelector(".rcol").classList.toggle("show");
-};
 $("bneck-min").onclick = (e) => { e.stopPropagation(); $("bneck").classList.toggle("min"); };
-$("tiles").addEventListener("click", (e) => { const b = e.target.closest("[data-open]"); if (b) openTopic(b.dataset.open); });
+$("bneck").addEventListener("click", (e) => { if ($("bneck").classList.contains("min") && !e.target.closest("#bneck-min")) $("bneck").classList.remove("min"); });
+if (innerWidth < 1250) $("bneck").classList.add("min");
 window.novaTree = { data: () => data, render: renderTree };
 
 // light up everything that belongs to one project / person
@@ -1477,18 +1484,18 @@ function setMin(id, on) {
   store_.set("nova.min." + id, on ? "1" : "0");
   if (id === "rail") { btn.textContent = on ? "☰" : "‹"; btn.title = on ? "Show panel (M)" : "Minimise (M)"; }
   else if (id === "legend") { btn.textContent = on ? "▴" : "▾"; btn.title = on ? "Show colour key" : "Minimise"; }
-  else { btn.textContent = on ? "▴" : "▾"; btn.title = on ? "Show live activity" : "Minimise"; if (!on) { feedNew = 0; $("feed-new").classList.remove("show"); } }
+  else { btn.textContent = on ? "▴" : "▾"; btn.title = on ? "Show the overview" : "Minimise"; }
 }
-for (const id of ["rail", "feed", "legend"]) {
+for (const id of ["rail", "stats", "legend"]) {
   $(id + "-min").onclick = (e) => { e.stopPropagation(); setMin(id, !$(id).classList.contains("min")); };
   $(id).addEventListener("click", () => { if ($(id).classList.contains("min")) setMin(id, false); });
   const saved = store_.get("nova.min." + id);
-  if (saved === "1" || (saved == null && (id !== "legend" || innerWidth < 900))) setMin(id, true);    // the index gets the room
+  if (saved === "1" || (saved == null && (id === "rail" || innerWidth < 1250))) setMin(id, true);    // the index gets the room
 }
 document.addEventListener("keydown", (e) => {
   if ((e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
     const all = !$("rail").classList.contains("min");
-    setMin("rail", all); setMin("feed", all); setMin("legend", all);
+    setMin("rail", all); setMin("stats", all); setMin("legend", all);
   }
 });
 
@@ -1694,7 +1701,7 @@ async function poll() {
         ul.prepend(li);
       }
       while (ul.children.length > 80) ul.lastChild.remove();
-      if (!first && $("feed").classList.contains("min")) {
+      if (false) {
         feedNew += r.events.length;
         $("feed-new").textContent = feedNew > 99 ? "99+" : feedNew; $("feed-new").classList.add("show");
       }

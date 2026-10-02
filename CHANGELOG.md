@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.20.0] — 2026-10-02
+### Changed — tidier Master Index
+- **Live activity panel removed** — the status lines on the index show what is happening.
+- **Overview block on the left** (Projects, Skills, Memories, Notes, Creations, Actions, People, Missions) with a
+  minimise button; click a row to list those items. It replaces the counters in the header and on the right.
+- **Page title top-centre:** SECOND BRAIN · OPERATIONAL DASHBOARD · MASTER INDEX. The small "Second Brain" block under
+  it is gone; the lines to both sides start from the title.
+- **One bottleneck block only** (top right); the duplicate chip at the bottom right is removed.
+
 ## [2.19.1] — 2026-10-02
 ### Changed — folders expand and collapse
 - Every folder and sub-folder has a ▸ / ▾ arrow: click to collapse or expand it. **Expand all / Collapse all** per

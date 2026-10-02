@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.27.4] — 2026-10-02
+### Fixed
+- **"Set up my phone" no longer depends on the model.** Nova once answered it with a made-up PowerShell command
+  instead of doing the setup. The request (also "connect my phone", "reconnect my Galaxy"…) now goes straight to the
+  phone setup, and Nova is told never to hand you commands, scripts or invented paths to run yourself.
+
 ## [2.27.3] — 2026-10-02
 ### Docs
 - New screenshots on the GitHub page: the Master Index in the Vivid look, opening and right-clicking an item, the

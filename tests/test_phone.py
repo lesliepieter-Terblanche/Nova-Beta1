@@ -168,3 +168,20 @@ def test_calling_asks_first_and_phone_tools_are_offered(fone, nova):
     assert REGISTRY["phone_call"].run({"number": "+27 82 555 0100"}) == "Calling +27825550100 from your phone."
     names = {t.name for t in select_tools("what notifications are on my phone?")}
     assert {"phone_notifications", "do_on_phone", "phone_status"} <= names
+
+
+def test_set_up_my_phone_goes_straight_to_the_tool(nova, monkeypatch):
+    """The model must never improvise this (it once made up a PowerShell command): no model call at all."""
+    from nova import context
+    from nova.agent import DIRECT, Agent
+    from nova.skills import phone as skill
+    calls = []
+    monkeypatch.setattr(skill.ph, "phone", lambda: type("P", (), {"setup": lambda self: calls.append(1) or "Your Galaxy S24+ is connected."})())
+    agent = Agent(nova[0], context.llm)
+    context.llm.queue = []                                    # any model call would fail on the empty queue
+    for said in ("set up my phone", "Set up my phone.", "Nova, connect my phone", "please setup my Galaxy", "reconnect my S24 plus again"):
+        assert agent.handle(said, "voice").text == "Your Galaxy S24+ is connected.", said
+    assert len(calls) == 5
+    for other in ("call my phone provider about the bill", "set up my phone plan comparison", "what's on my phone screen"):
+        assert not any(p.match(other) for p, _ in DIRECT), other
+    assert "Never give" in agent._system_prompt("voice", "hi")

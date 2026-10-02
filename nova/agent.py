@@ -68,6 +68,14 @@ class Pending:
     created: float = field(default_factory=time.time)
 
 
+# Requests that must never be improvised: they go straight to the tool, without asking the model.
+DIRECT = [
+    (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:set ?up|connect(?: to)?|re-?connect(?: to)?|pair|link)"
+                r" (?:my|the) (?:phone|cell ?phone|galaxy|android(?: phone)?|s\d\d(?: ?(?:plus|ultra|\+))?)"
+                r"(?: (?:again|now|please|to (?:you|nova|the pc|my pc|the computer)))*[.!]?$", re.I), "phone_setup"),
+]
+
+
 class Agent:
     def __init__(self, cfg, llm):
         self.cfg, self.llm = cfg, llm
@@ -141,6 +149,13 @@ class Agent:
             if NO.match(text):
                 return self._resume(session, text, p, approved=False)
             # Anything else: treat as a new request and drop the pending action.
+
+        for pattern, name in DIRECT:
+            t = REGISTRY.get(name)
+            if t is not None and pattern.match(text):
+                out = self._run_tool(session, t, {})
+                self._remember(session, text, out)
+                return out
 
         history = self.histories.setdefault(session, [])
         books = matching_playbooks(text)
@@ -275,6 +290,9 @@ Rules:
 - Dates: pass natural phrases like "tomorrow 3pm" or ISO times; the tools understand both.
 - File paths: use full paths or paths inside Documents, Desktop, Downloads or the workspace folder.
 - If a request is ambiguous, ask one short question.
+- Never give {a.owner} commands, scripts, code or file paths to run or type themselves (PowerShell, cmd, adb…) and
+  never invent program names or paths. Do it with a tool; if no tool can do it, say plainly that you can't yet.
+- Anything about the phone (connect, set up, status, apps, screen) is done ONLY with the phone_ tools.
 - You have a permanent memory. It learns automatically after each conversation; use the remember tool when
   {a.owner} explicitly asks you to remember something, and correct_memory when you are corrected.
 

@@ -232,3 +232,77 @@ def test_screenshot_shows_on_the_dashboard(nova, monkeypatch):
     out = REGISTRY["phone_screenshot"].run({})
     card = [c for c in cards.recent(before) if c["kind"] == "image"][-1]
     assert card["data"]["id"].startswith("artifact:") and card["data"]["path"] in out and "saved on the PC" in out
+
+
+class ChatPhone:
+    """A WhatsApp chat: a message box, a Send button, and the keyboard's Paste bubble after a long press."""
+    def __init__(self):
+        self.box, self.focused, self.bubble, self.sent, self.log = "", False, False, [], []
+
+    def connect(self): return ""
+    def status(self): return {"screen_on": True, "locked": False, "app": "com.whatsapp"}
+    def wake(self): pass
+
+    def screen(self):
+        els = [{"id": 1, "text": "Karen", "type": "TextView", "tap": False, "edit": False, "checked": False, "focused": False, "x": 500, "y": 150, "res": "conversation_contact_name"},
+               {"id": 2, "text": self.box or "Message", "type": "EditText", "tap": True, "edit": True, "checked": False, "focused": self.focused, "x": 480, "y": 2200, "res": "entry"},
+               {"id": 3, "text": "Send", "type": "ImageButton", "tap": True, "edit": False, "checked": False, "focused": False, "x": 1000, "y": 2200, "res": "send"}]
+        if self.bubble:
+            els.append({"id": 4, "text": "Paste", "type": "TextView", "tap": True, "edit": False, "checked": False, "focused": False, "x": 300, "y": 2080, "res": ""})
+        return els
+
+    def tap(self, x, y):
+        self.log.append(("tap", x, y))
+        if (x, y) == (480, 2200):
+            self.bubble, self.focused = self.focused, True          # tapping a box that has the cursor → Paste bubble
+        elif (x, y) == (1000, 2200):
+            self.sent.append(self.box)
+            self.box = ""
+
+    def long_press(self, x, y):
+        self.log.append(("long", x, y))
+        self.bubble = True
+
+    def type(self, text):
+        self.log.append(("type", text))
+        if self.focused:
+            self.box += text
+            self.bubble = False
+
+    def key(self, name):
+        self.bubble = False
+        return True
+
+
+def test_writes_and_sends_a_whatsapp_message(nova, monkeypatch):
+    import json as _json
+    from nova import phone as ph
+    monkeypatch.setattr(ph.time, "sleep", lambda s: None)
+    p, seen = ChatPhone(), []
+
+    class Script:
+        steps = [{"do": "long_press", "id": 2},                  # the model's old mistake: brings up Paste
+                 {"do": "type", "text": "test", "id": 2},
+                 {"do": "tap", "id": 3},
+                 {"do": "done", "summary": "Sent 'test' to Karen."}]
+
+        def complete(self, prompt, **kw):
+            seen.append(prompt)
+            return _json.dumps(self.steps[len(seen) - 1])
+
+    out = ph.run_task('On my phone, open WhatsApp, find the chat with Karen, type "test" and send it.', p=p, llm=Script(), pause=0)
+    assert out == "Done on your phone: Sent 'test' to Karen." and p.sent == ["test"]      # written by Nova and sent
+    assert ("long", 480, 2200) not in p.log and p.log.count(("tap", 480, 2200)) == 1          # no Paste bubble raised
+    assert "is ready — use" in seen[1] and "it is in the text box now; next: tap Send" in seen[2]
+    assert "Paste" not in seen[1].split("Steps so far")[0].split("On screen")[1]              # never offered to the model
+    # a task that doesn't say "send" still stops before the Send button
+    p2, seen2 = ChatPhone(), []
+
+    class Script2(Script):
+        steps = [{"do": "type", "text": "running late", "id": 2}, {"do": "tap", "id": 3}]
+
+        def complete(self, prompt, **kw):
+            seen2.append(prompt)
+            return _json.dumps(self.steps[len(seen2) - 1])
+    out = ph.run_task("WhatsApp Karen that I'm running late", p=p2, llm=Script2(), pause=0)
+    assert "I stopped before tapping 'Send'" in out and p2.sent == [] and p2.box == "running late"

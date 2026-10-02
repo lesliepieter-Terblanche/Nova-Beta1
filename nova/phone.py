@@ -247,6 +247,7 @@ class Phone:
                 continue
             out.append({"id": len(out) + 1, "text": text[:120], "type": a.get("class", "").rsplit(".", 1)[-1],
                         "tap": clickable, "edit": editable, "checked": a.get("checked") == "true",
+                        "focused": a.get("focused") == "true",
                         "x": (x0 + x1) // 2, "y": (y0 + y1) // 2, "res": a.get("resource-id", "").rsplit("/", 1)[-1]})
         return out
 
@@ -391,7 +392,17 @@ Choose the ONE next action. JSON only, one of:
 {{"do": "open_url", "url": "https://…"}}      {{"do": "wait", "seconds": 2}}
 {{"do": "done", "summary": "what was done / what you found, one or two sentences"}}
 {{"do": "ask", "question": "what you need from {owner}"}}
+To write text ALWAYS use "type" with the text box's id — never long-press a text box and never paste (the clipboard
+isn't yours). After typing a message, tap the Send button to send it. Check "Steps so far" before repeating a step.
 Never enter a PIN, password or bank details. Say done as soon as the task is complete."""
+
+BUBBLE = {"paste", "clipboard", "select all", "paste as plain text"}      # the keyboard's pop-up, never useful to Nova
+
+
+def typed_ok(els: list[dict], text: str) -> bool:
+    """Did the text arrive in a text box?"""
+    want = re.sub(r"\s+", " ", text).strip().lower()[:24]
+    return bool(want) and any(e["edit"] and want in re.sub(r"\s+", " ", e["text"]).lower() for e in els)
 
 _stop = threading.Event()
 _busy = threading.Lock()
@@ -421,6 +432,8 @@ def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = 
     _stop.clear()
     owner = context.cfg.assistant.owner if context.cfg else "the user"
     history: list[str] = []
+    if re.search(r"\bsend\b", goal, re.I) and "send" not in (allow or "").lower():
+        allow = (allow + " send").strip()             # "send Karen a message" is itself the permission to send it
     try:
         err = p.connect()
         if err:
@@ -441,8 +454,9 @@ def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = 
                 history.append(f"{step}. (couldn't read the screen: {e})")
             by_id = {e["id"]: e for e in els}
             listing = "\n".join(f"{e['id']}. {e['type']} '{e['text']}'" + (" [tap]" if e["tap"] else "")
-                                + (" [edit]" if e["edit"] else "") + (" [on]" if e["checked"] else "")
-                                for e in els[:140]) or "(nothing readable)"
+                                + (" [edit]" if e["edit"] else "") + (" [focused]" if e.get("focused") else "")
+                                + (" [on]" if e["checked"] else "")
+                                for e in els[:140] if e["text"].strip().lower() not in BUBBLE) or "(nothing readable)"
             raw = llm.complete(AGENT_PROMPT.format(
                 owner=owner, goal=goal, allowed=f"{owner} has approved: {allow}." if allow else "",
                 app=p.status()["app"] if step == 1 else history[-1] if history else "", elements=listing,
@@ -472,15 +486,38 @@ def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = 
                     time.sleep(pause)
                 elif do in ("tap", "long_press"):
                     el = by_id[int(act["id"])]
-                    (p.tap if do == "tap" else p.long_press)(el["x"], el["y"])
-                    note = f"Tapped '{el['text'] or el['res']}'"
+                    if el["edit"] and (do == "long_press" or el.get("focused")):
+                        note = (f"The text box '{el['text'] or el['res']}' is ready — use "
+                                f'{{"do": "type", "text": "…", "id": {el["id"]}}} to write in it')
+                        if not el.get("focused"):
+                            p.tap(el["x"], el["y"])       # a long press only brings up Paste: a tap is what's needed
+                    else:
+                        (p.tap if do == "tap" else p.long_press)(el["x"], el["y"])
+                        note = f"Tapped '{el['text'] or el['res']}'"
                 elif do == "type":
-                    if act.get("id") and int(act["id"]) in by_id:
-                        el = by_id[int(act["id"])]
-                        p.tap(el["x"], el["y"])
-                        time.sleep(0.5)
-                    p.type(str(act.get("text", "")))
-                    note = f"Typed '{str(act.get('text', ''))[:40]}'"
+                    text = str(act.get("text", ""))
+                    box = by_id.get(int(act["id"])) if str(act.get("id") or "").isdigit() else None
+                    box = box if box and box["edit"] else next((e for e in els if e["edit"] and e.get("focused")), None) \
+                        or next((e for e in els if e["edit"]), None)
+                    if box and not box.get("focused"):   # tapping a box that already has the cursor brings up "Paste"
+                        p.tap(box["x"], box["y"])
+                        time.sleep(0.6)
+                    p.type(text)
+                    time.sleep(0.4)
+                    landed = None
+                    try:
+                        landed = typed_ok(p.screen(), text)
+                        if not landed and box:           # the keyboard wasn't ready: once more
+                            p.key("escape")
+                            p.tap(box["x"], box["y"])
+                            time.sleep(0.8)
+                            p.type(text)
+                            time.sleep(0.4)
+                            landed = typed_ok(p.screen(), text)
+                    except Exception:
+                        pass
+                    note = f"Typed '{text[:40]}'" + (" — it is in the text box now; next: tap Send" if landed else
+                                                    " — but it did NOT appear in a text box" if landed is False else "")
                 elif do == "key":
                     note = f"Pressed {act.get('key')}" if p.key(str(act.get("key", ""))) else f"No key {act.get('key')}"
                 elif do == "swipe":

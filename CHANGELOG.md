@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.27.6] — 2026-10-02
+### Fixed — writing messages on the phone
+- Nova now **types the message herself**. She used to long-press or double-tap the message box, which only brought up
+  the keyboard's *Paste* bubble; she never does that now, never pastes, and the Paste bubble is hidden from her.
+- After typing she checks that the text really is in the box (and tries once more if the keyboard wasn't ready), then
+  taps Send.
+- Asking her to **send** a message ("send Karen a WhatsApp…") is itself the permission to press Send for that task.
+  Tasks that don't say "send" still stop before the Send button, as do paying, deleting and calling.
+
 ## [2.27.5] — 2026-10-02
 ### Fixed
 - **"Send it to my Telegram" now really sends the file.** Asked by voice or on the dashboard, the file used to go

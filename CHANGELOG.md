@@ -27,7 +27,19 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
   the phone can't be reached and when it is back, and warns once when the battery is low. "Reconnect my phone" no
   longer asks for the cable unless the phone was restarted.
 
-### Fixed
+### Fixed — phone tasks that ran away
+One WhatsApp request ended in duplicate messages, random apps opening, a detour into Messenger, a 👍 sent there and
+an attempt at a different contact. Each of those is now blocked in the code, not left to the model:
+- **A message is sent once.** The task ends the instant Send is pressed, the same text is never typed twice, and the
+  same message isn't sent again within a minute.
+- **One phone task per request.** When it doesn't work out, Nova tells you what happened; she doesn't try another
+  app or another way by herself.
+- **A message stays in the app you named** and **only goes to the person you named**: nothing is typed or sent
+  unless their name is showing on the screen. If she can't find the chat she stops and says so.
+- **App names are never guessed.** "The messaging app" used to open whichever app had the shortest matching name.
+- **Like / thumbs-up / react / share / forward / record / accept / block** buttons count as risky: "send" doesn't
+  cover them.
+- A task that keeps producing nothing sensible stops after three tries instead of running on.
 - **"whatsapp Karen Smith I love you"** used to end with "I couldn't finish that in a reasonable number of steps":
   Nova tapped through WhatsApp one small step at a time. A sentence that starts with whatsapp / sms / telegram /
   signal and a name now goes straight to one send-message action.

@@ -95,4 +95,5 @@ def nova(tmp_path):
     context.speech = FakeSpeech()
     from nova.skills import load_all
     load_all()
+    context.begin_turn("test")
     return cfg, tmp_path

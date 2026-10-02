@@ -27,6 +27,16 @@ _local = threading.local()
 def begin_turn(session: str = "") -> None:
     _local.files = []
     _local.session = session
+    _local.counts = {}
+
+
+def count(name: str) -> int:
+    """How many times `name` has now happened in this request (1 the first time)."""
+    c = getattr(_local, "counts", None)
+    if c is None:
+        c = _local.counts = {}
+    c[name] = c.get(name, 0) + 1
+    return c[name]
 
 
 def session() -> str:

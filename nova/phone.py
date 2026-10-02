@@ -43,7 +43,8 @@ APPS = {"whatsapp": "com.whatsapp", "whatsapp business": "com.whatsapp.w4b", "ch
         "instagram": "com.instagram.android", "tiktok": "com.zhiliaoapp.musically", "teams": "com.microsoft.teams",
         "outlook": "com.microsoft.office.outlook", "tailscale": "com.tailscale.ipn", "netflix": "com.netflix.mediaclient",
         "capcut": "com.lemon.lvoverseas", "canva": "com.canva.editor", "drive": "com.google.android.apps.docs",
-        "photos": "com.google.android.apps.photos", "uber": "com.ubercab", "takealot": "fi.android.takealot"}
+        "photos": "com.google.android.apps.photos", "messenger": "com.facebook.orca",
+        "facebook messenger": "com.facebook.orca", "signal": "org.thoughtcrime.securesms", "uber": "com.ubercab", "takealot": "fi.android.takealot"}
 MESSAGING = {"com.whatsapp": "WhatsApp", "com.whatsapp.w4b": "WhatsApp Business",
              "com.samsung.android.messaging": "Messages", "com.google.android.apps.messaging": "Messages",
              "org.telegram.messenger": "Telegram", "org.thoughtcrime.securesms": "Signal",
@@ -88,7 +89,9 @@ STREAMS = {"volume": 3, "media volume": 3, "music volume": 3, "ring volume": 2, 
 SHELL_FAIL = re.compile(r"(exception|unknown command|not found|no shell command|permission denial|usage:|"
                         r"can't find service|error:)", re.I)
 RISKY = re.compile(r"\b(send|pay|payment|purchase|buy|order|checkout|delete|remove|erase|submit|transfer|confirm|"
-                   r"uninstall|post|publish|call|dial|book|subscribe|factory reset|sign out|log out)\b", re.I)
+                   r"uninstall|post|publish|call|dial|book|subscribe|factory reset|sign out|log out|"
+                   r"like|thumbs?(?: up)?|react|reaction|sticker|gif|emoji|forward|share|record|voice message|"
+                   r"video chat|audio call|block|report|unfriend|follow|accept|invite)\b", re.I)
 
 
 def cfg() -> dict:
@@ -442,14 +445,19 @@ class Phone:
         return [p.removeprefix("package:").strip() for p in self.sh("pm list packages").splitlines() if p.strip()]
 
     def find_app(self, name: str) -> str:
+        """The installed app this name means — '' unless it is clearly one app (a wrong guess opens a random app)."""
         n = name.lower().strip()
-        if "." in n and " " not in n:
+        if re.fullmatch(r"[a-z0-9_]+(\.[a-z0-9_]+)+", n):
             return n
+        n = re.sub(r"\b(the|my|app|application|android|samsung|google)\b", " ", n)
+        n = re.sub(r"\s+", " ", n).strip()
         pkgs = self.packages()
-        if APPS.get(n) in pkgs:
-            return APPS[n]
-        words = [w for w in re.split(r"\W+", n) if w]
-        hits = [p for p in pkgs if all(w in p.lower() for w in words)]
+        if n in APPS:
+            return APPS[n] if APPS[n] in pkgs else ""
+        words = [w for w in re.split(r"\W+", n) if len(w) >= 4]
+        if not words:
+            return ""
+        hits = [p for p in pkgs if all(w in re.split(r"[._]", p.lower()) for w in words)]   # whole name parts only
         return sorted(hits, key=len)[0] if hits else ""
 
     def open_app(self, name: str) -> str:
@@ -541,6 +549,8 @@ Choose the ONE next action. JSON only, one of:
 {{"do": "open_url", "url": "https://…"}}      {{"do": "wait", "seconds": 2}}
 {{"do": "done", "summary": "what was done / what you found, one or two sentences"}}
 {{"do": "ask", "question": "what you need from {owner}"}}
+Do exactly the task and nothing more. If you cannot find the person, chat or button, use "ask" — never try a different
+app, a different person or a different way on your own.
 To write text ALWAYS use "type" with the text box's id — never long-press a text box and never paste (the clipboard
 isn't yours). After typing a message, tap the Send button to send it. Check "Steps so far" before repeating a step.
 Never enter a PIN, password or bank details. Say done as soon as the task is complete."""
@@ -602,6 +612,22 @@ def quick(text: str, p: "Phone") -> str | None:
     return None
 
 
+SEND_BUTTON = re.compile(r"(^|[\s_/])send($|[\s_/])", re.I)
+REPEAT_SECONDS = 60
+_recent: dict[str, float] = {}                # tasks that ended in a Send, and when — the same one isn't sent twice
+
+
+def names_on_screen(els: list[dict], who: str) -> bool:
+    """Is this person's name showing (the chat header, the To: line)? Every word of the name must be there."""
+    words = [w for w in re.split(r"\W+", who.lower()) if w]
+    return bool(words) and any(all(w in re.split(r"\W+", e["text"].lower()) for w in words)
+                               for e in els if not e["edit"])
+
+
+def _key(text: str) -> str:
+    return re.sub(r"\W+", " ", text.lower()).strip()
+
+
 _stop = threading.Event()
 _busy = threading.Lock()
 
@@ -616,20 +642,33 @@ def risky(action: dict, by_id: dict, allow: str) -> str | None:
     if action.get("do") in ("tap", "long_press"):
         el = by_id.get(int(action.get("id") or 0), {})
         text = f"{el.get('text', '')} {el.get('res', '').replace('_', ' ')}"
-    m = RISKY.search(text)
-    if not m:
-        return None
-    word = m.group(1).lower()
-    return None if allow and word in allow.lower() else word
+    ok = (allow or "").lower()
+    for m in RISKY.finditer(text):                    # every risky word on the button must have been allowed
+        word = m.group(1).lower()
+        if word not in ok:
+            return word
+    return None
 
 
-def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = None, llm=None, pause: float = 1.2) -> str:
+def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = None, llm=None, pause: float = 1.2,
+             only: str = "", to: str = "") -> str:
+    """only: the one app this task may open (a message for WhatsApp never wanders off into another app).
+    to: the one person a message may go to — Send is only pressed while their name is on the screen."""
     p, llm = p or phone(), llm or context.llm
+    again = _recent.get(_key(goal))
+    if again and time.time() - again < REPEAT_SECONDS:
+        return ("I sent exactly that a moment ago, so I haven't sent it again. If you do want it twice, ask me "
+                "again in a minute.")
     if not _busy.acquire(blocking=False):
         return "I'm already busy on the phone — say 'stop the phone task' first."
     _stop.clear()
     owner = context.cfg.assistant.owner if context.cfg else "the user"
     history: list[str] = []
+    typed: str | None = None                          # the text that is sitting in the message box, not yet sent
+    opened: list[str] = []                            # apps opened in this task
+    lost = 0                                          # steps in a row where nothing sensible came back
+    strays = 0                                        # tries to leave the one app this task is for
+    wrong = 0                                         # tries to write while the right chat isn't open
     if re.search(r"\bsend\b", goal, re.I) and "send" not in (allow or "").lower():
         allow = (allow + " send").strip()             # "send Karen a message" is itself the permission to send it
     try:
@@ -666,21 +705,58 @@ def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = 
                 act = {}
             do = act.get("do")
             if not do:
+                lost += 1
+                if lost >= 3:
+                    return ("I got stuck on the phone and stopped rather than guess. Done so far: "
+                            f"{'; '.join(h for h in history[-5:] if 'decide' not in h) or 'nothing'}.")
                 history.append(f"{step}. (couldn't decide)")
                 continue
+            lost = 0
             if do == "done":
                 return f"Done on your phone: {act.get('summary', goal)}"
             if do == "ask":
                 return f"I need you: {act.get('question', '')}"
             word = risky(act, by_id, allow)
+            target_el = by_id.get(int(act.get("id") or 0), {}) if str(act.get("id") or "").isdigit() else {}
+            sending = do == "tap" and SEND_BUTTON.search(f"{target_el.get('text', '')} {target_el.get('res', '')}")
+            searching = do == "type" and to and _key(str(act.get("text", ""))) and \
+                _key(str(act.get("text", ""))) in _key(to)          # typing the person's name into the search box
+            if to and (sending or do == "type") and not searching and not names_on_screen(els, to):
+                if do == "type":                     # not in their chat yet: don't write anything anywhere else
+                    wrong += 1
+                    if wrong >= 3:
+                        return (f"I stopped: I couldn't find the chat with {to}, so nothing was written or sent. "
+                                "Is that the name exactly as it shows in the app?")
+                    history.append(f"{step}. NOT typed: the chat with {to} is not open yet — open it first "
+                                   f"(search for {to})")
+                    time.sleep(pause)
+                    continue
+                return (f"I stopped before sending: the chat on screen isn't with {to}, so nothing was sent.")
             if word:
                 target = by_id.get(int(act.get("id") or 0), {}).get("text", "")
                 return (f"I stopped before tapping '{target}' on your phone — that would {word} something. Everything "
                         f"is ready. Say 'go ahead and {word}' and I'll finish it.")
             try:
                 if do == "open_app":
-                    pkg = p.open_app(str(act.get("name", "")))
-                    note = f"Opened {act.get('name')}" if pkg else f"Couldn't find an app called {act.get('name')}"
+                    want = str(act.get("name", ""))
+                    pkg = p.find_app(want)
+                    if not pkg:
+                        note = f"There is no app called {want} on this phone — do not try other app names"
+                    elif only and pkg != p.find_app(only):
+                        strays += 1
+                        if strays >= 2:
+                            return (f"I stopped: this was meant to happen in {only} only, and I was drifting into "
+                                    f"other apps. Nothing was sent. Done so far: {'; '.join(history[-4:]) or 'nothing'}.")
+                        note = f"NOT allowed: this task happens in {only} only — do not open {want}"
+                    elif pkg in opened:
+                        note = f"{want} is ALREADY open — carry on inside it (tap, type, swipe), do not open it again"
+                    elif len(opened) >= 3:
+                        return (f"I stopped: this task was opening one app after another ({', '.join(opened)}). "
+                                "Tell me the steps a little more exactly and I'll try again.")
+                    else:
+                        opened.append(pkg)
+                        p.open_app(pkg)
+                        note = f"Opened {want}"
                     time.sleep(pause)
                 elif do in ("tap", "long_press"):
                     el = by_id[int(act["id"])]
@@ -692,8 +768,19 @@ def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = 
                     else:
                         (p.tap if do == "tap" else p.long_press)(el["x"], el["y"])
                         note = f"Tapped '{el['text'] or el['res']}'"
+                        if typed and do == "tap" and SEND_BUTTON.search(f"{el['text']} {el['res']}"):
+                            # The message is on its way. Stop HERE: the box is empty again, and going round once
+                            # more is how the same message got sent two and three times.
+                            _recent[_key(goal)] = time.time()
+                            if context.store:
+                                context.store.log("phone", "phone", f"📱 Sent: {typed[:80]}", turn=0)
+                            return f'Done on your phone: sent "{typed[:200]}".'
                 elif do == "type":
                     text = str(act.get("text", ""))
+                    if typed is not None and _key(text) == _key(typed):
+                        history.append(f"{step}. '{text[:40]}' is ALREADY in the text box — do not type it again; tap Send")
+                        time.sleep(pause)
+                        continue
                     box = by_id.get(int(act["id"])) if str(act.get("id") or "").isdigit() else None
                     box = box if box and box["edit"] else next((e for e in els if e["edit"] and e.get("focused")), None) \
                         or next((e for e in els if e["edit"]), None)
@@ -714,6 +801,8 @@ def run_task(goal: str, allow: str = "", max_steps: int = 25, p: Phone | None = 
                             landed = typed_ok(p.screen(), text)
                     except Exception:
                         pass
+                    if landed is not False and not searching:
+                        typed = text
                     note = f"Typed '{text[:40]}'" + (" — it is in the text box now; next: tap Send" if landed else
                                                     " — but it did NOT appear in a text box" if landed is False else "")
                 elif do == "key":

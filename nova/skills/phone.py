@@ -26,6 +26,15 @@ def _ready() -> str:
         return f"I couldn't start the Android connection tool: {e}"
 
 
+def _one_task() -> str:
+    """One phone task per request: when it didn't work out, Nova reports back instead of trying another way herself
+    (that is how one WhatsApp message turned into duplicates and a detour through Messenger)."""
+    if context.count("phone_task") > 1:
+        return ("STOP: one phone task has already been run for this request. Do not start another one or try a "
+                "different app. Tell the user exactly what happened and ask what they would like to do next.")
+    return ""
+
+
 @tool(group="phone")
 def phone_setup() -> str:
     """Connect Nova to the user's Android phone (first time, or after the phone was restarted). The phone must be
@@ -214,6 +223,8 @@ def do_on_phone(task: str, allowed: str = "") -> str:
         task: what to do, in plain words with every detail needed
         allowed: risky actions the USER explicitly approved in their own words, e.g. "send" (empty = none)
     """
+    if again := _one_task():
+        return again
     return ph.run_task(task, allowed)
 
 
@@ -381,7 +392,11 @@ def phone_send_message(to: str, text: str, app: str = "", send: bool = True) -> 
         app = last["app"]
     if not text.strip():
         return "What should the message say?"
-    return ph.run_task(ph.message_task(to.strip(), text.strip(), app or "whatsapp", send), "send" if send else "")
+    if again := _one_task():
+        return again
+    name = ph.MESSAGE_APPS.get((app or "whatsapp").lower().strip(), app or "WhatsApp")
+    return ph.run_task(ph.message_task(to.strip(), text.strip(), app or "whatsapp", send), "send" if send else "",
+                       only={"Messages": "messages"}.get(name, name.lower()), to=to.strip())
 
 
 # ── saved routines ────────────────────────────────────────

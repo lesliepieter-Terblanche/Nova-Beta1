@@ -150,6 +150,7 @@ def test_do_on_phone_stops_before_sending(fone):
     assert "input tap 540 280" in adb.shell and any(c.startswith('input text "Running') for c in adb.shell)
     assert "input tap 1000 2160" not in adb.shell                       # the Send button was NOT pressed
     steps = iter([{"do": "tap", "id": 3}, {"do": "done", "summary": "Message sent to Sam."}])
+    context.begin_turn("voice")                                         # "go ahead" is a new request
     out = REGISTRY["do_on_phone"].run({"task": "send it", "allowed": "send"})
     assert out == "Done on your phone: Message sent to Sam." and "input tap 1000 2160" in adb.shell
 
@@ -291,7 +292,7 @@ def test_writes_and_sends_a_whatsapp_message(nova, monkeypatch):
             return _json.dumps(self.steps[len(seen) - 1])
 
     out = ph.run_task('On my phone, open WhatsApp, find the chat with Karen, type "test" and send it.', p=p, llm=Script(), pause=0)
-    assert out == "Done on your phone: Sent 'test' to Karen." and p.sent == ["test"]      # written by Nova and sent
+    assert out == 'Done on your phone: sent "test".' and p.sent == ["test"] and len(seen) == 3   # ends AT Send
     assert ("long", 480, 2200) not in p.log and p.log.count(("tap", 480, 2200)) == 1          # no Paste bubble raised
     assert "is ready — use" in seen[1] and "it is in the text box now; next: tap Send" in seen[2]
     assert "Paste" not in seen[1].split("Steps so far")[0].split("On screen")[1]              # never offered to the model
@@ -440,8 +441,10 @@ def test_reading_messages_and_replying_in_the_same_app(rich, monkeypatch):
     REGISTRY["phone_send_message"].run({"to": "", "text": "Yes, see you then"})   # "reply" = whoever was read last
     assert tasks[-1][1] == "send" and "Open Telegram, open the chat with Karen Smith" in tasks[-1][0]
     assert '"Yes, see you then" — then tap Send.' in tasks[-1][0]
+    context.begin_turn("voice")
     REGISTRY["phone_send_message"].run({"to": "Sam", "text": "Draft only", "app": "sms", "send": False})
     assert tasks[-1][1] == "" and "Open Messages" in tasks[-1][0] and "WITHOUT sending" in tasks[-1][0]
+    context.begin_turn("voice")
     REGISTRY["phone_send_message"].run({"to": "Sam", "text": "Quote attached", "app": "outlook"})
     assert "Open Outlook, start a new email to Sam" in tasks[-1][0]
     REGISTRY["phone_messages"].run({"sender": "Thabo"})                           # nothing waiting: read the chat itself
@@ -553,3 +556,90 @@ def test_where_is_my_phone(rich, nova, monkeypatch):
     assert "https://www.google.com/maps?q=-26.107600,28.056800" in out
     monkeypatch.setattr(p, "sh", lambda cmd, timeout=25: "")
     assert "Location may be off" in REGISTRY["phone_locate"].run({})
+
+
+def test_a_message_is_sent_once_never_two_or_three_times(fone, monkeypatch):
+    """After Send the box is empty again; the model used to go round once more and send the same message again."""
+    p, adb, _ = fone
+    monkeypatch.setattr(ph, "_recent", {})
+    monkeypatch.setattr(ph, "typed_ok", lambda els, text: True)
+    asked = []
+
+    def model(*a, **k):                                        # a model that would happily keep typing and sending
+        asked.append(1)
+        return json.dumps([{"do": "open_app", "name": "whatsapp"}, {"do": "tap", "id": 1},
+                           {"do": "type", "text": "On my way", "id": 2}, {"do": "type", "text": "On my way", "id": 2},
+                           {"do": "tap", "id": 3}, {"do": "type", "text": "On my way", "id": 2},
+                           {"do": "tap", "id": 3}][min(len(asked) - 1, 6)])
+    context.llm.complete = model
+    goal = ph.message_task("Sam Dlamini", "On my way")
+    out = ph.run_task(goal, "send", pause=0)
+    assert out == 'Done on your phone: sent "On my way".'
+    assert adb.shell.count("input tap 1000 2160") == 1                              # Send pressed exactly once
+    assert sum(c.startswith('input text "On%smy%sway"') for c in adb.shell) == 1    # and typed exactly once
+    assert len(asked) == 5                                                          # stopped right after Send
+    again = ph.run_task(goal, "send", pause=0)                                      # the same request straight after
+    assert "haven't sent it again" in again and adb.shell.count("input tap 1000 2160") == 1
+    monkeypatch.setattr(ph, "REPEAT_SECONDS", 0)                                    # a minute later it's allowed
+    asked.clear()
+    assert ph.run_task(goal, "send", pause=0).startswith("Done on your phone: sent")
+
+
+def test_a_message_task_stays_in_its_app_and_is_not_retried_another_way(rich, monkeypatch):
+    p, adb, _ = rich
+    monkeypatch.setattr(ph, "_recent", {})
+    real = adb.__call__
+    p._run = lambda args, timeout=25, binary=False: (0, "package:com.whatsapp\npackage:com.facebook.orca\npackage:com.spotify.music") \
+        if args[-1] == "pm list packages" else real(args, timeout, binary)
+    steps = iter([{"do": "open_app", "name": "whatsapp"}, {"do": "open_app", "name": "messenger"},
+                  {"do": "open_app", "name": "facebook messenger"}])
+    context.llm.complete = lambda *a, **k: json.dumps(next(steps))
+    context.begin_turn("voice")
+    out = REGISTRY["phone_send_message"].run({"to": "Fritz", "text": "Hi", "app": "whatsapp"})
+    assert "meant to happen in whatsapp only" in out and "Nothing was sent" in out
+    assert not any("com.facebook.orca" in c for c in adb.shell)                   # Messenger was never opened
+    # the model may not start a second phone task for the same request ("let me try Messenger instead")
+    assert REGISTRY["phone_send_message"].run({"to": "Fritz", "text": "Hi", "app": "messenger"}).startswith("STOP:")
+    assert REGISTRY["do_on_phone"].run({"task": "message Fritz on Messenger"}).startswith("STOP:")
+    context.begin_turn("voice")                                                   # a new request is a clean slate
+    assert not REGISTRY["do_on_phone"].run({"task": "x"}).startswith("STOP:")
+
+
+def test_app_names_are_never_guessed(rich):
+    p, adb, _ = rich
+    real = adb.__call__
+    p._run = lambda args, timeout=25, binary=False: (0, "package:com.whatsapp\npackage:com.sec.android.app.camera\npackage:com.android.settings\npackage:com.sec.android.app.popupcalculator") \
+        if args[-1] == "pm list packages" else real(args, timeout, binary)
+    p.connect()
+    assert p.find_app("WhatsApp") == "com.whatsapp" and p.find_app("the camera app") == "com.sec.android.app.camera"
+    assert p.find_app("settings") == "com.android.settings" and p.find_app("calculator") == "com.sec.android.app.popupcalculator"
+    for junk in ("the messaging app", "an app", "chat with Fritz", "sec", "facebook messenger", "pop", "spotify"):
+        assert p.find_app(junk) == "", junk                   # these used to open whichever app's name was shortest
+
+
+def test_send_only_in_the_right_persons_chat_and_never_a_thumbs_up(nova, monkeypatch):
+    """A message for Fritz once went to the wrong chat, and a 👍 was sent in Messenger: both are blocked now."""
+    monkeypatch.setattr(ph.time, "sleep", lambda s: None)
+    monkeypatch.setattr(ph, "_recent", {})
+    p = ChatPhone()                                            # the chat on screen is with Karen
+
+    class Script:
+        def __init__(self, steps):
+            self.steps, self.n = steps, 0
+
+        def complete(self, prompt, **kw):
+            self.n += 1
+            return json.dumps(self.steps[min(self.n, len(self.steps)) - 1])
+
+    out = ph.run_task(ph.message_task("Fritz Smith", "Hi"), "send", p=p, pause=0, to="Fritz Smith",
+                      llm=Script([{"do": "type", "text": "Hi", "id": 2}]))
+    assert "couldn't find the chat with Fritz Smith" in out and p.sent == [] and p.box == ""   # nothing written
+    out = ph.run_task(ph.message_task("Fritz Smith", "Hi"), "send", p=p, pause=0, to="Fritz Smith",
+                      llm=Script([{"do": "tap", "id": 3}]))
+    assert "isn't with Fritz Smith" in out and p.sent == []
+    out = ph.run_task(ph.message_task("Fritz Smith", "Hi"), "send", p=p, pause=0, to="Fritz Smith", max_steps=2,
+                      llm=Script([{"do": "type", "text": "Fritz", "id": 2}]))                     # searching for him is fine
+    assert ("type", "Fritz") in p.log and p.sent == []
+    assert ph.names_on_screen(p.screen(), "karen") and not ph.names_on_screen(p.screen(), "Karen Jones")
+    for label in ("Send a like", "Thumbs up", "Share", "Forward", "Video chat"):
+        assert ph.risky({"do": "tap", "id": 1}, {1: {"text": label, "res": ""}}, "send"), label   # 'send' ≠ these

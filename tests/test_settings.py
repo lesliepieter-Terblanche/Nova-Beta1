@@ -94,3 +94,40 @@ def test_dashboard_rejects_foreign_hosts_and_origins(nova, cfgfiles):
     assert call("/api/settings", {"Origin": "http://evil.example", "Content-Type": "application/json"}, {}) == 403
     assert call("/api/settings", {"Origin": "http://127.0.0.1:8799", "Content-Type": "application/json"},
                 {"values": {"dashboard.theme.rows": 8}}) == 200
+
+
+def test_fast_everyday_model_is_chosen_once(cfgfiles, tmp_path, monkeypatch):
+    cfg, env = cfgfiles
+    for k in ("GROQ_API_KEY", "GEMINI_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    env.write_text("GROQ_API_KEY=\nGEMINI_API_KEY=\n")
+    assert settings.prefer_fast_model(tmp_path) == ""                  # no key yet: nothing changes, asks again later
+    assert settings.get_path(settings.load_doc(), "llm.primary") == "ollama"
+    env.write_text("GROQ_API_KEY=gsk_test\nGEMINI_API_KEY=\n")
+    assert settings.prefer_fast_model(tmp_path) == "groq" and "Groq" in settings.notice
+    assert settings.get_path(settings.load_doc(), "llm.primary") == "groq"
+    assert "# Hybrid" in cfg.read_text()                               # the file's comments survive
+    settings.apply({"values": {"llm.primary": "ollama"}})              # you switch back by hand…
+    assert settings.prefer_fast_model(tmp_path) == ""                  # …and it stays your choice
+    assert settings.get_path(settings.load_doc(), "llm.primary") == "ollama"
+
+
+def test_local_model_is_last_resort_and_not_kept_loaded_with_a_cloud_everyday_model(monkeypatch):
+    from nova.config import load_config
+    from nova.llm import LLM
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_test")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
+    c = load_config(ROOT / "config.example.yaml")
+    c["llm"]["primary"] = "groq"
+    llm = LLM(c)
+    assert [p.name for p in llm.order(False)] == ["groq", "ollama"]
+    assert [p.name for p in llm.order(True)][-1] == "ollama"
+    import httpx
+    posted = []
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: posted.append(a))
+    llm.warm_up(quiet=True)
+    assert posted == []                                                # the graphics card stays free
+    c["llm"]["primary"] = "ollama"
+    LLM(c).warm_up(quiet=True)
+    assert len(posted) == 1

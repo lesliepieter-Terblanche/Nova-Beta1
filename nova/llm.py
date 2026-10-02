@@ -222,6 +222,9 @@ class LLM:
         """Load the local models into memory now and keep them there, so the first command isn't slow."""
         import httpx
         keep = self.keep_alive
+        everyday = self.providers.get(self.primary)
+        if everyday is not None and not everyday.local:
+            return     # a cloud model does the everyday thinking: leave the graphics card free; the local one loads if needed
         first = [self.providers[n] for n in [self.primary] if n in self.providers]
         for p in first + list(self.providers.values()):
             if not p.local:
@@ -242,6 +245,7 @@ class LLM:
 
     def order(self, prefer_smart: bool) -> list[Provider]:
         names = ([self.primary] + self.smart) if not prefer_smart else (self.smart + [self.primary])
+        names = names + ["ollama"]        # the local model is always the last resort (offline, or every key failing)
         seen, out = set(), []
         for n in names:
             if n in self.providers and n not in seen:

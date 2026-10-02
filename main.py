@@ -26,6 +26,12 @@ from nova.store import Store
 
 def build():
     cfg = load_config()
+    try:                                    # one time: a fast cloud model for everyday use if a key is there
+        from nova import settings as _settings
+        if _settings.prefer_fast_model(resolve(cfg.brain.db_file).parent):
+            cfg = load_config()
+    except Exception as e:
+        print(f"[llm] fast-model check skipped: {e}")
     context.cfg = cfg
     b = cfg.brain
     context.store = Store(resolve(b.db_file), cfg.llm.providers.ollama.base_url, b.embed_model)
@@ -300,6 +306,13 @@ def main() -> None:
         def _brain_check():
             import time
             time.sleep(45)                   # let the models warm up first
+            try:
+                from nova import settings as _settings
+                if _settings.notice:
+                    context.push(_settings.notice)
+                    _settings.notice = ""
+            except Exception:
+                pass
             try:
                 taxonomy.startup_check()
             except Exception as e:

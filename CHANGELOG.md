@@ -4,6 +4,17 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.23.0] — 2026-10-02
+### Changed — a fast model for everyday thinking (4 GB graphics cards)
+- **One-time switch:** if your everyday model is still the local one and a Groq key is in Settings (or, failing that,
+  a Gemini key), Nova makes that cloud model the everyday one at the next start and tells you. No key yet? Add one in
+  Settings → API keys and it happens at the following start. After that the choice is yours and Nova never changes
+  it again (Settings → AI brain → Everyday model).
+- **The local model is always the last resort** — when the internet is down or every key fails — whatever the lists
+  say.
+- With a cloud everyday model the local model is no longer kept loaded, so the graphics card's memory stays free
+  (the fallback then needs a few seconds to load the first time it is used).
+
 ## [2.22.0] — 2026-10-02
 ### Changed — voice first: Nova starts talking while she is still writing the answer
 - **Live speech.** The model's answer is now streamed, and the first sentence goes to the voice the moment it is

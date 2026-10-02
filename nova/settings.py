@@ -654,6 +654,45 @@ def _validate_routines(items) -> list:
     return out
 
 
+FAST_MARK = ".fast_everyday_model"
+notice = ""                                   # something to tell the user once Nova is up (see main.py)
+
+
+def prefer_fast_model(mark_dir: Path) -> str:
+    """One time only: if the everyday model is still the local one and a fast cloud key is present, make the cloud
+    model the everyday one (Groq first, then Gemini). The local model stays as the offline fallback. After that the
+    choice is the user's — Settings → AI brain → Everyday model — and this never changes it again.
+    Returns the provider switched to, or ''."""
+    global notice
+    mark = Path(mark_dir) / FAST_MARK
+    if mark.exists():
+        return ""
+    try:
+        doc = load_doc()
+        if str(get_path(doc, "llm.primary", "ollama")) != "ollama":
+            mark.parent.mkdir(parents=True, exist_ok=True)
+            mark.write_text("the everyday model was already chosen by hand\n", encoding="utf-8")
+            return ""
+        env = {**read_env(), **{k: v for k, v in os.environ.items() if k.endswith("_API_KEY")}}
+        new = next((n for n, key in (("groq", "GROQ_API_KEY"), ("gemini", "GEMINI_API_KEY")) if env.get(key, "").strip()), "")
+        if not new:
+            return ""                         # no key yet: try again next start
+        r = apply({"values": {"llm.primary": new}})
+        if r.get("errors"):
+            print(f"[llm] couldn't switch the everyday model: {r['errors']}")
+            return ""
+        mark.parent.mkdir(parents=True, exist_ok=True)
+        mark.write_text(f"switched ollama -> {new}\n", encoding="utf-8")
+        notice = (f"⚡ I now use {new.title()} for everyday thinking — much faster than the local model on this PC's "
+                  "graphics card. The local model is still my fallback when the internet is down. "
+                  "To go back: Settings → AI brain → Everyday model → ollama.")
+        print(f"[llm] everyday model switched to {new} (faster); ollama stays as the offline fallback")
+        return new
+    except Exception as e:
+        print(f"[llm] fast-model check skipped: {e}")
+        return ""
+
+
 def theme() -> dict:
     """Current dashboard theme, read fresh from config.yaml so changes apply without a restart."""
     try:

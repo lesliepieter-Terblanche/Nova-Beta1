@@ -123,6 +123,7 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | `activity.py` | activity | screen time, time spent on an app/site (ActivityWatch; engine + drift nudges in `nova/activity.py`) |
 | `video_edit.py` | video_edit | long video → captioned vertical Shorts, add captions, make vertical, join videos (moviepy) |
 | `web_agent.py` | web_agent | AI web agent (browser-use, own Python via `nova/extras.py`): run/status/stop, log in once, install |
+| `phone.py` | phone | Android phone over ADB + Tailscale: setup, status, screenshot, read screen, open app, keys, notifications, photos, files, call 🔒, do-it-for-me (engine in `nova/phone.py`) |
 | `maintenance.py` | maintenance | updates 🔒, versions, rollback 🔒, restart 🔒, dashboard, extensions status |
 
 After adding or changing tools, regenerate the reference: `python scripts/gen_tool_docs.py`.

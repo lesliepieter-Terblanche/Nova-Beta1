@@ -331,6 +331,26 @@ Offered to the model when you say things like: _web agent, browser agent, on the
 | `web_agent_login` | Open the web agent's own browser so the user can log in to a site once (it remembers the login). | `url`? |
 | `install_web_agent` | Install the AI web agent (browser-use) — one-time, a few minutes, in its own separate Python. | — |
 
+## phone
+
+Offered to the model when you say things like: _my phone, the phone, on my phone, phone's, galaxy, s24, android, cellphone, cell phone, mobile, handset, phone battery_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `phone_setup` | Connect Nova to the user's Android phone (first time, or after the phone was restarted). The phone must be plugged into the PC with USB debugging allowed, or have Wireless debugging on while on the home Wi-Fi. | — |
+| `phone_status` | Is the phone connected, its battery, whether it's locked and which app is open. | — |
+| `phone_screenshot` | Take a screenshot of the phone and attach it. | — |
+| `phone_read_screen` | Read what is on the phone's screen right now (text, buttons, fields) as a numbered list. | — |
+| `phone_open_app` | Open an app on the phone. | `name` |
+| `phone_press` | Press a phone button. | `key` |
+| `phone_notifications` | The notifications currently on the phone (app, title, text). | — |
+| `phone_get_photos` | Copy the newest photos / videos from the phone's camera to the PC and attach them. | `count`? |
+| `phone_put_file` | Copy a file from the PC to the phone's Download folder. | `path` |
+| `phone_open_link` | Open a web page or link on the phone. | `url` |
+| `phone_call` 🔒 | Start a phone call from the user's phone. | `number` |
+| `do_on_phone` | Carry out a multi-step task on the user's phone by reading its screen and tapping / typing, step by step (e.g. "open WhatsApp and write to Sam that I'm running late", "turn on the hotspot", "find the cheapest Uber"). Stops before sending, paying, buying, calling or deleting unless those words are in `allowed`. | `task`, `allowed`? |
+| `stop_phone_task` | Stop the task Nova is doing on the phone. | — |
+
 ## Updates, rollback & extensions
 
 Offered to the model when you say things like: _update, upgrade, roll back, rollback, revert, previous version, version, restart, reboot yourself, dashboard, github, mcp_

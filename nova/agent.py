@@ -22,7 +22,7 @@ from .tools import REGISTRY, Tool, select_tools
 #   irreversible (default) — only things that can't be undone or that reach other people
 #   all — every tool marked risky (the old behaviour) · never — nothing, except clearly destructive shell commands
 IRREVERSIBLE = {"delete_path", "gmail_send", "gmail_reply", "calendar_invite", "calendar_delete", "power_action",
-                "browser_submit", "rollback_version"}
+                "browser_submit", "rollback_version", "phone_call"}
 IRREVERSIBLE_NAME = re.compile(r"(send|delete|remove|trash|publish|post|pay|purchase|transfer|cancel|wipe|erase)",
                                re.I)
 DANGEROUS_SHELL = re.compile(

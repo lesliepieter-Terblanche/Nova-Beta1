@@ -244,6 +244,13 @@ SCHEMA = [
         {"path": "web_agent.chrome_path", "label": "Browser to use (optional)", "type": "text", "default": "",
          "help": "Blank = Chrome, or Edge if there's no Chrome"},
     ]},
+    {"id": "phone", "title": "Phone", "icon": "phone", "fields": [
+        {"path": "phone.address", "label": "Phone's Tailscale address", "type": "text", "default": "",
+         "help": "Filled in by 'Set up my phone' — e.g. 100.101.102.103"},
+        {"path": "phone.name", "label": "Phone", "type": "text", "default": ""},
+        {"path": "phone.adb_path", "label": "adb program (optional)", "type": "text", "default": "",
+         "help": "Blank = Nova downloads Google's Android tools herself (7 MB)"},
+    ]},
     {"id": "activitywatch", "title": "Screen time", "icon": "clock", "fields": [
         {"path": "activitywatch.enabled", "label": "Use ActivityWatch screen time", "type": "bool", "default": True,
          "help": "Free app from activitywatch.net — data stays on this PC"},
@@ -775,6 +782,13 @@ def run_test(kind: str) -> dict:
             if st["state"] == "installing":
                 return {"ok": True, "message": " · ".join(st["log"][-2:]) or "Installing…"}
             return {"ok": True, "message": extras.install(name, extras.announce_done) + " Click again to see progress."}
+        if kind in ("phone_setup", "phone_status"):
+            from . import context as _ctx
+            _ctx.cfg = _ctx.cfg or cfg
+            from .skills import phone as _phone_skill
+            out = _phone_skill.phone_setup() if kind == "phone_setup" else _phone_skill.phone_status()
+            good = "connected" in out and not out.startswith("ERROR")
+            return {"ok": good, "message": out.removeprefix("ERROR: ")}
         if kind == "web_agent_login":
             from . import context as _ctx
             from . import web_agent

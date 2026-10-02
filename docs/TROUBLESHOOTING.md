@@ -187,3 +187,14 @@ lines around the error. Remove keys and personal details first.
 | Tables not found in a PDF | Install docling (Settings → Documents). Scanned PDFs work only with docling. |
 | Nova doesn't hear me / starts on noise | Settings → Voice → **Speech detection sensitivity** (lower = hears softer speech). Or switch to **loudness**. |
 | Shorts take long | Normal: about 1-2 minutes per 40-second clip on a laptop CPU. |
+
+## Phone hands
+
+| Problem | Fix |
+|---|---|
+| USB debugging is greyed out ("blocked by Auto Blocker") | Samsung: Settings → Security and privacy → Auto Blocker → off. It has to stay off while Nova controls the phone. |
+| "I can't see the phone" | Use a data cable (not charge-only), unlock the phone, pull down the notification shade → USB → **File transfer**, and tap **Allow** on "Allow USB debugging?" with *Always allow* ticked. |
+| "I can't reach the phone at 100.x.x.x" | Tailscale must be on on the phone. If the phone was restarted, plug it in and click **Set up my phone** again. |
+| Download of the Android tools fails | Get *SDK Platform-Tools for Windows* from developer.android.com, unzip, and put the path to `adb.exe` in Settings → Phone. |
+| Black screenshot / can't read the screen | Banking, payment and some streaming apps block this on purpose. |
+| "Your phone is locked" | Unlock it yourself — Nova never enters your PIN. |

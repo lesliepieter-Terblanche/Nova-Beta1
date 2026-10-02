@@ -4,6 +4,18 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.15.0] — 2026-10-02
+### Added — 📱 Phone hands (Android, built for the Galaxy S24+)
+- Nova can operate your Android phone over **ADB + Tailscale** — from anywhere, on Wi-Fi or mobile data, no app to
+  install: open apps, read the screen, tap, type, swipe, press buttons, take screenshots, read notifications, copy the
+  newest photos to the PC, put a file on the phone, open a link, start a call (asks first).
+- **"Do it on my phone"**: multi-step tasks by reading the screen and tapping step by step — "open WhatsApp and tell
+  Sam I'm running late". She stops before sending, paying, calling or deleting unless you said she may, never enters
+  your PIN, and leaves a locked phone alone.
+- **Set up once**: Settings → Phone → *Set up my phone* with the phone plugged in (Nova downloads Google's Android
+  tools herself, switches the phone to listen on the network and remembers its Tailscale address). After a phone
+  restart, plug it in for a moment and set up again.
+
 ## [2.14.1] — 2026-10-01
 ### Faster voice replies
 - **Phone / Tailscale:** the written answer now appears the moment it's ready, and the voice is made while the phone

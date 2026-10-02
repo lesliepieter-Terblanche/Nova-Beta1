@@ -101,6 +101,12 @@ dreaming:
   drive_backup: false         # also copy each backup to Google Drive › Nova Backups
 
 # Presence awareness — the webcam notices when you sit down or walk away (face detection, local, nothing saved).
+# Phone hands: Nova operates your Android phone over ADB + Tailscale. Settings → Phone → Set up my phone.
+phone:
+  address: ""                # the phone's Tailscale IP (filled in by setup)
+  name: ""
+  adb_path: ""               # "" = Nova's own copy of Google's Android platform-tools
+
 # Screen time from ActivityWatch (free, activitywatch.net — keeps its data on this PC)
 activitywatch:
   enabled: true

@@ -264,6 +264,7 @@ function show(id) {
 $("#nav").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) show(b.dataset.tab); });
 
 const INTRO = {
+  phone: "Nova can operate your Android phone — open apps, tap, type, read the screen and notifications, take screenshots, copy photos and files — over your Tailscale network, so it works from anywhere. ONE-TIME on the phone: 1) install Tailscale and sign in with the same account as this PC · 2) Settings → Security and privacy → Auto Blocker OFF (Samsung) · 3) Settings → About phone → Software information → tap Build number 7 times · 4) Settings → Developer options → USB debugging ON · 5) plug the phone into this PC, unlock it, tick 'Always allow from this computer' and tap Allow · 6) click 'Set up my phone' below, then unplug. After the phone restarts, plug it in for a moment and click Set up again. Nova stops before sending, paying, calling or deleting unless you say she may, and never enters your PIN. Banking apps block this on purpose.",
   documents: "How Nova reads your files. Word, PowerPoint, Excel, Outlook .msg, EPUB and PDF already work (markitdown). Docling is an optional, bigger reader from IBM that gets tables and scanned PDFs right — and lets Nova pull tables out of a PDF into Excel ('put the tables from this price list into Excel'). It installs into its own separate Python so nothing else is disturbed.",
   images: "Free image generation on your own graphics card with ComfyUI. Install ComfyUI once (github.com/comfyanonymous/ComfyUI — the Windows portable build or ComfyUI Desktop), put a model in ComfyUI/models/checkpoints (on a 4 GB card: an SD 1.5 model such as DreamShaper, or SDXL-Turbo), start it, then say 'make a square image of …'. Fancy looks: build them in ComfyUI, 'Export (API)' and point 'Your own workflow' at the file.",
   web_agent: "An AI that works websites for you in its own Chrome window: portals, forms, deal registrations, invoices, comparing prices. Say 'web agent: …'. It stops right before paying, buying, sending, submitting, booking or deleting unless you say it may. Uses your Gemini (or Groq) key. Install once below (its own separate Python), then 'Open its browser to log in' to sign in to the sites it should use — it remembers them.",
@@ -292,6 +293,7 @@ const TESTS = { voice: [["voice", "Test voice"], ["elevenlabs", "Check ElevenLab
   presence: [["presence", "Try it now"], ["presence_off", "Turn off"]],
   loadshedding: [["loadshedding", "Check my schedule"]],
   documents: [["docling_install", "Install docling (~2 GB)"]],
+  phone: [["phone_setup", "Set up my phone (plugged in)"], ["phone_status", "Check connection"]],
   images: [["comfyui", "Check ComfyUI"]],
   web_agent: [["web_agent_install", "Install web agent"], ["web_agent_login", "Open its browser to log in"]],
   activitywatch: [["activitywatch", "Show today's screen time"]],

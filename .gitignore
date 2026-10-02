@@ -24,6 +24,7 @@ __pycache__/
 .ruff_cache/
 tools/gods-eye-view/
 tools/browser-use/
+tools/platform-tools/
 tools/docling/
 models/vad/
 models/vision/

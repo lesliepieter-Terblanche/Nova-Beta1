@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.27.1] — 2026-10-02
+### Changed — the rings show what is still outstanding
+- The ring on Personal and Work now shows **how much tracked work is still to be completed**: projects, missions and
+  anything you gave a status. Ordinary filed notes no longer count. Hover for "4 of 5 tracked items still to be
+  completed"; a side with nothing tracked shows "–".
+- The banner has an **Outstanding** counter, and *Completed* counts finished tracked work only.
+
 ## [2.27.0] — 2026-10-02
 ### Changed — the weather page looks like the weather
 - The whole page takes on the day: **sunshine** (bright sky, sun and turning rays), **rain / drizzle / showers**

@@ -897,6 +897,9 @@
   body.vivid .donut::before { background: rgba(var(--deep),.85); }
   body.vivid .stats .stat .n { color: color-mix(in srgb, rgb(var(--p1)) 55%, #fff); }
   body.vivid .ask button.send { background: linear-gradient(135deg, rgb(var(--p1)), rgb(var(--w2))); }
+  .donut { background: conic-gradient(#ffd166 calc(var(--p) * 1%), rgba(255,255,255,.28) 0); }
+  .donut.idle { background: rgba(255,255,255,.22); }
+  .pane .sum .od { color: #ffd166; } .hero .k.od b { color: #ffd166; }
 </style>
 </head>
 <body>
@@ -1140,14 +1143,20 @@ function renderTree() {
   let h = "";
   for (const d of DOMAINS) {
     const m = model[d], dirs = [...m.dirs.values()];
-    const sts = dirs.flatMap((x) => [...x.rows, ...[...x.subs.values()].flatMap((s) => s.rows)]).map((r) => r.status);
+    const rowsAll = dirs.flatMap((x) => [...x.rows, ...[...x.subs.values()].flatMap((s) => s.rows)]);
+    const sts = rowsAll.map((r) => r.status);
+    // the ring: of the work that is being tracked (projects, missions, anything you gave a status), how much is still open
+    const work = rowsAll.filter((r) => r.track || r.isProject || r.kind === "project" || r.kind === "mission");
+    const open = work.filter((r) => r.status !== "COMPLETED" && r.track !== "done").length;
     const flow = flows[d] = worst(sts), n = sts.length + m.unfiled.length;
-    for (const st of sts) if (st in tally) tally[st]++;
-    const pct = sts.length ? Math.round(sts.filter((x) => x === "COMPLETED").length / sts.length * 100) : 0;
+    for (const st of sts) if (st in tally && st !== "COMPLETED") tally[st]++;
+    tally.COMPLETED += work.length - open; tally.OPEN = (tally.OPEN || 0) + open; tally.WORK = (tally.WORK || 0) + work.length;
+    const pct = work.length ? Math.round(open / work.length * 100) : 0;
+    const ringTip = work.length ? `${open} of ${work.length} tracked item${work.length === 1 ? "" : "s"} still to be completed` : "Nothing is being tracked on this side yet";
     const ip = sts.filter((s) => s === "IN-PROGRESS").length, w = sts.filter((s) => s === "WAITING-ON-USER").length;
     h += `<section class="pane ${d === DOMAINS[0] ? "personal" : "work"}" id="pane-${d}" data-domain="${d}"${flow ? ` data-flow="${flow}"` : ""}>` +
-      `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${esc(nice(d))}</span><span class="donut" style="--p:${pct}" title="${pct}% completed"><b>${pct}%</b></span></button>` +
-      `<div class="sum"><button class="fold" data-fold="${d}" data-to="open">Expand all</button> · <button class="fold" data-fold="${d}" data-to="close">Collapse all</button> · ${n} item${n === 1 ? "" : "s"}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
+      `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${esc(nice(d))}</span><span class="donut${work.length ? "" : " idle"}" style="--p:${pct}" title="${ringTip}"><b>${work.length ? pct + "%" : "–"}</b></span></button>` +
+      `<div class="sum"><button class="fold" data-fold="${d}" data-to="open">Expand all</button> · <button class="fold" data-fold="${d}" data-to="close">Collapse all</button> · ${n} item${n === 1 ? "" : "s"}${work.length ? ` · <b class="od">${open} of ${work.length} outstanding</b>` : ""}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
       `<ul class="tree">` +
       (m.unfiled.length ? `<li class="d open tofile" data-flow="wait"><button class="dir" data-filing="1">${FOLDER}<span class="nm">To_File · needs your approval</span><small>${m.unfiled.length}</small></button><ul>${
         m.unfiled.sort(order).slice(0, rowLimit).map(rowHtml).join("")}${m.unfiled.length > rowLimit ? `<li class="f more"><button class="trow" data-filing="1">+ ${m.unfiled.length - rowLimit} more — open the filing review</button></li>` : ""}</ul></li>` : "") +
@@ -1157,7 +1166,7 @@ function renderTree() {
   const ip = tally["IN-PROGRESS"], wt = tally["WAITING-ON-USER"], nb = (data.bottlenecks || []).length;
   const line = [ip ? `${ip} thing${ip === 1 ? "" : "s"} in progress` : "", (wt || nb) ? `${Math.max(wt, nb)} waiting on you` : "", (!ip && !wt && !nb) ? "Nothing is waiting on you" : ""].filter(Boolean).join(" · ");
   const root = `<div class="hero"><div><h2>${hello}${OWNER ? ", " + esc(OWNER) : ""}</h2><p>${line}</p></div><div class="kp">` +
-    `<span class="k ip"><b>${ip}</b>In progress</span><span class="k wt"><b>${Math.max(wt, nb)}</b>Waiting on you</span><span class="k ok"><b>${tally.COMPLETED}</b>Completed</span><span class="k bl"><b>${tally.BACKLOG}</b>Backlog</span></div></div>`;
+    `<span class="k ip"><b>${ip}</b>In progress</span><span class="k wt"><b>${Math.max(wt, nb)}</b>Waiting on you</span><span class="k od"><b>${tally.OPEN || 0}</b>Outstanding</span><span class="k ok"><b>${tally.COMPLETED}</b>Completed</span><span class="k bl"><b>${tally.BACKLOG}</b>Backlog</span></div></div>`;
   const html = root + `<div class="panes">${h}</div>`;
   if (html !== lastHtml) {
     const keep = [...treeEl.querySelectorAll(".pane")].map((p) => p.scrollTop), top = treeEl.scrollTop;

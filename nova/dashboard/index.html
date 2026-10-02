@@ -2579,7 +2579,9 @@ function playReply(url, then) {
   player.onended = () => { setStatus("idle"); then && then(); };
   player.onerror = () => { setStatus("idle"); then && then(); };
   player.src = url; setStatus("speaking");
-  player.play().catch(() => { setStatus("idle"); flash("Tap 🎤 or Send once to let Nova talk on this device."); then && then(); });
+  // If the phone won't play it (sound blocked, or a newer reply took over), say nothing: the written answer is already
+  // on screen, and the next tap on Send or 🎤 unlocks sound again. No pop-up over the answer.
+  player.play().catch((e) => { setStatus("idle"); if (e?.name === "NotAllowedError") unlockAudio.done = false; then && then(); });
 }
 const mic = { on: false, rec: null, stream: null, ctx: null, timer: null, conversation: false };
 function pickType() {

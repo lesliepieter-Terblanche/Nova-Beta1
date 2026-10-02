@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.31.1] — 2026-10-02
+### Fixed
+- The **"Tap 🎤 or Send once to let Nova talk on this device"** pop-up is gone. It appeared over the written answer
+  whenever the phone didn't play a reply — also when a newer reply simply took over the speaker. Nova now stays
+  quiet about it; the answer stays on screen and the next tap on Send or 🎤 switches sound back on.
+
 ## [2.31.0] — 2026-10-02
 ### Added
 - **Personal budget with slips and claims.** Send a photo of a till slip or invoice (Telegram, the 📎 on the

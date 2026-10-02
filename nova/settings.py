@@ -323,9 +323,10 @@ SCHEMA = [
         {"path": "dashboard.theme.accent", "label": "Accent colour", "type": "color", "default": "#8b7bff"},
         {"path": "dashboard.theme.accent2", "label": "Second accent", "type": "color", "default": "#4cc9f0"},
         {"path": "dashboard.theme.background", "label": "Background (dark look)", "type": "color", "default": "#03040a"},
-        {"path": "dashboard.theme.style", "label": "Dashboard look", "type": "select", "default": "light",
-         "options": ["light", "dark"],
-         "help": "light = the pale operational look; dark = the same master index on the space background colour above"},
+        {"path": "dashboard.theme.style", "label": "Dashboard look", "type": "select", "default": "vivid",
+         "options": ["vivid", "light", "dark"],
+         "help": "vivid = colourful night look (indigo to teal); light = navy panels on a pale page; "
+                 "dark = the same index on the background colour above"},
         {"path": "dashboard.theme.rows", "label": "Files shown per folder before “more”", "type": "number", "min": 3,
          "max": 40, "step": 1, "default": 6},
     ]},

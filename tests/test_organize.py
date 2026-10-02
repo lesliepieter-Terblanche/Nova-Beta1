@@ -86,4 +86,4 @@ def test_dashboard_graph_clusters_and_manual_link(nova):
 
 def test_dashboard_look_setting(nova):
     from nova import settings
-    assert settings.theme()["style"] in ("light", "dark")
+    assert settings.theme()["style"] in ("vivid", "light", "dark")

@@ -799,11 +799,62 @@
   body.light .stats:not(.min), body.light .legend:not(.min), body.light .bneck:not(.min) { background: linear-gradient(180deg, #16243d, #101a2c); }
   @media (max-width: 900px) { .root-wrap { display: none; } .rcol { top: 118px; left: 10px; right: 10px; max-width: none; width: auto; }
     .bneck { max-width: none; width: 100%; } body.has-bneck #tree { top: 170px; } }
+  /* v2.24: greeting banner, category icons and colours, status pills, progress rings */
+  .hero { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 18px 24px; border-radius: 18px; margin: 0 0 18px;
+    background: var(--glass); border: 1px solid var(--line-strong); color: var(--text); }
+  .hero h2 { margin: 0; font: 700 24px var(--display); } .hero p { margin: 4px 0 0; font-size: 14px; opacity: .82; }
+  .hero .kp { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .hero .k { display: grid; justify-items: center; padding: 8px 16px; border-radius: 14px; font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase;
+    min-width: 104px; background: rgba(255,255,255,.12); }
+  .hero .k b { font: 700 24px var(--display); letter-spacing: 0; }
+  .hero .k.ip b { color: var(--st-ip); } .hero .k.wt b { color: var(--st-wait); } .hero .k.ok b { color: var(--st-done); }
+  .chipi { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; flex: none; background: color-mix(in srgb, var(--cc) 34%, transparent); }
+  ul.tree > li { border-left: 4px solid var(--cc, var(--dc)); padding-left: 12px; border-radius: 14px; }
+  ul.tree > li::before { display: none; }
+  ul.tree > li.tofile { --cc: var(--st-wait); }
+  .dir { font-size: 16.5px; width: 100%; } .dir .chev { order: 9; margin: 0 2px 0 auto; }
+  li.d.sub > .dir { width: auto; } li.d.sub > .dir .chev { order: 0; margin: 0 -4px 0 0; }
+  li.f .stl { display: inline-block; margin: 2px 0 4px 27px; padding: 2px 10px; border-radius: 999px; font: 600 11.5px var(--body); letter-spacing: 0; text-shadow: none; }
+  li.f[data-status="IN-PROGRESS"] .stl { background: var(--st-ip); color: #06263a; } li.f[data-status="WAITING-ON-USER"] .stl { background: var(--st-wait); color: #3b0612; text-shadow: none; }
+  li.f[data-status="COMPLETED"] .stl { background: var(--st-done); color: #06301a; } li.f[data-status="BACKLOG"] .stl { background: rgba(255,255,255,.18); color: #fff; }
+  .pane .dom { justify-content: flex-start; padding: 15px 22px; font-size: 20px; }
+  .donut { width: 40px; height: 40px; border-radius: 50%; margin-left: auto; display: grid; place-items: center; flex: none;
+    background: conic-gradient(#fff calc(var(--p) * 1%), rgba(255,255,255,.28) 0); -webkit-mask: radial-gradient(circle, #000 0 100%); position: relative; }
+  .donut::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: color-mix(in srgb, var(--dc) 70%, #0d1727); }
+  .donut b { position: relative; font: 700 10.5px var(--body); color: #fff; }
+  .mtitle b { letter-spacing: .02em; } .mtitle span { letter-spacing: .02em; }
+  .ticker { display: none; } .ask { bottom: 18px; } .legend { bottom: 22px; }
+  .root-wrap { display: none; }
+  @media (max-width: 900px) { .hero { flex-direction: column; align-items: flex-start; padding: 14px 16px; gap: 12px; } .hero h2 { font-size: 20px; }
+    .hero .kp { justify-content: flex-start; gap: 6px; } .hero .k { min-width: 0; padding: 6px 10px; font-size: 9.5px; } .hero .k b { font-size: 19px; }
+    .ask { bottom: 14px; } .rail { bottom: 86px; } }
+  /* "vivid night" (default look): deep indigo → teal with colour, instead of flat navy */
+  body.vivid { --glass: rgba(255,255,255,.08); --glass-strong: rgba(30,24,70,.92); --pane: rgba(255,255,255,.06); --text: #f4f2ff; --muted: #b9b3e0;
+    --line: rgba(255,255,255,.14); --line-strong: rgba(255,255,255,.26); --ink: #f4f2ff; --ok: #5eead4;
+    --personal: #8b7bff; --work: #2dd4bf; --st-ip: #38bdf8; --st-wait: #fb7185; --st-done: #4ade80;
+    background: radial-gradient(900px 600px at 10% 10%, rgba(124,92,255,.55), transparent 60%), radial-gradient(900px 700px at 90% 15%, rgba(236,72,153,.38), transparent 60%),
+      radial-gradient(1000px 700px at 70% 100%, rgba(45,212,191,.35), transparent 60%), linear-gradient(160deg, #1a1446, #0f2147 60%, #0b2c3d); background-attachment: fixed; }
+  body.vivid .glass { backdrop-filter: blur(18px) saturate(150%); border: 1px solid rgba(255,255,255,.16); box-shadow: 0 14px 40px rgba(10,5,40,.45); }
+  body.vivid .hero { background: linear-gradient(110deg, rgba(124,92,255,.5), rgba(236,72,153,.38) 60%, rgba(45,212,191,.38)); border: 1px solid rgba(255,255,255,.2); backdrop-filter: blur(14px); }
+  body.vivid .hero .k { background: rgba(255,255,255,.14); }
+  body.vivid .pane { background: rgba(255,255,255,.06); backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,.16); box-shadow: 0 18px 50px rgba(10,5,40,.45); border-radius: 20px; }
+  body.vivid .pane.personal .dom { background: linear-gradient(100deg, #7c5cff, #c05cff 60%, #ff5fa2); }
+  body.vivid .pane.work .dom { background: linear-gradient(100deg, #14b8a6, #22d3ee 60%, #60a5fa); }
+  body.vivid .pane .dom .fi { fill: #fff; stroke: none; }
+  body.vivid .donut::before { background: rgba(26,18,70,.82); }
+  body.vivid ul.tree > li { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-left: 4px solid var(--cc, var(--dc)); }
+  body.vivid ul.tree > li[data-flow="ip"] { border-color: color-mix(in srgb, var(--st-ip) 60%, transparent); border-left-color: var(--cc); }
+  body.vivid ul.tree > li[data-flow="wait"] { border-color: color-mix(in srgb, var(--st-wait) 65%, transparent); border-left-color: var(--cc); }
+  body.vivid .dir small { background: rgba(255,255,255,.14); }
+  body.vivid .stats .stat .n { color: #c4b5fd; } body.vivid .mtitle { color: #fff; }
+  body.vivid .stats:not(.min), body.vivid .legend:not(.min), body.vivid .bneck:not(.min) { background: rgba(255,255,255,.08); }
+  body.vivid .stats, body.vivid .legend, body.vivid .bneck:not(.has), body.vivid .brand { border: 1px solid rgba(255,255,255,.18); }
+  body.vivid .ctx { background: #241c58; }
 </style>
 </head>
 <body>
 <main id="tree" aria-label="Second Brain master index"></main>
-<div class="mtitle"><b>SECOND BRAIN</b><span>OPERATIONAL DASHBOARD · MASTER INDEX</span></div>
+<div class="mtitle"><b>Second Brain</b><span>Master index</span></div>
 <div class="vignette"></div>
 <div class="grain"></div>
 
@@ -888,7 +939,7 @@
 <section class="legend glass" id="legend" aria-label="Colour legend key">
   <div class="railhd">Colour legend key</div>
   <button class="minbtn" id="legend-min" title="Minimise" aria-label="Minimise colour key">▾</button>
-  <div id="legend-body"><div class="lk c">Green = [COMPLETED]</div><div class="lk i">Blue = [IN-PROGRESS]</div><div class="lk w">Red = [WAITING-ON-USER]</div><div class="lk b">Grey = [BACKLOG]</div></div>
+  <div id="legend-body"><div class="lk c">✓ Completed</div><div class="lk i">● In progress</div><div class="lk w">● Waiting on you</div><div class="lk b">○ Backlog</div></div>
 </section>
 <div class="ctx glass" id="ctx" role="menu"></div>
 <div class="ticker" id="ticker"><span class="tab" id="ticker-state">System optimized</span><span class="msg" id="ticker-text">MONITORING ACTIVE.</span></div>
@@ -971,6 +1022,12 @@ const closed = new Set(lsGet("nova.tree.closed")), expanded = new Set();
 const FOLDER = `<svg class="fi" viewBox="0 0 24 20" aria-hidden="true"><path d="M1 3.5A2.5 2.5 0 0 1 3.5 1h5l2.4 2.6H20.5A2.5 2.5 0 0 1 23 6.1v10.4a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 1 16.5z"/></svg>`;
 const FILE = `<svg class="pi" viewBox="0 0 16 20" aria-hidden="true"><path d="M2 1h8l4 4v14H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 9h6M5 12h6M5 15h4" stroke="currentColor" stroke-width="1.2"/></svg>`;
 const ICON = { project: "◆", mission: "➤", person: "●", goal: "◎" };
+const CAT_LOOK = { "01_Life_Admin": ["🏠", "#ff9f43"], "02_Health": ["💪", "#ff5d8f"], "03_Interests": ["🎣", "#8b7bff"], "04_Finance": ["💰", "#22c58b"], "05_Journal": ["📓", "#38a8ff"],
+  "01_Role": ["🎯", "#38a8ff"], "02_Clients": ["🤝", "#ff7a59"], "03_Projects": ["🚀", "#a06bff"], "04_Resources": ["📚", "#22c7dd"], "05_Meetings": ["📅", "#f5b041"] };
+const catLook = (name) => CAT_LOOK[Object.keys(CAT_LOOK).find((k) => name.startsWith(k))] || ["📁", "#8b7bff"];
+const nice = (name) => name.replace(/^\d\d_/, "").replace(/_/g, " ");            // 02_Clients_&_Partners → Clients & Partners
+const PILL = { "IN-PROGRESS": "● In progress", "WAITING-ON-USER": "● Waiting on you", "COMPLETED": "✓ Completed", "BACKLOG": "○ Backlog" };
+let OWNER = "";
 const ACTIVE = (st) => st === "IN-PROGRESS" || st === "WAITING-ON-USER";
 const worst = (list) => list.includes("WAITING-ON-USER") ? "wait" : list.includes("IN-PROGRESS") ? "ip" : "";
 
@@ -1005,7 +1062,7 @@ function rowHtml(n) {
   const explicit = ACTIVE(st) || (st && n.track);
   return `<li class="f" data-id="${esc(n.id)}"${st ? ` data-status="${st}"` : ""}${ACTIVE(st) ? ` data-flow="${st === "IN-PROGRESS" ? "ip" : "wait"}"` : ""}>` +
     `<button class="trow" title="${esc(n.label)}">${n.kind === "note" ? FILE : `<span class="pi k">${ICON[n.kind] || "◆"}</span>`}<span class="nm">${esc(name.length > 54 ? name.slice(0, 53) + "…" : name)}</span></button>` +
-    (explicit ? `<div class="stl">[STATUS: ${st}]</div>` : "") + `</li>`;
+    (explicit ? `<div class="stl" title="[STATUS: ${st}]">${PILL[st] || st}</div>` : "") + `</li>`;
 }
 const order = (a, b) => (ACTIVE(b.status) - ACTIVE(a.status)) || ((b.status === "WAITING-ON-USER") - (a.status === "WAITING-ON-USER"))
   || ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || String(b.created || "").localeCompare(String(a.created || ""));
@@ -1017,8 +1074,9 @@ function dirHtml(dir, depth) {
   const act = all.filter(ACTIVE).length;                              // a closed folder still says what is active inside
   const more = expanded.has(dir.id), keep = Math.max(rowLimit, rows.filter((r) => ACTIVE(r.status)).length);
   const shown = more ? rows : rows.slice(0, keep);
-  let h = `<li class="d${isOpen ? " open" : ""}${depth ? " sub" : ""}" data-dir="${esc(dir.id)}"${flow ? ` data-flow="${flow}"` : ""}>` +
-    `<button class="dir" aria-expanded="${isOpen}" title="${isOpen ? "Collapse" : "Expand"} this folder"><span class="chev">${isOpen ? "▾" : "▸"}</span>${FOLDER}<span class="nm">${esc(dir.name).replace(/_/g, "_<wbr>")}</span><small>${total}</small>${!isOpen && act ? `<small class="act ${flow}">${act} active</small>` : ""}</button>`;
+  const look = depth ? null : catLook(dir.name);
+  let h = `<li class="d${isOpen ? " open" : ""}${depth ? " sub" : ""}" data-dir="${esc(dir.id)}"${flow ? ` data-flow="${flow}"` : ""}${look ? ` style="--cc:${look[1]}"` : ""}>` +
+    `<button class="dir" aria-expanded="${isOpen}" title="${esc(dir.name)} — click to ${isOpen ? "collapse" : "expand"}">${look ? `<span class="chipi">${look[0]}</span>` : FOLDER}<span class="nm">${look ? esc(nice(dir.name)) : esc(dir.name).replace(/_/g, "_<wbr>")}</span><span class="chev">${isOpen ? "▾" : "▸"}</span><small>${total}</small>${!isOpen && act ? `<small class="act ${flow}">${act} active</small>` : ""}</button>`;
   if (isOpen) {
     h += `<ul>${subs.map((s) => dirHtml(s, depth + 1)).join("")}${shown.map(rowHtml).join("")}`;
     if (rows.length > shown.length) h += `<li class="f more"><button class="trow" data-more="${esc(dir.id)}">+ ${rows.length - shown.length} more…</button></li>`;
@@ -1030,22 +1088,28 @@ function dirHtml(dir, depth) {
 }
 let lastHtml = "";
 function renderTree() {
-  const model = treeModel(), flows = {};
+  const model = treeModel(), flows = {}, tally = { "IN-PROGRESS": 0, "WAITING-ON-USER": 0, "COMPLETED": 0, "BACKLOG": 0 };
   let h = "";
   for (const d of DOMAINS) {
     const m = model[d], dirs = [...m.dirs.values()];
     const sts = dirs.flatMap((x) => [...x.rows, ...[...x.subs.values()].flatMap((s) => s.rows)]).map((r) => r.status);
     const flow = flows[d] = worst(sts), n = sts.length + m.unfiled.length;
+    for (const st of sts) if (st in tally) tally[st]++;
+    const pct = sts.length ? Math.round(sts.filter((x) => x === "COMPLETED").length / sts.length * 100) : 0;
     const ip = sts.filter((s) => s === "IN-PROGRESS").length, w = sts.filter((s) => s === "WAITING-ON-USER").length;
     h += `<section class="pane ${d === DOMAINS[0] ? "personal" : "work"}" id="pane-${d}" data-domain="${d}"${flow ? ` data-flow="${flow}"` : ""}>` +
-      `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${d}</span></button>` +
+      `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${esc(nice(d))}</span><span class="donut" style="--p:${pct}" title="${pct}% completed"><b>${pct}%</b></span></button>` +
       `<div class="sum"><button class="fold" data-fold="${d}" data-to="open">Expand all</button> · <button class="fold" data-fold="${d}" data-to="close">Collapse all</button> · ${n} item${n === 1 ? "" : "s"}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
       `<ul class="tree">` +
       (m.unfiled.length ? `<li class="d open tofile" data-flow="wait"><button class="dir" data-filing="1">${FOLDER}<span class="nm">To_File · needs your approval</span><small>${m.unfiled.length}</small></button><ul>${
         m.unfiled.sort(order).slice(0, rowLimit).map(rowHtml).join("")}${m.unfiled.length > rowLimit ? `<li class="f more"><button class="trow" data-filing="1">+ ${m.unfiled.length - rowLimit} more — open the filing review</button></li>` : ""}</ul></li>` : "") +
       dirs.map((x) => dirHtml(x, 0)).join("") + `</ul></section>`;
   }
-  const root = `<div class="root-wrap"><i class="stem"></i><div class="elbows"><i class="l"${flows[DOMAINS[0]] ? ` data-flow="${flows[DOMAINS[0]]}"` : ""}></i><i class="r"${flows[DOMAINS[1]] ? ` data-flow="${flows[DOMAINS[1]]}"` : ""}></i></div></div>`;
+  const hr = new Date().getHours(), hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
+  const ip = tally["IN-PROGRESS"], wt = tally["WAITING-ON-USER"], nb = (data.bottlenecks || []).length;
+  const line = [ip ? `${ip} thing${ip === 1 ? "" : "s"} in progress` : "", (wt || nb) ? `${Math.max(wt, nb)} waiting on you` : "", (!ip && !wt && !nb) ? "Nothing is waiting on you" : ""].filter(Boolean).join(" · ");
+  const root = `<div class="hero"><div><h2>${hello}${OWNER ? ", " + esc(OWNER) : ""}</h2><p>${line}</p></div><div class="kp">` +
+    `<span class="k ip"><b>${ip}</b>In progress</span><span class="k wt"><b>${Math.max(wt, nb)}</b>Waiting on you</span><span class="k ok"><b>${tally.COMPLETED}</b>Completed</span><span class="k bl"><b>${tally.BACKLOG}</b>Backlog</span></div></div>`;
   const html = root + `<div class="panes">${h}</div>`;
   if (html !== lastHtml) {
     const keep = [...treeEl.querySelectorAll(".pane")].map((p) => p.scrollTop), top = treeEl.scrollTop;
@@ -1234,6 +1298,7 @@ async function applyTheme() {
   const root = document.documentElement.style, light = t.style !== "dark";
   root.setProperty("--accent", t.accent); root.setProperty("--accent-2", t.accent2);
   document.body.classList.toggle("light", light);
+  document.body.classList.toggle("vivid", t.style !== "dark" && t.style !== "light");
   if (light) { root.removeProperty("--bg"); document.body.style.background = ""; }
   else { root.setProperty("--bg", t.background); document.body.style.background = t.background; }
   STATUS_COLORS.idle = t.accent; STATUS_COLORS.listening = t.accent2;
@@ -1270,6 +1335,7 @@ async function loadStats() {
   $("s-proj-sub").textContent = s.projects?.doing ? `${s.projects.doing} in progress` : "";
   $("s-skills-sub").textContent = s.models?.primary ? `brain: ${s.models.primary}` : "";
   LIVE_VOICE = !!s.live_voice;
+  if ((s.owner || "") !== OWNER) { OWNER = String(s.owner || "").split(" ")[0]; schedule(); }
   setStatus(s.status);
 }
 function countTo(el, v) {

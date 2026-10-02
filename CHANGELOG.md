@@ -4,6 +4,17 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.24.0] — 2026-10-02
+### Changed — "Vivid Night" look and a friendlier index
+- **New default look:** deep indigo → teal with colour (gradient headers per side, glass panels) instead of flat navy.
+  Settings → Appearance → *Dashboard look*: vivid (default), light, dark.
+- **Greeting banner** with live counters: in progress, waiting on you, completed, backlog.
+- **Category icons and colours** (🏠 Life Admin, 🤝 Clients & Partners, 🚀 Projects…) and **friendly names** on screen;
+  the folders on disk keep their numbered names (hover to see them).
+- **Status pills** (● In progress, ● Waiting on you, ✓ Completed, ○ Backlog) instead of the bracketed line, and a
+  **progress ring** per side showing how much is completed.
+- The bottom status strip is gone; the banner says it.
+
 ## [2.23.0] — 2026-10-02
 ### Changed — a fast model for everyday thinking (4 GB graphics cards)
 - **One-time switch:** if your everyday model is still the local one and a Groq key is in Settings (or, failing that,

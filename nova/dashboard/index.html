@@ -765,6 +765,10 @@
   .ctx button:disabled { opacity: .6; cursor: default; }
   .ctx button.danger { color: #ffb3ba; }
   #tree li.f { -webkit-touch-callout: none; }
+  .dir .chev { width: 14px; flex: none; font-size: 14px; color: #cfdcf2; margin-right: -4px; }
+  .dir small.act { color: #fff; } .dir small.act.ip { background: var(--st-ip); color: #06202e; } .dir small.act.wait { background: var(--st-wait); }
+  .pane .sum .fold { background: none; border: 0; padding: 0; color: var(--muted); font: inherit; cursor: pointer; text-decoration: underline dotted; }
+  .pane .sum .fold:hover { color: #fff; }
 </style>
 </head>
 <body>
@@ -978,11 +982,12 @@ function dirHtml(dir, depth) {
   const rows = [...dir.rows].sort(order), subs = [...dir.subs.values()].sort((a, b) => a.name.localeCompare(b.name));
   const all = [...rows.map((r) => r.status), ...subs.flatMap((s) => s.rows.map((r) => r.status))];
   const total = rows.length + subs.reduce((a, s) => a + s.rows.length, 0), flow = worst(all);
-  const isOpen = !closed.has(dir.id) || !!flow;                       // a folder with something active never hides it
+  const isOpen = !closed.has(dir.id);
+  const act = all.filter(ACTIVE).length;                              // a closed folder still says what is active inside
   const more = expanded.has(dir.id), keep = Math.max(rowLimit, rows.filter((r) => ACTIVE(r.status)).length);
   const shown = more ? rows : rows.slice(0, keep);
   let h = `<li class="d${isOpen ? " open" : ""}${depth ? " sub" : ""}" data-dir="${esc(dir.id)}"${flow ? ` data-flow="${flow}"` : ""}>` +
-    `<button class="dir" aria-expanded="${isOpen}">${FOLDER}<span class="nm">${esc(dir.name).replace(/_/g, "_<wbr>")}</span><small>${total}</small></button>`;
+    `<button class="dir" aria-expanded="${isOpen}" title="${isOpen ? "Collapse" : "Expand"} this folder"><span class="chev">${isOpen ? "▾" : "▸"}</span>${FOLDER}<span class="nm">${esc(dir.name).replace(/_/g, "_<wbr>")}</span><small>${total}</small>${!isOpen && act ? `<small class="act ${flow}">${act} active</small>` : ""}</button>`;
   if (isOpen) {
     h += `<ul>${subs.map((s) => dirHtml(s, depth + 1)).join("")}${shown.map(rowHtml).join("")}`;
     if (rows.length > shown.length) h += `<li class="f more"><button class="trow" data-more="${esc(dir.id)}">+ ${rows.length - shown.length} more…</button></li>`;
@@ -1003,7 +1008,7 @@ function renderTree() {
     const ip = sts.filter((s) => s === "IN-PROGRESS").length, w = sts.filter((s) => s === "WAITING-ON-USER").length;
     h += `<section class="pane ${d === DOMAINS[0] ? "personal" : "work"}" id="pane-${d}" data-domain="${d}"${flow ? ` data-flow="${flow}"` : ""}>` +
       `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${d}</span></button>` +
-      `<div class="sum">${n} item${n === 1 ? "" : "s"}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
+      `<div class="sum"><button class="fold" data-fold="${d}" data-to="open">Expand all</button> · <button class="fold" data-fold="${d}" data-to="close">Collapse all</button> · ${n} item${n === 1 ? "" : "s"}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
       `<ul class="tree">` +
       (m.unfiled.length ? `<li class="d open tofile" data-flow="wait"><button class="dir" data-filing="1">${FOLDER}<span class="nm">To_File · needs your approval</span><small>${m.unfiled.length}</small></button><ul>${
         m.unfiled.sort(order).slice(0, rowLimit).map(rowHtml).join("")}${m.unfiled.length > rowLimit ? `<li class="f more"><button class="trow" data-filing="1">+ ${m.unfiled.length - rowLimit} more — open the filing review</button></li>` : ""}</ul></li>` : "") +
@@ -1030,6 +1035,14 @@ function schedule() { if (queued) return; queued = true; requestAnimationFrame((
 function buildBlocks() {}
 treeEl.addEventListener("click", (e) => {
   const more = e.target.closest("[data-more]"), filing = e.target.closest("[data-filing]"), dom = e.target.closest("[data-dom]");
+  const fold = e.target.closest("[data-fold]");
+  if (fold) {                                          // every folder of this side at once
+    const ids = [...fold.closest(".pane").querySelectorAll("li.d[data-dir]")].map((li) => li.dataset.dir);
+    const m = treeModel()[fold.dataset.fold];
+    for (const x of m.dirs.values()) { ids.push(x.id); for (const sub of x.subs.values()) ids.push(sub.id); }
+    for (const id of ids) fold.dataset.to === "close" ? closed.add(id) : closed.delete(id);
+    lsSet("nova.tree.closed", closed); return renderTree();
+  }
   if (filing) return loadFiling(true);
   if (more) { const id = more.dataset.more; expanded.has(id) ? expanded.delete(id) : expanded.add(id); return renderTree(); }
   if (dom) { dom.closest(".pane").scrollTo({ top: 0, behavior: "smooth" }); return; }

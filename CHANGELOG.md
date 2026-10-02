@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.19.1] — 2026-10-02
+### Changed — folders expand and collapse
+- Every folder and sub-folder has a ▸ / ▾ arrow: click to collapse or expand it. **Expand all / Collapse all** per
+  side. What you closed is remembered on that device.
+- A closed folder still tells you what is going on inside ("2 active" in blue or red), and its line keeps the
+  in-progress / waiting colour.
+
 ## [2.19.0] — 2026-10-02
 ### Added — right-click on the Master Index: move, set status, delete
 - **Right-click a file (long-press on the phone)** → *Move to 01_Personal / 02_Work* with the category of your choice,

@@ -44,6 +44,49 @@ APPS = {"whatsapp": "com.whatsapp", "whatsapp business": "com.whatsapp.w4b", "ch
         "outlook": "com.microsoft.office.outlook", "tailscale": "com.tailscale.ipn", "netflix": "com.netflix.mediaclient",
         "capcut": "com.lemon.lvoverseas", "canva": "com.canva.editor", "drive": "com.google.android.apps.docs",
         "photos": "com.google.android.apps.photos", "uber": "com.ubercab", "takealot": "fi.android.takealot"}
+MESSAGING = {"com.whatsapp": "WhatsApp", "com.whatsapp.w4b": "WhatsApp Business",
+             "com.samsung.android.messaging": "Messages", "com.google.android.apps.messaging": "Messages",
+             "org.telegram.messenger": "Telegram", "org.thoughtcrime.securesms": "Signal",
+             "com.google.android.gm": "Gmail", "com.microsoft.office.outlook": "Outlook",
+             "com.microsoft.teams": "Teams", "com.samsung.android.dialer": "Phone",
+             "com.google.android.dialer": "Phone", "com.samsung.android.incallui": "Phone",
+             "com.android.server.telecom": "Phone", "com.facebook.orca": "Messenger",
+             "com.instagram.android": "Instagram", "com.linkedin.android": "LinkedIn", "com.Slack": "Slack"}
+MESSAGE_APPS = {"whatsapp": "WhatsApp", "whatsapp business": "WhatsApp Business", "sms": "Messages", "text": "Messages",
+                "messages": "Messages", "telegram": "Telegram", "signal": "Signal", "gmail": "Gmail", "email": "Gmail",
+                "outlook": "Outlook", "teams": "Teams", "messenger": "Messenger", "instagram": "Instagram",
+                "linkedin": "LinkedIn", "slack": "Slack"}
+# Notifications that aren't a message from a person ("3 new messages", "Checking for new messages"…)
+NOISE = re.compile(r"^(\d+ (new |unread )?(messages?|chats?|emails?|conversations?)\b.*|checking for new messages.*|"
+                   r"whatsapp web.*|backup .*|.* is (running|active|using).*|tap (to|for) .*|ongoing .*call.*)$", re.I)
+# Quick switches: what to tell the phone for on / off
+SWITCHES = {
+    "wifi": ("svc wifi enable", "svc wifi disable"),
+    "bluetooth": ("svc bluetooth enable", "svc bluetooth disable"),
+    "mobile data": ("svc data enable", "svc data disable"),
+    "do not disturb": ("cmd notification set_dnd priority", "cmd notification set_dnd off"),
+    "airplane mode": ("cmd connectivity airplane-mode enable", "cmd connectivity airplane-mode disable"),
+    "location": ("cmd location set-location-enabled true", "cmd location set-location-enabled false"),
+    "auto rotate": ("settings put system accelerometer_rotation 1", "settings put system accelerometer_rotation 0"),
+    "battery saver": ("cmd power set-mode 1", "cmd power set-mode 0"),
+    "dark mode": ("cmd uimode night yes", "cmd uimode night no"),
+    "nfc": ("svc nfc enable", "svc nfc disable"),
+    "silent": ("cmd audio set-ringer-mode SILENT", "cmd audio set-ringer-mode NORMAL"),
+    "vibrate": ("cmd audio set-ringer-mode VIBRATE", "cmd audio set-ringer-mode NORMAL"),
+}
+SWITCH_NAMES = {"wi-fi": "wifi", "wi fi": "wifi", "wireless": "wifi", "data": "mobile data", "cellular data": "mobile data",
+                "cellular": "mobile data", "dnd": "do not disturb", "do-not-disturb": "do not disturb",
+                "donotdisturb": "do not disturb", "focus mode": "do not disturb", "flight mode": "airplane mode",
+                "aeroplane mode": "airplane mode", "airplane": "airplane mode", "gps": "location",
+                "location services": "location", "rotation": "auto rotate", "auto-rotate": "auto rotate",
+                "autorotate": "auto rotate", "screen rotation": "auto rotate", "power saving": "battery saver",
+                "power saver": "battery saver", "power saving mode": "battery saver", "night mode": "dark mode",
+                "dark theme": "dark mode", "silent mode": "silent", "mute": "silent", "vibrate mode": "vibrate",
+                "vibration": "vibrate"}
+STREAMS = {"volume": 3, "media volume": 3, "music volume": 3, "ring volume": 2, "ringer volume": 2, "ringtone volume": 2,
+           "alarm volume": 4, "call volume": 0, "notification volume": 5}
+SHELL_FAIL = re.compile(r"(exception|unknown command|not found|no shell command|permission denial|usage:|"
+                        r"can't find service|error:)", re.I)
 RISKY = re.compile(r"\b(send|pay|payment|purchase|buy|order|checkout|delete|remove|erase|submit|transfer|confirm|"
                    r"uninstall|post|publish|call|dial|book|subscribe|factory reset|sign out|log out)\b", re.I)
 
@@ -119,10 +162,13 @@ class Phone:
             self.serial = addr
             return ""
         if addr:
-            _, out = self._run(["connect", addr], timeout=12)
-            if "connected" in out.lower() and dict(self.devices()).get(addr) == "device":
-                self.serial = addr
-                return ""
+            for attempt in (1, 2):
+                if devs.get(addr) or attempt == 2:        # a stale link ("offline") blocks a fresh one: drop it first
+                    self._run(["disconnect", addr], timeout=8)
+                _, out = self._run(["connect", addr], timeout=12)
+                if "connected" in out.lower() and dict(self.devices()).get(addr) == "device":
+                    self.serial = addr
+                    return ""
         usb = [s for s, st in devs.items() if st == "device" and ":" not in s]
         if usb:
             self.serial = usb[0]
@@ -152,6 +198,8 @@ class Phone:
             if m:
                 self._run(["connect", m.group(1)], timeout=12)
                 ready = [s for s, st in self.devices() if st == "device"]
+        if not ready and self.address() and not self.connect():   # already set up: the link had only dropped
+            return f"Your {cfg().get('name') or 'phone'} is connected again at {self.serial}."
         if not ready:
             return ("I can't see the phone. Plug it into the PC with the cable (use a data cable, pick 'File transfer' "
                     "if it asks), unlock it and tap Allow on the 'Allow USB debugging?' question — then try again.")
@@ -216,6 +264,107 @@ class Phone:
                 "battery": int(level.group(1)) if level else None, "charging": bool(plugged),
                 "screen_on": "Awake" in power, "locked": bool(re.search(r"(Lockscreen|KeyguardShowing)=true", win)),
                 "app": focus.group(1) if focus else "", "connection": self.serial}
+
+    def health(self) -> dict:
+        """Battery, temperature, storage, memory and Wi-Fi — for the dashboard card and 'how is my phone'."""
+        bat = self.sh("dumpsys battery")
+        num = lambda pat, text: (int(m.group(1)) if (m := re.search(pat, text)) else None)   # noqa: E731
+        level, temp = num(r"level: (\d+)", bat), num(r"temperature: (\d+)", bat)
+        h = {"model": self.sh("getprop ro.product.model").strip(), "battery": level,
+             "charging": bool(re.search(r"(AC|USB|Wireless) powered: true", bat)),
+             "temperature": round(temp / 10, 1) if temp is not None else None,
+             "storage_free_gb": None, "storage_total_gb": None, "storage_used_pct": None,
+             "memory_free_pct": None, "wifi": "", "signal": None, "connection": self.serial}
+        for line in self.sh("df -k /data").splitlines()[1:]:
+            cols = line.split()
+            if len(cols) >= 4 and cols[1].isdigit() and cols[3].isdigit() and int(cols[1]):
+                total, free = int(cols[1]), int(cols[3])
+                h.update(storage_total_gb=round(total / 1048576, 1), storage_free_gb=round(free / 1048576, 1),
+                         storage_used_pct=round(100 * (total - free) / total))
+                break
+        mem = self.sh("cat /proc/meminfo")
+        mt, ma = num(r"MemTotal:\s+(\d+)", mem), num(r"MemAvailable:\s+(\d+)", mem)
+        if mt and ma is not None:
+            h["memory_free_pct"] = round(100 * ma / mt)
+        wifi = self.sh("cmd wifi status")
+        ssid = re.search(r'SSID: "([^"]+)"', wifi)
+        if ssid and "<unknown" not in ssid.group(1):
+            h["wifi"], h["signal"] = ssid.group(1), num(r"RSSI: (-?\d+)", wifi)
+        return h
+
+    def switch(self, name: str, on: bool) -> tuple[str, str]:
+        """Flip a quick switch. Returns (the switch's proper name or '', what the phone said when it refused)."""
+        n = re.sub(r"\s+", " ", name.lower().strip().removeprefix("the ").removeprefix("my "))
+        n = SWITCH_NAMES.get(n, n)
+        if n not in SWITCHES:
+            return "", ""
+        out = self.sh(SWITCHES[n][0 if on else 1])
+        return n, (out[:160] if SHELL_FAIL.search(out or "") else "")
+
+    def set_level(self, what: str, percent: int) -> str:
+        """Brightness or a volume, 0-100. Returns '' when done, otherwise why not."""
+        pct = max(0, min(100, int(percent)))
+        w = what.lower().strip()
+        if "bright" in w:
+            self.sh("settings put system screen_brightness_mode 0")
+            out = self.sh(f"settings put system screen_brightness {max(1, round(pct * 2.55))}")
+            return out[:160] if SHELL_FAIL.search(out or "") else ""
+        stream = STREAMS.get(w if w in STREAMS else w + " volume" if w + " volume" in STREAMS else "volume", 3)
+        got = self.sh(f"cmd media_session volume --stream {stream} --get")
+        m = re.search(r"\[(\d+)\.\.(\d+)\]", got)
+        top = int(m.group(2)) if m else 15
+        out = self.sh(f"cmd media_session volume --stream {stream} --set {round(top * pct / 100)}")
+        return out[:160] if SHELL_FAIL.search(out or "") and "volume is" not in out else ""
+
+    def ring(self) -> str:
+        """Make the phone ring loudly even on silent: a one-second timer (alarms ignore silent mode), with the alarm
+        volume at full. If the clock refuses, play a ringtone at full media volume instead."""
+        self.wake()
+        self.set_level("alarm volume", 100)
+        out = self.sh("am start -a android.intent.action.SET_TIMER --ei android.intent.extra.alarm.LENGTH 1 "
+                      "--ez android.intent.extra.alarm.SKIP_UI true --es android.intent.extra.alarm.MESSAGE Nova")
+        if not re.search(r"(error|unable to resolve|exception|denial)", out, re.I):
+            return "timer"
+        tones = self.sh("for d in /system/media/audio/ringtones /product/media/audio/ringtones; "
+                        "do ls $d/*.ogg 2>/dev/null; done | head -n 40").split()
+        tones = [t for t in tones if t.endswith(".ogg")]
+        if not tones:
+            return ""
+        tone = next((t for t in tones if "horizon" in t.lower()), tones[0])
+        self.set_level("media volume", 100)
+        out = self.sh(f"am start -a android.intent.action.VIEW -d 'file://{tone}' -t audio/ogg")
+        return "" if re.search(r"(error|unable to resolve|exception)", out, re.I) else "ringtone"
+
+    def where(self) -> dict | None:
+        """The phone's last known position (from Android's own location service): lat, lon, accuracy in metres."""
+        out = self.sh("dumpsys location", timeout=40)
+        found = {}
+        for m in re.finditer(r"Location\[(\w+) (-?\d+[.,]\d+),(-?\d+[.,]\d+)([^\]]*)", out):
+            src, lat, lon = m.group(1), float(m.group(2).replace(",", ".")), float(m.group(3).replace(",", "."))
+            acc = re.search(r"(?:hAcc|acc)=(\d+(?:[.,]\d+)?)", m.group(4))
+            if abs(lat) < 0.0001 and abs(lon) < 0.0001:
+                continue
+            found.setdefault(src, {"lat": lat, "lon": lon, "source": src,
+                                   "accuracy": round(float(acc.group(1).replace(",", "."))) if acc else None})
+        return next((found[k] for k in ("fused", "gps", "network") if k in found), None) or next(iter(found.values()), None)
+
+    def messages(self, app: str = "", sender: str = "") -> list[dict]:
+        """Messages waiting on the phone (from its notifications): WhatsApp, SMS, Telegram, email, missed calls…"""
+        want = MESSAGE_APPS.get(app.lower().strip(), app.strip()).lower()
+        who = sender.lower().strip()
+        out = []
+        for n in self.notifications():
+            name = MESSAGING.get(n["app"])
+            if not name or not n["title"] or NOISE.match(n["text"] or n["title"]):
+                continue
+            if n["title"].strip().lower() in (name.lower(), "whatsapp", "messages") and not n["text"]:
+                continue
+            if want and want not in name.lower():
+                continue
+            if who and who not in n["title"].lower():
+                continue
+            out.append({"app": name, "from": n["title"], "text": n["text"]})
+        return out
 
     def screenshot(self, path: Path) -> Path:
         code, data = self._run(["-s", self.serial, "exec-out", "screencap", "-p"], timeout=30, binary=True)
@@ -403,6 +552,55 @@ def typed_ok(els: list[dict], text: str) -> bool:
     """Did the text arrive in a text box?"""
     want = re.sub(r"\s+", " ", text).strip().lower()[:24]
     return bool(want) and any(e["edit"] and want in re.sub(r"\s+", " ", e["text"]).lower() for e in els)
+
+
+def message_task(to: str, text: str, app: str = "whatsapp", send: bool = True) -> str:
+    """The step-by-step instruction for writing a message to someone in a messaging app."""
+    name = MESSAGE_APPS.get(app.lower().strip(), app.strip() or "WhatsApp")
+    end = "then tap Send." if send else "and stop there WITHOUT sending — it is only a draft."
+    if name in ("Gmail", "Outlook"):
+        return (f'Open {name}, start a new email to {to} (pick them from the suggestions), put a short fitting subject, '
+                f'write exactly this as the body: "{text}" — {end}')
+    return (f'Open {name}, open the chat with {to} (use the search if it is not on the first screen; pick the person, '
+            f'not a group), type exactly this message: "{text}" — {end}')
+
+
+def quick(text: str, p: "Phone") -> str | None:
+    """Do a simple phone step without the model (a switch, a level, open an app, a key, ring). None = not that simple."""
+    t = re.sub(r"\s+", " ", text.strip().rstrip(".!")).lower()
+    t = re.sub(r"\s+on (?:my|the) phone$", "", t)
+    m = re.match(r"^(?:set |put |turn )?(?:the |my )?(brightness|(?:media |music |ring(?:er|tone)? |alarm |call |notification )?"
+                 r"volume)(?: to| at)? (\d{1,3}) ?(?:%|percent)?$", t)
+    if m:
+        why = p.set_level(m.group(1), int(m.group(2)))
+        return f"{m.group(1).capitalize()} set to {min(100, int(m.group(2)))}%." if not why else None
+    m = re.match(r"^(?:turn |switch |put |set )?(?:the |my )?(.+?) (on|off)$", t) or \
+        re.match(r"^(?:turn|switch) (on|off) (?:the |my )?(.+)$", t) or re.match(r"^(enable|disable) (?:the |my )?(.+)$", t)
+    if m:
+        a, b = m.group(1), m.group(2)
+        name, state = (a, b) if b in ("on", "off") else (b, "on" if a in ("on", "enable") else "off")
+        done, why = p.switch(name, state == "on")
+        if done and not why:
+            return f"{done.capitalize()} is {state}."
+        return None
+    m = re.match(r"^open (.+)$", t)
+    if m:
+        target = m.group(1).removeprefix("the ").removesuffix(" app")
+        if re.match(r"^(https?://|www\.)\S+$", target):
+            p.open_url(target if "://" in target else "https://" + target)
+            return f"Opened {target}."
+        p.wake()
+        return f"Opened {target}." if p.open_app(target) else None
+    m = re.match(r"^press (?:the )?(.+?)(?: button| key)?$", t)
+    if m and p.key(m.group(1)):
+        return f"Pressed {m.group(1)}."
+    if re.match(r"^(lock|lock (?:the|my) (?:phone|screen)|screen off)$", t):
+        p.key("sleep")
+        return "Locked the phone."
+    if re.match(r"^(ring|ring (?:the|my) phone|find (?:the|my) phone)$", t):
+        return "The phone is ringing." if p.ring() else None
+    return None
+
 
 _stop = threading.Event()
 _busy = threading.Lock()

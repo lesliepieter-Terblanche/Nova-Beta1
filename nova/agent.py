@@ -73,7 +73,54 @@ DIRECT = [
     (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:set ?up|connect(?: to)?|re-?connect(?: to)?|pair|link)"
                 r" (?:my|the) (?:phone|cell ?phone|galaxy|android(?: phone)?|s\d\d(?: ?(?:plus|ultra|\+))?)"
                 r"(?: (?:again|now|please|to (?:you|nova|the pc|my pc|the computer)))*[.!]?$", re.I), "phone_setup"),
+    (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:ring|find) my "
+                r"(?:phone|cell ?phone|galaxy)(?: please| now)?[.!?]?$", re.I), "phone_ring"),
+    (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:locate|track|where(?:'s| is)) my "
+                r"(?:phone|cell ?phone|galaxy)(?: please| now| right now)?[.!?]?$", re.I), "phone_locate"),
 ]
+
+
+# "whatsapp Sam I'm running late" / "send Sam a WhatsApp saying …" → one call to the phone, no improvising.
+MSG_APP = r"(whats ?app|sms|telegram|signal)"
+MSG_LEAD = re.compile(rf"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:send (?:an? )?)?{MSG_APP}(?: message)?(?: to)? (.+)$", re.I | re.S)
+MSG_MID = re.compile(rf"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(send|write|draft) (.+?) (?:an? )?{MSG_APP}(?: message)?"
+                     r"(?:\s*[:,-]\s*| saying | that says | to say | that )(.+)$", re.I | re.S)
+MSG_SPLIT = re.compile(r"^(.+?)(?:\s*:\s*|\s+-\s+|,\s*| saying | that says | to say | and say | that | message )(.+)$", re.I | re.S)
+
+
+def message_request(text: str, llm=None) -> dict | None:
+    """Arguments for phone_send_message when the sentence is plainly 'message this person this text'."""
+    t = text.strip()
+    if "?" in t[:-1] or len(t) > 600:
+        return None
+    m = MSG_MID.match(t)
+    if m:
+        return {"to": m.group(2).strip(), "text": m.group(4).strip().strip('"“”'), "send": m.group(1).lower() == "send",
+                "app": m.group(3).lower().replace(" ", "")}
+    m = MSG_LEAD.match(t)
+    if not m:
+        return None
+    app, rest = m.group(1).lower().replace(" ", ""), m.group(2).strip()
+    if re.match(r"^(is|isn'?t|are|was|not|settings?|web|status|app|apps|doesn'?t|won'?t|has|have|notifications?|calls?|"
+                r"groups?|business|keeps?|on|in|and|or|messages?)\b", rest, re.I) or len(rest.split()) < 2:
+        return None                              # talking ABOUT the app, not messaging someone
+    q = re.match(r'^(.+?)\s*["“](.+)["”]\s*$', rest, re.S)
+    sp = q or MSG_SPLIT.match(rest)
+    if sp and len(sp.group(1).split()) <= 4:
+        return {"to": sp.group(1).strip(" ,:"), "text": sp.group(2).strip().strip('"“”'), "app": app, "send": True}
+    if llm is None:
+        return None
+    try:                                          # "whatsapp karen smith i love you": where does the name end?
+        raw = llm.complete('Split this into who the message is for and the message itself. JSON only: '
+                           '{"to": "<the person\'s name>", "text": "<the message, word for word>"}\n\n' + rest,
+                           prefer_smart=False, temperature=0)
+        d = json.loads(re.search(r"\{.*\}", raw or "", re.S).group(0))
+        to, body = str(d.get("to", "")).strip(), str(d.get("text", "")).strip()
+        if to and body and to.lower() in rest.lower() and len(to.split()) <= 4:
+            return {"to": to, "text": body, "app": app, "send": True}
+    except Exception:
+        pass
+    return None
 
 
 class Agent:
@@ -149,6 +196,23 @@ class Agent:
             if NO.match(text):
                 return self._resume(session, text, p, approved=False)
             # Anything else: treat as a new request and drop the pending action.
+
+        try:                                             # a saved phone routine by name: "driving mode"
+            from . import phone_routines
+            routine = phone_routines.find(text) if "phone_run_routine" in REGISTRY else ""
+        except Exception:
+            routine = ""
+        if routine:
+            out = self._run_tool(session, REGISTRY["phone_run_routine"], {"name": routine})
+            self._remember(session, text, out)
+            return out
+
+        if "phone_send_message" in REGISTRY:
+            msg = message_request(text, self.llm)
+            if msg:
+                out = self._run_tool(session, REGISTRY["phone_send_message"], msg)
+                self._remember(session, text, out)
+                return out
 
         for pattern, name in DIRECT:
             t = REGISTRY.get(name)
@@ -293,6 +357,9 @@ Rules:
 - Never give {a.owner} commands, scripts, code or file paths to run or type themselves (PowerShell, cmd, adb…) and
   never invent program names or paths. Do it with a tool; if no tool can do it, say plainly that you can't yet.
 - Anything about the phone (connect, set up, status, apps, screen) is done ONLY with the phone_ tools.
+- To message someone from the phone (WhatsApp, SMS, Telegram, email…) or reply to them: ONE call to
+  phone_send_message. To read what someone said: phone_messages. Any other multi-step phone job: ONE call to
+  do_on_phone with the whole task — never tap through it yourself with phone_open_app / phone_read_screen.
 - You have a permanent memory. It learns automatically after each conversation; use the remember tool when
   {a.owner} explicitly asks you to remember something, and correct_memory when you are corrected.
 

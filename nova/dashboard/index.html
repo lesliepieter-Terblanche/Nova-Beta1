@@ -779,7 +779,26 @@
   .stats .stat .l { margin: 0; grid-column: 1; grid-row: 1; font-size: 11.5px; }
   .stats .stat .n { grid-column: 2; grid-row: 1; font-size: 19px; color: #6fc3ff; }
   .stats .stat .sub { grid-column: 1 / -1; min-height: 0; margin: 0; } .stats .stat .sub:empty { display: none; }
-  .stats.min { width: auto; padding: 10px 44px 10px 14px; cursor: pointer; } .stats.min .statlist { display: none; } .stats.min .railhd { position: static; }
+  .stats.min { width: auto; padding: 10px 44px 10px 14px; cursor: pointer; } .stats.min .statlist, .stats.min .phcard { display: none; } .stats.min .railhd { position: static; }
+  .phcard { margin: 8px 2px 2px; padding: 11px 10px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05); font-size: 11.5px; }
+  .phcard[hidden] { display: none; }
+  .phhd { display: flex; align-items: center; gap: 7px; } .phhd b { font: 600 12.5px var(--body); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phdot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; flex: none; } .phcard.on .phdot { background: #34d399; box-shadow: 0 0 8px #34d399; }
+  .phstate { margin-left: auto; color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+  .phmain { display: grid; grid-template-columns: 58px 1fr; gap: 10px; align-items: center; margin: 10px 0 9px; }
+  .phring { --v: 0; --c: #34d399; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--c) calc(var(--v) * 1%), rgba(255,255,255,.12) 0); position: relative; }
+  .phring::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: rgba(var(--deep, 12,18,34), .96); }
+  .phring span { position: relative; font: 700 14px var(--body); color: #fff; }
+  .phfacts { min-width: 0; display: grid; gap: 3px; color: var(--muted); } .phfacts div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phfacts #ph-store { color: var(--text); }
+  .phbar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.12); } .phbar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #38bdf8, #a78bfa); }
+  .phcard.off .phmain { opacity: .45; }
+  .phbtns, .phrout { display: flex; flex-wrap: wrap; gap: 5px; } .phbtns button { flex: 1; padding: 5px 4px; white-space: nowrap; } .phrout { margin-top: 6px; } .phrout:empty { display: none; }
+  .phcard button { font: 600 11px var(--body); padding: 5px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); color: var(--text); cursor: pointer; }
+  .phcard button:hover { background: rgba(255,255,255,.16); } .phcard button:disabled { opacity: .5; cursor: default; }
+  .phrout button { border-color: rgba(167,139,250,.5); background: rgba(167,139,250,.14); }
+  .phcard.on #ph-recon { display: none; }
+  .phmsg { margin-top: 7px; color: var(--muted); line-height: 1.35; } .phmsg:empty { display: none; }
   .rail:not(.min) { z-index: 6; }
   .rcol { max-height: none; }
   @media (max-width: 1250px) { #tree { padding-left: 16px; padding-right: 16px; top: 150px; } .stats { top: 100px; left: 70px; }
@@ -953,6 +972,16 @@
     <div class="stat" data-open="actions" title="Every request and the steps Nova took"><div class="n" id="s-act">0</div><div class="l">Actions</div><div class="sub"></div></div>
     <div class="stat" data-open="people" title="Everyone you deal with — one card each"><div class="n" id="s-people">0</div><div class="l">People</div><div class="sub"></div></div>
     <div class="stat" data-open="missions" title="Goals Nova works on by itself"><div class="n" id="s-miss">0</div><div class="l">Missions</div><div class="sub"></div></div>
+  </div>
+  <div class="phcard" id="phcard" hidden>
+    <div class="phhd"><span class="phdot" id="ph-dot"></span><b id="ph-name">Phone</b><span class="phstate" id="ph-state"></span></div>
+    <div class="phmain">
+      <div class="phring" id="ph-ring"><span id="ph-bat">–</span></div>
+      <div class="phfacts"><div id="ph-store"></div><div class="phbar"><i id="ph-bar"></i></div><div id="ph-net"></div><div id="ph-temp"></div></div>
+    </div>
+    <div class="phbtns"><button data-ph="ring" title="Make the phone ring loudly, even on silent">🔔 Ring</button><button data-ph="locate" title="Show where the phone is on the map">📍 Where</button><button data-ph="screenshot" title="Take a screenshot of the phone">📸 Shot</button><button data-ph="reconnect" id="ph-recon" title="Connect to the phone again">↻ Reconnect</button></div>
+    <div class="phrout" id="ph-rout"></div>
+    <div class="phmsg" id="ph-msg"></div>
   </div>
 </aside>
 
@@ -1436,6 +1465,33 @@ async function loadStats() {
   if ((s.owner || "") !== OWNER) { OWNER = String(s.owner || "").split(" ")[0]; schedule(); }
   setStatus(s.status);
 }
+// ── the phone card: battery, storage, Wi-Fi, ring / screenshot / routines ─
+async function loadPhone() {
+  let p; try { p = await api("/api/phone"); } catch { return; }
+  const card = $("phcard"); card.hidden = !p.configured; if (!p.configured) return;
+  card.classList.toggle("on", !!p.online); card.classList.toggle("off", !p.online);
+  $("ph-name").textContent = p.name || "Phone";
+  $("ph-state").textContent = p.busy ? "working…" : p.online ? "connected" : p.checked ? "not reachable" : "checking…";
+  const b = p.battery, ring = $("ph-ring");
+  $("ph-bat").textContent = b == null ? "–" : b + "%" ;
+  ring.style.setProperty("--v", b ?? 0); ring.style.setProperty("--c", b == null ? "#64748b" : b <= 15 ? "#f87171" : b <= 35 ? "#fbbf24" : "#34d399");
+  ring.title = b == null ? "" : `Battery ${b}%${p.charging ? ", charging" : ""}`;
+  $("ph-store").textContent = p.storage_free_gb == null ? "" : `${p.storage_free_gb} GB free`;
+  $("ph-bar").style.width = (p.storage_used_pct ?? 0) + "%";
+  $("ph-net").textContent = p.online ? (p.wifi ? `Wi-Fi · ${p.wifi}` : "Mobile data") : "";
+  $("ph-temp").textContent = [p.charging ? "⚡ charging" : "", p.temperature != null ? `${p.temperature}°C` : ""].filter(Boolean).join(" · ");
+  const names = p.routines || [], box = $("ph-rout");
+  if (box.dataset.k !== names.join("|")) { box.dataset.k = names.join("|"); box.innerHTML = ""; names.forEach((n) => { const x = document.createElement("button"); x.textContent = n; x.dataset.ph = "routine"; x.dataset.name = n; x.title = "Run this phone routine"; box.appendChild(x); }); }
+}
+$("phcard").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-ph]"); if (!btn) return;
+  e.stopPropagation(); btn.disabled = true; $("ph-msg").textContent = "Working…"; let hold = 12000;
+  try { const r = await api("/api/phone/do", { do: btn.dataset.ph, name: btn.dataset.name || "" }); $("ph-msg").textContent = (r.message || r.error || "").replace(/ Map: https\S+/, ""); if (r.url) { const a = document.createElement("a"); a.href = r.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = " Open the map ↗"; a.style.color = "#7dd3fc"; $("ph-msg").appendChild(a); } hold = r.url ? 60000 : 12000; }
+  catch { $("ph-msg").textContent = "That didn't work."; }
+  btn.disabled = false; loadPhone(); clearTimeout(loadPhone.t); loadPhone.t = setTimeout(() => { $("ph-msg").textContent = ""; }, hold);
+});
+setInterval(loadPhone, 30000);
+
 function countTo(el, v) {
   const from = +el.textContent || 0; if (from === v) return;
   const t0 = performance.now();
@@ -2552,6 +2608,7 @@ $("mic").onclick = () => {
 poll.n = 0;
 pollGestures();
 await Promise.all([applyTheme(), loadStats(), loadNow(), loadFocus()]);
+loadPhone();
 await loadGraph();
 { let saved = null; try { saved = localStorage.getItem(FOCUS_KEY); } catch {}
   if (saved === "1" || (saved == null && F?.wb?.focus_default)) setFocusMode(true); }

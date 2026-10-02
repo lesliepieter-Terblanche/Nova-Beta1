@@ -1015,6 +1015,9 @@ class Dashboard:
                         return self._file(HERE / "vendor" / Path(u.path).name)
                     if u.path == "/api/graph":
                         return self._json(dash.graph())
+                    if u.path == "/api/phone":                   # the phone card: battery, storage, Wi-Fi, routines
+                        from .. import phone_watch
+                        return self._json(phone_watch.snapshot())
                     if u.path == "/api/stats":
                         from .. import phone_voice
                         live = bool((dash.cfg.get("voice") or {}).get("live_speech", True)) and \
@@ -1194,6 +1197,28 @@ class Dashboard:
                     if self.path == "/api/globe/install":
                         from ..skills import globe
                         return self._json({"message": globe.install()})
+                    if self.path == "/api/phone/do":             # the phone card's buttons
+                        from ..tools import REGISTRY
+                        what = str(body.get("do", ""))
+                        calls = {"ring": ("phone_ring", {}), "reconnect": ("phone_reconnect", {}),
+                                 "screenshot": ("phone_screenshot", {}), "health": ("phone_health", {}),
+                                 "locate": ("phone_locate", {}),
+                                 "routine": ("phone_run_routine", {"name": str(body.get("name", ""))})}
+                        if what not in calls or calls[what][0] not in REGISTRY:
+                            return self._json({"error": "I don't know that phone action."}, 400)
+                        name, args = calls[what]
+                        context.begin_turn("dashboard")
+                        if what == "routine":                    # can take a while: run it and report as a banner
+                            def _go():
+                                context.begin_turn("dashboard")
+                                out = REGISTRY[name].run(args)
+                                context.store.log("notice", "phone", out[:200], out, turn=0)
+                            threading.Thread(target=_go, daemon=True).start()
+                            return self._json({"message": f"Running {args['name']}…"})
+                        out = str(REGISTRY[name].run(args))
+                        link = re.search(r"https://www\.google\.com/maps\S+", out)
+                        return self._json({"message": out.removeprefix("ERROR: "), "ok": not out.startswith("ERROR"),
+                                           "url": link.group(0) if link else ""})
                     if self.path == "/api/send_file":            # "Send to Telegram" under a picture on the dashboard
                         loc = dash.location_of(str(body.get("id", "")))
                         if not loc or not Path(loc).is_file():

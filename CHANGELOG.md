@@ -4,6 +4,34 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.28.0] — 2026-10-02
+### Added — much more from the phone connection
+- **Read and reply.** "What did Karen say?", "any new messages?" reads what is waiting on the phone (WhatsApp, SMS,
+  Telegram, Signal, Teams, Gmail, Outlook, missed calls). "Reply: on my way" answers the newest message in the app it
+  came in. If nothing is waiting from that person, Nova opens the chat and reads it.
+- **Other apps.** Messages can be sent in WhatsApp, SMS, Telegram, Signal, Teams, Messenger, Gmail and Outlook.
+  "Draft" or "write" types the message and stops before Send.
+- **Message and missed-call alerts.** Nova tells you on the PC (dashboard banner and out loud) when one arrives. She
+  reads the phone's notifications herself — nothing goes to an AI model and nothing is kept in the brain. Switch it
+  off, make it silent, or limit it to certain apps under Settings → Phone.
+- **Phone card on the dashboard** (left, under Overview): battery ring, free storage, Wi-Fi, temperature, whether the
+  phone is reachable, and buttons for Ring, Where, Screenshot and your routines. Also "how is my phone".
+- **Find my phone.** "Ring my phone" makes it ring at full volume even on silent. "Where is my phone" gives its last
+  position with a map link (only when asked — no location history is kept).
+- **Quick switches.** Wi-Fi, Bluetooth, mobile data, do not disturb, airplane mode, location, auto rotate, battery
+  saver, dark mode, silent / vibrate, plus brightness and volumes in percent. Hotspot and flashlight go through the
+  quick-settings panel.
+- **Saved routines.** One phrase runs several steps: "driving mode", "bedtime" and "good morning" come ready-made;
+  "save a phone routine called gym time: do not disturb on, Bluetooth on, open Spotify" makes your own.
+- **Reconnects by herself.** A background check every 30 seconds drops a stale link and connects again, says once when
+  the phone can't be reached and when it is back, and warns once when the battery is low. "Reconnect my phone" no
+  longer asks for the cable unless the phone was restarted.
+
+### Fixed
+- **"whatsapp Karen Smith I love you"** used to end with "I couldn't finish that in a reasonable number of steps":
+  Nova tapped through WhatsApp one small step at a time. A sentence that starts with whatsapp / sms / telegram /
+  signal and a name now goes straight to one send-message action.
+
 ## [2.27.6] — 2026-10-02
 ### Fixed — writing messages on the phone
 - Nova now **types the message herself**. She used to long-press or double-tap the message box, which only brought up

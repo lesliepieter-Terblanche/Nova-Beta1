@@ -306,3 +306,250 @@ def test_writes_and_sends_a_whatsapp_message(nova, monkeypatch):
             return _json.dumps(self.steps[len(seen2) - 1])
     out = ph.run_task("WhatsApp Karen that I'm running late", p=p2, llm=Script2(), pause=0)
     assert "I stopped before tapping 'Send'" in out and p2.sent == [] and p2.box == "running late"
+
+
+# ── v2.28: health, switches, ring, messages, alerts, routines, reconnect ──
+class RichAdb(FakeAdb):
+    """The fake phone with storage, memory, Wi-Fi, volume and a clock that takes timers."""
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.notif = NOTIF
+        self.timer_ok = True
+
+    def __call__(self, args, timeout=25, binary=False):
+        if args[0] == "disconnect":
+            self.calls.append(args)
+            self.devs.pop(args[1], None)
+            return 0, f"disconnected {args[1]}"
+        if args[0] == "-s" and args[2] == "shell":
+            cmd = args[3]
+            if "dumpsys battery" in cmd:
+                self.shell.append(cmd)
+                return 0, "  AC powered: false\n  USB powered: false\n  level: 64\n  temperature: 287\n"
+            if cmd.startswith("df -k"):
+                return 0, "Filesystem 1K-blocks Used Available Use% Mounted on\n/dev/block/dm-50 239468544 121634816 117440512 51% /data"
+            if "meminfo" in cmd:
+                return 0, "MemTotal:       11534336 kB\nMemFree: 300000 kB\nMemAvailable:    4613734 kB"
+            if cmd == "cmd wifi status":
+                return 0, 'Wifi is enabled\nWifi is connected to "HomeFibre"\nWifiInfo: SSID: "HomeFibre", BSSID: aa:bb, RSSI: -52, Link speed'
+            if "volume --stream" in cmd and "--get" in cmd:
+                self.shell.append(cmd)
+                return 0, "volume is 5 in range [0..15]"
+            if "dumpsys notification" in cmd:
+                return 0, self.notif
+            if "SET_TIMER" in cmd and not self.timer_ok:
+                self.shell.append(cmd)
+                return 0, "Error: Activity not started, unable to resolve Intent"
+            if cmd.startswith("for d in"):
+                return 0, "/system/media/audio/ringtones/Atomic_Bell.ogg\n/system/media/audio/ringtones/Over_the_Horizon.ogg"
+            if cmd.startswith("svc nfc"):
+                self.shell.append(cmd)
+                return 0, "svc: unknown command nfc\nusage: svc [wifi|data]"
+        return super().__call__(args, timeout, binary)
+
+
+@pytest.fixture()
+def rich(nova, monkeypatch, tmp_path):
+    adb = RichAdb()
+    p = ph.Phone(run=adb)
+    monkeypatch.setattr(ph, "_phone", p)
+    monkeypatch.setattr(ph.time, "sleep", lambda s: None)
+    from nova import phone_routines, phone_watch
+    monkeypatch.setattr(phone_routines, "_path", lambda: tmp_path / "phone_routines.json")
+    monkeypatch.setattr(phone_watch, "_seen", None)
+    monkeypatch.setattr(phone_watch, "_health_at", 0.0)
+    phone_watch.state.update(online=None, health=None, checked=0.0, fails=0, told_lost=False, low=False)
+    phone_watch.last_message.clear()
+    said = []
+    monkeypatch.setattr(context, "announce", said.append)
+    nova[0]["phone"] = {}
+    return p, adb, said
+
+
+def test_health_reads_battery_storage_memory_and_wifi(rich):
+    p, adb, _ = rich
+    out = REGISTRY["phone_health"].run({})
+    assert out == ("SM-S926B: battery 64%, 28.7°C, 112.0 GB free of 228.4 GB storage (51% used), 40% memory free, "
+                   "on Wi-Fi 'HomeFibre'.")
+    from nova import phone_watch
+    snap = phone_watch.snapshot()
+    assert snap["battery"] == 64 and snap["wifi"] == "HomeFibre" and snap["online"] and "Driving mode" in snap["routines"]
+
+
+def test_quick_switches_and_levels(rich):
+    p, adb, _ = rich
+    assert REGISTRY["phone_switch"].run({"setting": "Wi-Fi", "on": False}) == "Wifi is off on your phone."
+    assert adb.shell[-1] == "svc wifi disable"
+    assert REGISTRY["phone_switch"].run({"setting": "DND", "on": True}) == "Do not disturb is on on your phone."
+    assert adb.shell[-1] == "cmd notification set_dnd priority"
+    assert "cuts me off" in REGISTRY["phone_switch"].run({"setting": "flight mode", "on": True})
+    assert REGISTRY["phone_set_level"].run({"what": "brightness", "percent": 40}) == "Brightness is at 40% on your phone."
+    assert adb.shell[-1] == "settings put system screen_brightness 102"
+    assert REGISTRY["phone_set_level"].run({"what": "media volume", "percent": 60}).startswith("Media volume is at 60%")
+    assert adb.shell[-1] == "cmd media_session volume --stream 3 --set 9"         # 60% of the phone's 0..15
+    assert ph.quick("turn on bluetooth", p) == "Bluetooth is on." and adb.shell[-1] == "svc bluetooth enable"
+    assert ph.quick("volume 100", p) == "Volume set to 100%." and ph.quick("open whatsapp", p) == "Opened whatsapp."
+    assert ph.quick("book me an uber", p) is None
+
+
+def test_a_switch_without_a_direct_command_uses_the_quick_settings_panel(rich, monkeypatch):
+    p, adb, _ = rich
+    asked = []
+    monkeypatch.setattr(ph, "run_task", lambda goal, allow="", **k: asked.append(goal) or "Done on your phone: hotspot on")
+    assert "hotspot on" in REGISTRY["phone_switch"].run({"setting": "hotspot", "on": True})
+    assert "quick settings" in asked[0] and "'hotspot'" in asked[0]
+    REGISTRY["phone_switch"].run({"setting": "nfc", "on": True})                  # the phone refused the direct way
+    assert len(asked) == 2 and "'nfc'" in asked[1]
+
+
+def test_find_my_phone_rings_through_silent(rich):
+    p, adb, _ = rich
+    assert "ringing at full volume" in REGISTRY["phone_ring"].run({})
+    assert "cmd media_session volume --stream 4 --set 15" in adb.shell and any("SET_TIMER" in c for c in adb.shell)
+    adb.timer_ok = False                                                          # the clock refuses: play a ringtone
+    assert "playing a ringtone" in REGISTRY["phone_ring"].run({})
+    assert "Over_the_Horizon.ogg" in adb.shell[-1] and "cmd media_session volume --stream 3 --set 15" in adb.shell
+
+
+def test_ring_my_phone_skips_the_model(rich, nova):
+    from nova.agent import Agent
+    out = Agent(nova[0], context.llm).handle("Nova, find my phone").text             # FakeLLM queue is empty
+    assert "ringing" in out
+
+
+def test_reading_messages_and_replying_in_the_same_app(rich, monkeypatch):
+    p, adb, _ = rich
+    adb.notif = NOTIF + """  NotificationRecord(0x0c: pkg=com.whatsapp user=UserHandle{0} id=3)
+          android.title=String (WhatsApp)
+          android.text=String (2 new messages)
+  NotificationRecord(0x0d: pkg=org.telegram.messenger user=UserHandle{0} id=4)
+          android.title=String (Karen Smith)
+          android.text=String (Dinner at 7?)
+  NotificationRecord(0x0e: pkg=com.spotify.music user=UserHandle{0} id=5)
+          android.title=String (Now playing)
+          android.text=String (Song)
+"""
+    out = REGISTRY["phone_messages"].run({})
+    assert out.splitlines() == ["- WhatsApp — Sam Dlamini: Can you send the Mist quote today?",
+                                "- Gmail — Northwind PO: PO attached for the EX4400s",
+                                "- Telegram — Karen Smith: Dinner at 7?"]
+    assert REGISTRY["phone_messages"].run({"sender": "karen"}) == "- Telegram — Karen Smith: Dinner at 7?"
+    tasks = []
+    monkeypatch.setattr(ph, "run_task", lambda goal, allow="", **k: tasks.append((goal, allow)) or "Done on your phone: sent")
+    REGISTRY["phone_send_message"].run({"to": "", "text": "Yes, see you then"})   # "reply" = whoever was read last
+    assert tasks[-1][1] == "send" and "Open Telegram, open the chat with Karen Smith" in tasks[-1][0]
+    assert '"Yes, see you then" — then tap Send.' in tasks[-1][0]
+    REGISTRY["phone_send_message"].run({"to": "Sam", "text": "Draft only", "app": "sms", "send": False})
+    assert tasks[-1][1] == "" and "Open Messages" in tasks[-1][0] and "WITHOUT sending" in tasks[-1][0]
+    REGISTRY["phone_send_message"].run({"to": "Sam", "text": "Quote attached", "app": "outlook"})
+    assert "Open Outlook, start a new email to Sam" in tasks[-1][0]
+    REGISTRY["phone_messages"].run({"sender": "Thabo"})                           # nothing waiting: read the chat itself
+    assert "open the chat with Thabo" in tasks[-1][0] and "Do not type or send" in tasks[-1][0]
+
+
+def test_whatsapp_name_message_is_one_send_not_improvised(rich, nova, monkeypatch):
+    from nova.agent import Agent, message_request
+    assert message_request("WhatsApp Karen: test") == {"to": "Karen", "text": "test", "app": "whatsapp", "send": True}
+    assert message_request('Send Karen a WhatsApp message saying "I love you"') == {
+        "to": "Karen", "text": "I love you", "send": True, "app": "whatsapp"}
+    assert message_request("draft Sam a telegram saying hello")["send"] is False
+    assert message_request("whatsapp is not working") is None and message_request("what is whatsapp") is None
+    tasks = []
+    monkeypatch.setattr(ph, "run_task", lambda goal, allow="", **k: tasks.append((goal, allow)) or "Done on your phone: sent")
+    monkeypatch.setattr(context.llm, "complete", lambda prompt, **k: '{"to": "karen smith", "text": "i love you"}')
+    out = Agent(nova[0], context.llm).handle("whatsapp karen smith i love you").text   # no model round at all
+    assert out == "Done on your phone: sent" and tasks == [
+        ('Open WhatsApp, open the chat with karen smith (use the search if it is not on the first screen; pick the '
+         'person, not a group), type exactly this message: "i love you" — then tap Send.', "send")]
+
+
+def test_alerts_only_for_messages_that_are_new(rich, nova):
+    p, adb, said = rich
+    from nova import phone_watch
+    nova[0]["phone"] = {"address": "100.101.102.103"}
+    adb.devs["100.101.102.103:5555"] = "device"
+    phone_watch.tick(p)                                       # first look: takes stock, says nothing
+    assert said == [] and phone_watch.state["online"] and phone_watch.state["health"]["battery"] == 64
+    adb.notif = NOTIF + """  NotificationRecord(0x0d: pkg=com.whatsapp user=UserHandle{0} id=4)
+          android.title=String (Karen Smith)
+          android.text=String (Are you on your way?)
+"""
+    phone_watch.tick(p)
+    assert said == ["📱 WhatsApp from Karen Smith: Are you on your way?"]
+    assert phone_watch.last_message["from"] == "Karen Smith"
+    notices = [e for e in context.store.activity(0) if e["kind"] == "notice"]
+    assert notices and "Karen Smith" in notices[-1]["title"]
+    phone_watch.tick(p)                                       # same notifications: nothing more
+    assert len(said) == 1
+    nova[0]["phone"]["alerts"] = False
+    adb.notif += "  NotificationRecord(0x0f: pkg=com.whatsapp)\n   android.title=String (Sam)\n   android.text=String (Hi)\n"
+    phone_watch.tick(p)
+    assert len(said) == 1
+
+
+def test_reconnects_by_herself_and_says_when_she_cannot(rich, nova):
+    p, adb, said = rich
+    from nova import phone_watch
+    nova[0]["phone"] = {"address": "100.101.102.103"}
+    adb.devs.clear()
+    adb.devs["100.101.102.103:5555"] = "offline"              # a stale link: drop it and connect afresh
+    phone_watch.tick(p)
+    assert ["disconnect", "100.101.102.103:5555"] in adb.calls and phone_watch.state["online"]
+    real = adb.__call__
+    p._run = lambda args, timeout=25, binary=False: (0, "failed to connect") if args[0] == "connect" else real(args, timeout, binary)
+    adb.devs.clear()
+    for _ in range(4):
+        phone_watch.tick(p)
+    lost = [e["title"] for e in context.store.activity(0) if e["kind"] == "notice" and "can't reach your phone" in e["title"]]
+    assert len(lost) == 1 and not phone_watch.state["online"]  # said once, not every round
+    p._run = adb
+    phone_watch.tick(p)
+    assert phone_watch.state["online"] and any("connected again" in e["title"] for e in context.store.activity(0))
+    assert REGISTRY["phone_reconnect"].run({}).startswith("Connected to your phone again")
+
+
+def test_low_battery_is_mentioned_once(rich, nova, monkeypatch):
+    p, adb, said = rich
+    from nova import phone_watch
+    nova[0]["phone"] = {"address": "100.101.102.103", "alerts": False}
+    adb.devs["100.101.102.103:5555"] = "device"
+    monkeypatch.setattr(p, "health", lambda: {"battery": 12, "charging": False})
+    phone_watch.tick(p)
+    monkeypatch.setattr(phone_watch, "_health_at", 0.0)
+    phone_watch.tick(p)
+    assert said == ["Your phone's battery is at 12 percent — time to charge it."]
+
+
+def test_saved_routines_run_from_one_phrase(rich, nova, monkeypatch):
+    p, adb, _ = rich
+    from nova import phone_routines
+    from nova.agent import Agent
+    assert phone_routines.find("driving mode") == "Driving mode" and phone_routines.find("Start my bedtime routine") == "Bedtime"
+    assert phone_routines.find("what is driving mode") == "" and phone_routines.find("turn on bluetooth") == ""
+    out = REGISTRY["phone_save_routine"].run({"name": "gym time", "steps": "dnd on; bluetooth on, media volume 80 and open spotify; order a protein shake"})
+    assert "with 5 steps" in out and "Say 'gym time' to run it" in out
+    slow = []
+    monkeypatch.setattr(ph, "run_task", lambda goal, allow="", **k: slow.append(goal) or "I stopped before tapping 'Order' on your phone")
+    out = Agent(nova[0], context.llm).handle("gym time").text                      # no model: straight to the routine
+    assert out.startswith("Gym time: did 3 of 5 steps — dnd on, bluetooth on, media volume 80.")
+    assert "Not done: open spotify" in out and "order a protein shake (I stopped before" in out
+    assert slow == ["open spotify", "order a protein shake"]                     # Spotify isn't installed on the fake phone
+    assert "svc bluetooth enable" in adb.shell and "cmd media_session volume --stream 3 --set 12" in adb.shell
+    assert "- Gym time: dnd on; bluetooth on" in REGISTRY["phone_routines_list"].run({})
+    assert REGISTRY["phone_delete_routine"].run({"name": "Gym time"}).startswith("Removed")
+    assert phone_routines.find("gym time") == ""
+
+
+def test_where_is_my_phone(rich, nova, monkeypatch):
+    p, adb, _ = rich
+    from nova.agent import Agent
+    dump = ("  last location=Location[network -26.200000,28.040000 hAcc=900 et=+2d]\n"
+            "  last location=Location[fused -26,107600,28,056800 hAcc=14,5 et=+3d2h alt=1560.0]\n"
+            "  last location=Location[gps 0.000000,0.000000 hAcc=1]\n")
+    monkeypatch.setattr(p, "sh", lambda cmd, timeout=25: dump if cmd == "dumpsys location" else "")
+    out = Agent(nova[0], context.llm).handle("where is my phone?").text              # no model call
+    assert "-26.10760, 28.05680, accurate to about 14 metres" in out
+    assert "https://www.google.com/maps?q=-26.107600,28.056800" in out
+    monkeypatch.setattr(p, "sh", lambda cmd, timeout=25: "")
+    assert "Location may be off" in REGISTRY["phone_locate"].run({})

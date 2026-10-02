@@ -9,7 +9,13 @@ from ..tools import register_group, tool
 
 register_group("phone", ["my phone", "the phone", "on my phone", "phone's", "galaxy", "s24", "android", "cellphone",
                          "cell phone", "mobile", "handset", "phone battery", "phone screen", "phone notifications",
-                         "whatsapp", "sms", "text message", "call ", "dial", "phone photos", "phone camera"])
+                         "whatsapp", "sms", "text message", "call ", "dial", "phone photos", "phone camera",
+                         "ring my", "find my phone", "where is my phone", "track my", "locate my", "wifi", "wi-fi", "bluetooth", "hotspot",
+                         "do not disturb", "dnd", "airplane mode", "flight mode", "brightness", "battery saver",
+                         "dark mode", "mobile data", "telegram message", "message to", "messages from", "reply to",
+                         "what did", "any messages", "new messages", "missed call", "phone routine", "routine",
+                         " mode", "signal message", "teams message", "phone health", "phone storage", "flashlight",
+                         "torch"])
 
 
 def _ready() -> str:
@@ -215,3 +221,209 @@ def do_on_phone(task: str, allowed: str = "") -> str:
 def stop_phone_task() -> str:
     """Stop the task Nova is doing on the phone."""
     return ph.stop_task()
+
+
+# ── health, switches, find my phone ───────────────────────
+@tool(group="phone")
+def phone_health() -> str:
+    """How the phone is doing: battery, temperature, free storage, memory and Wi-Fi."""
+    if err := _ready():
+        return err
+    h = ph.phone().health()
+    bits = []
+    if h["battery"] is not None:
+        bits.append(f"battery {h['battery']}%{' and charging' if h['charging'] else ''}")
+    if h["temperature"] is not None:
+        bits.append(f"{h['temperature']}°C" + (" (hot)" if h["temperature"] >= 42 else ""))
+    if h["storage_free_gb"] is not None:
+        bits.append(f"{h['storage_free_gb']} GB free of {h['storage_total_gb']} GB storage ({h['storage_used_pct']}% used)")
+    if h["memory_free_pct"] is not None:
+        bits.append(f"{h['memory_free_pct']}% memory free")
+    bits.append(f"on Wi-Fi '{h['wifi']}'" if h["wifi"] else "not on Wi-Fi (mobile data)")
+    try:
+        from .. import phone_watch
+        phone_watch.state.update(health=h, online=True, checked=time.time())
+    except Exception:
+        pass
+    return f"{h['model'] or 'Your phone'}: " + ", ".join(bits) + "."
+
+
+@tool(group="phone")
+def phone_switch(setting: str, on: bool = True) -> str:
+    """Turn a phone setting on or off: wifi, bluetooth, mobile data, do not disturb, airplane mode, location,
+    auto rotate, battery saver, dark mode, nfc, silent, vibrate, hotspot, flashlight.
+    Args:
+        setting: which one
+        on: true = on, false = off
+    """
+    if err := _ready():
+        return err
+    p = ph.phone()
+    name, why = p.switch(setting, on)
+    word = "on" if on else "off"
+    if name and not why:
+        extra = ""
+        if name == "airplane mode" and on:
+            extra = " That also cuts me off from the phone — switch it off on the phone itself when you're done."
+        return f"{name.capitalize()} is {word} on your phone.{extra}"
+    # no direct switch for it (hotspot, flashlight…) or the phone refused: use the quick-settings panel instead
+    return ph.run_task(f"Turn {word} '{name or setting}' on this phone: swipe down the quick settings panel and tap its "
+                       f"button if it is not already {word}; then press home.")
+
+
+@tool(group="phone")
+def phone_set_level(what: str, percent: int) -> str:
+    """Set the phone's brightness or a volume.
+    Args:
+        what: brightness, media volume, ring volume, alarm volume, call volume or notification volume
+        percent: 0 to 100
+    """
+    if err := _ready():
+        return err
+    why = ph.phone().set_level(what, percent)
+    return f"ERROR: the phone refused ({why})" if why else f"{what.capitalize()} is at {max(0, min(100, int(percent)))}% on your phone."
+
+
+@tool(group="phone")
+def phone_ring() -> str:
+    """Find my phone: make it ring loudly, even when it is on silent."""
+    if err := _ready():
+        return err
+    how = ph.phone().ring()
+    if how == "timer":
+        return "Your phone is ringing at full volume — it keeps going until you dismiss it on the phone."
+    if how == "ringtone":
+        return "Your phone is playing a ringtone at full volume."
+    return "ERROR: I couldn't make the phone ring — its clock and music apps both refused."
+
+
+@tool(group="phone")
+def phone_locate() -> str:
+    """Where the phone is right now: its position on the map (track / locate my phone)."""
+    if err := _ready():
+        return err
+    try:
+        loc = ph.phone().where()
+    except Exception as e:
+        return f"ERROR: {e}"
+    if not loc:
+        return ("Your phone hasn't got a position yet — Location may be off. Say 'turn on location on my phone', open "
+                "Maps on it once, and ask again.")
+    link = f"https://www.google.com/maps?q={loc['lat']:.6f},{loc['lon']:.6f}"
+    try:
+        from .. import cards, phone_watch
+        phone_watch.state["where"] = {**loc, "url": link}
+        cards.show("info", "Where your phone is", {"text": f"{loc['lat']:.5f}, {loc['lon']:.5f}\n{link}"})
+    except Exception:
+        pass
+    near = f", accurate to about {loc['accuracy']} metres" if loc["accuracy"] is not None else ""
+    return (f"Your phone's last position is {loc['lat']:.5f}, {loc['lon']:.5f}{near}. Map: {link} — it's on the "
+            "dashboard too. Say 'ring my phone' to make it ring.")
+
+
+@tool(group="phone")
+def phone_reconnect() -> str:
+    """Reconnect to the phone when the connection dropped (no cable needed unless the phone was restarted)."""
+    p = ph.phone()
+    addr = p.address()
+    if addr:
+        p._run(["disconnect", addr], timeout=8)
+    if err := _ready():
+        return err
+    return f"Connected to your phone again ({p.serial})."
+
+
+# ── messages: read, reply, any app ────────────────────────
+@tool(group="phone")
+def phone_messages(app: str = "", sender: str = "") -> str:
+    """Read the messages waiting on the phone (WhatsApp, SMS, Telegram, Signal, Teams, email, missed calls) — "what
+    did Sam say?", "any new messages?".
+    Args:
+        app: only this app (whatsapp, sms, telegram, gmail, outlook, teams, signal…); empty = all
+        sender: only from this person; empty = everyone
+    """
+    if err := _ready():
+        return err
+    p = ph.phone()
+    got = p.messages(app, sender)
+    if got:
+        try:
+            from .. import phone_watch
+            phone_watch.last_message.clear()
+            phone_watch.last_message.update(got[0])
+        except Exception:
+            pass
+        return "\n".join(f"- {m['app']} — {m['from']}: {m['text'] or '(no text)'}" for m in got[:15])
+    if sender:                         # nothing waiting from them: open the chat and read it
+        name = ph.MESSAGE_APPS.get(app.lower().strip(), app.strip() or "WhatsApp")
+        return ph.run_task(f"Open {name}, open the chat with {sender} and report the last few messages word for word "
+                           f"with who said each. Do not type or send anything.")
+    return "No new messages waiting on your phone" + (f" in {app}." if app else ".")
+
+
+@tool(group="phone")
+def phone_send_message(to: str, text: str, app: str = "", send: bool = True) -> str:
+    """Write a message to someone from the phone and send it — also for replying ("reply to Sam: on my way").
+    Works in WhatsApp, SMS (Messages), Telegram, Signal, Teams, Messenger, Gmail and Outlook.
+    Args:
+        to: the person as they are named in that app; empty = whoever sent the newest message
+        text: the message, word for word
+        app: whatsapp, sms, telegram, signal, teams, gmail, outlook…; empty = the app their last message came in, else WhatsApp
+        send: false when the user said draft / write / prepare (it is typed but not sent)
+    """
+    from .. import phone_watch
+    last = dict(phone_watch.last_message)
+    if not to.strip():
+        if not last:
+            return "Who should I send it to? There's no recent message to reply to."
+        to, app = last["from"], app or last["app"]
+    elif not app and last and to.lower().strip() in last.get("from", "").lower():
+        app = last["app"]
+    if not text.strip():
+        return "What should the message say?"
+    return ph.run_task(ph.message_task(to.strip(), text.strip(), app or "whatsapp", send), "send" if send else "")
+
+
+# ── saved routines ────────────────────────────────────────
+@tool(group="phone")
+def phone_run_routine(name: str) -> str:
+    """Run a saved phone routine (several steps from one phrase), e.g. "driving mode", "bedtime".
+    Args:
+        name: the routine's name
+    """
+    from .. import phone_routines
+    return phone_routines.run(name)
+
+
+@tool(group="phone")
+def phone_save_routine(name: str, steps: str) -> str:
+    """Save (or replace) a phone routine.
+    Args:
+        name: what the user will say to start it, e.g. "Driving mode"
+        steps: the steps in order, separated by semicolons, in plain words — e.g. "do not disturb on; bluetooth on;
+               media volume 70; open maps; open spotify"
+    """
+    from .. import phone_routines
+    todo = phone_routines.steps_of(steps)
+    if not name.strip() or not todo:
+        return "A routine needs a name and at least one step."
+    saved = phone_routines.save(name, todo)
+    return f"Saved the phone routine '{saved}' with {len(todo)} steps: {'; '.join(todo)}. Say '{saved.lower()}' to run it."
+
+
+@tool(group="phone")
+def phone_routines_list() -> str:
+    """The saved phone routines and their steps."""
+    from .. import phone_routines
+    data = phone_routines.load()
+    return "\n".join(f"- {k}: {'; '.join(v)}" for k, v in data.items()) if data else "No phone routines saved yet."
+
+
+@tool(group="phone")
+def phone_delete_routine(name: str) -> str:
+    """Remove a saved phone routine.
+    Args:
+        name: the routine's name
+    """
+    from .. import phone_routines
+    return f"Removed the phone routine '{name}'." if phone_routines.delete(name) else f"There's no routine called '{name}'."

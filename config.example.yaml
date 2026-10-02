@@ -106,6 +106,12 @@ phone:
   address: ""                # the phone's Tailscale IP (filled in by setup)
   name: ""
   adb_path: ""               # "" = Nova's own copy of Google's Android platform-tools
+  watch: true                # keep the phone connected (reconnects by herself) and its dashboard card fresh
+  alerts: true               # tell me about new messages and missed calls (read locally, not sent to a model)
+  alerts_speak: true         # ...out loud too (false = dashboard banner only)
+  alert_apps: []             # e.g. [whatsapp, messages, phone] — empty = every messaging app
+  check_seconds: 30
+  low_battery: 15            # warn once when the phone drops to this %
 
 # Screen time from ActivityWatch (free, activitywatch.net — keeps its data on this PC)
 activitywatch:

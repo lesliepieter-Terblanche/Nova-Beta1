@@ -16,7 +16,7 @@ def test_reply_audio_is_made_when_the_phone_asks(nova, monkeypatch):
     made = []
     real = context.speech.synth_wav
     context.speech.synth_wav = lambda text, out: made.append(text) or real(text, out)
-    url = phone_voice.reply_audio("Your next meeting is at ten with Axiz.")
+    url = phone_voice.reply_audio("Your next meeting is at ten with Northwind.")
     assert url.startswith("/api/tts/") and made == []                 # nothing made yet: the text shows at once
     token = url.rsplit("/", 1)[-1]
     f = phone_voice.render(token)
@@ -98,7 +98,7 @@ def test_commands_just_run_but_irreversible_things_still_ask(nova):
     assert not needs_yes(t["run_shell"], {"command": "winget install VideoLAN.VLC"})
     assert not needs_yes(t["move_path"], {}) and not needs_yes(t["restart_nova"], {})
     assert needs_yes(t["delete_path"], {}) and needs_yes(t["gmail_send"], {})
-    assert needs_yes(t["run_shell"], {"command": "Remove-Item C:\\Users\\Pieter\\Documents -Recurse -Force"})
+    assert needs_yes(t["run_shell"], {"command": "Remove-Item C:\\Users\\Alex\\Documents -Recurse -Force"})
     assert needs_yes(t["run_shell"], {"command": "format D: /q"})
     nova[0]["system"]["confirm"] = "all"
     assert needs_yes(t["run_shell"], {"command": "dir"}) and needs_yes(t["move_path"], {})
@@ -126,10 +126,10 @@ def test_upload_files_into_the_brain(dash, nova):
     from urllib.parse import quote
 
     from nova.config import resolve
-    name = f"Axiz Mist pricing {uuid.uuid4().hex[:6]}"
+    name = f"Northwind Mist pricing {uuid.uuid4().hex[:6]}"
     made = []
     try:
-        body = b"Juniper Mist pricing for Axiz: EX4400 at R48 000 each, valid until 31 October. Contact Sam Dlamini."
+        body = b"Juniper Mist pricing for Northwind: EX4400 at R48 000 each, valid until 31 October. Contact Sam Dlamini."
         r = _post(f"/api/upload?name={quote(name + '.txt')}&note={quote('for the Q4 deal')}", body,
                   "application/octet-stream")
         assert r["id"].startswith("note:") and "Filed in your brain" in r["message"]

@@ -20,7 +20,7 @@ NOTIF = """  NotificationRecord(0x0a: pkg=com.whatsapp user=UserHandle{0} id=1 t
           android.text=String (Can you send the Mist quote today?)
       }
   NotificationRecord(0x0b: pkg=com.google.android.gm user=UserHandle{0} id=2)
-          android.title=String (Axiz PO)
+          android.title=String (Northwind PO)
           android.bigText=SpannableString (PO attached for the EX4400s)
 """
 
@@ -133,7 +133,7 @@ def test_screenshot_notifications_and_files(fone, nova):
     out = REGISTRY["phone_screenshot"].run({})
     assert "Screenshot saved" in out and context.attachments()
     n = REGISTRY["phone_notifications"].run({})
-    assert "- Whatsapp: Sam Dlamini — Can you send the Mist quote today?" in n and "Gmail: Axiz PO — PO attached" in n
+    assert "- Whatsapp: Sam Dlamini — Can you send the Mist quote today?" in n and "Gmail: Northwind PO — PO attached" in n
     assert "Copied 2 file(s)" in REGISTRY["phone_get_photos"].run({"count": 2})
     f = nova[1] / "files" / "quote.pdf"
     f.write_bytes(b"%PDF")

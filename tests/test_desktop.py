@@ -61,12 +61,12 @@ class ScriptLLM:
 
 def test_task_runs_step_by_step(nova):
     d = FakeDesk()
-    llm = ScriptLLM([{"do": "click", "id": 1}, {"do": "type", "text": "sam@axiz.co.za", "id": 2},
+    llm = ScriptLLM([{"do": "click", "id": 1}, {"do": "type", "text": "sam@northwind.co.za", "id": 2},
                      {"do": "type", "text": "Mist pricing", "id": 3}, {"do": "keys", "keys": "ctrl+s"},
                      {"do": "done", "summary": "Drafted the pricing email to Sam and saved it."}])
     out = desktop.run_task("draft an email to Sam about Mist pricing", d=d, llm=llm)
     assert out == "Done: Drafted the pricing email to Sam and saved it."
-    assert d.log == [("click", "New Email"), ("type", "sam@axiz.co.za", 2), ("type", "Mist pricing", 3), ("keys", "ctrl+s")]
+    assert d.log == [("click", "New Email"), ("type", "sam@northwind.co.za", 2), ("type", "Mist pricing", 3), ("keys", "ctrl+s")]
     assert "5. Button 'Attach File'" in llm.prompts[0] and "Clicked 'New Email'" in llm.prompts[1]
 
 

@@ -57,7 +57,7 @@ TREE: dict[str, dict[str, dict]] = {
                                            "quotes, pricing sent, correspondence",
                                   "subs": ["Active_Accounts", "Partner_Network"],
                                   "words": ["client", "customer", "partner", "reseller", "vendor", "account", "quote",
-                                            "pricing", "purchase order", "deal registration", "axiz", "juniper", "avaya",
+                                            "pricing", "purchase order", "deal registration", "northwind", "juniper", "avaya",
                                             "nokia", "sonar", "westcon", "distributor"]},
         "03_Projects_&_Strategy": {"about": "active work projects (one sub-folder per project), plans, goals, forecasts, "
                                             "competitor and market research",
@@ -225,7 +225,7 @@ def clean_name(title: str, limit: int = 70) -> str:
 
 
 def file_name(title: str, date: dt.date | None = None, ext: str = ".md") -> str:
-    """Dated notes sort by day: 2026-10-02_Axiz_Mist_Pricing.md"""
+    """Dated notes sort by day: 2026-10-02_Northwind_Mist_Pricing.md"""
     base = clean_name(title)
     return f"{date:%Y-%m-%d}_{base}{ext}" if date else f"{base}{ext}"
 

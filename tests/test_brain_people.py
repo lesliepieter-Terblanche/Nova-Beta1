@@ -9,18 +9,18 @@ import pytest
 from nova import answers, context, inbox, people
 
 
-def scripted(nova, monkeypatch, people_json=None, summary=None, answer="Sam Dlamini at Axiz wants Mist pricing [1][2]."):
+def scripted(nova, monkeypatch, people_json=None, summary=None, answer="Sam Dlamini at Northwind wants Mist pricing [1][2]."):
     """Route the fake model's answers by prompt."""
     def complete(prompt, system="", prefer_smart=True, temperature=0.5):
         if "List the real, named people" in prompt:
             return json.dumps({"people": people_json or []})
         if "You file things into a personal knowledge base" in prompt:
-            return json.dumps(summary or {"title": "Mist deal update", "summary": ["Axiz wants pricing", "Due Friday"],
+            return json.dumps(summary or {"title": "Mist deal update", "summary": ["Northwind wants pricing", "Due Friday"],
                                           "type": "message"})
         if "Answer his question using ONLY the numbered sources" in prompt:
             return answer
         if "weekly" in prompt:
-            return "- Busy week with Axiz."
+            return "- Busy week with Northwind."
         if "long-term memory" in prompt:
             return '{"memories": []}'
         return "summary"
@@ -29,13 +29,13 @@ def scripted(nova, monkeypatch, people_json=None, summary=None, answer="Sam Dlam
 
 # ── people cards ──────────────────────────────────────────
 def test_cards_merge_names_and_fill_details(nova):
-    pid, created = people.upsert("Sam", company="Axiz")
+    pid, created = people.upsert("Sam", company="Northwind")
     assert created
-    pid2, created2 = people.upsert("Sam Dlamini", company="Axiz", role="Juniper BDM", email="Sam@Axiz.co.za",
+    pid2, created2 = people.upsert("Sam Dlamini", company="Northwind", role="Juniper BDM", email="Sam@Northwind.co.za",
                                    note="Owns the Mist refresh")
     assert pid2 == pid and not created2
     p = people.get(pid)
-    assert p["name"] == "Sam Dlamini" and p["aliases"] == ["Sam"] and p["email"] == "sam@axiz.co.za"
+    assert p["name"] == "Sam Dlamini" and p["aliases"] == ["Sam"] and p["email"] == "sam@northwind.co.za"
     assert "Owns the Mist refresh" in p["notes"]
     people.upsert("Sam Dlamini", note="Owns the Mist refresh")          # no duplicate notes
     assert people.get(pid)["notes"].count("Mist refresh") == 1
@@ -45,49 +45,49 @@ def test_cards_merge_names_and_fill_details(nova):
     tid = people.from_line("Thandi Nkosi – Channel Manager, Nokia")
     t = people.get(tid)
     assert (t["role"], t["company"]) == ("Channel Manager", "Nokia")
-    assert people.get(people.from_line("Pieter Venter – Axiz"))["company"] == "Axiz"
+    assert people.get(people.from_line("Alex Venter – Northwind"))["company"] == "Northwind"
     keep = people.merge(pid, people.find("Sam Botha")["id"])
     assert "Sam Botha" in keep["aliases"] and len(people.all_people()) == 3
 
 
 def test_absorb_from_text_skips_the_owner(nova, monkeypatch):
-    nova[0]["assistant"]["owner"] = "Pieter"
+    nova[0]["assistant"]["owner"] = "Alex"
     scripted(nova, monkeypatch, people_json=[
-        {"name": "Pieter", "company": "Westcon"},
+        {"name": "Alex", "company": "Westcon"},
         {"name": "Lerato Mokoena", "company": "Avaya", "role": "Partner manager", "fact": "Runs the SADC partner program"}])
-    ids = people.absorb("Pieter met Lerato Mokoena from Avaya about the SADC partner program.")
+    ids = people.absorb("Alex met Lerato Mokoena from Avaya about the SADC partner program.")
     assert len(ids) == 1 and people.get(ids[0])["role"] == "Partner manager"
     assert people.absorb("nothing here at all") == []                # no names → no model call needed
 
 
 def test_mentions_deals_and_summary(nova):
     s = context.store
-    pid, _ = people.upsert("Sam Dlamini", company="Axiz", role="BDM")
+    pid, _ = people.upsert("Sam Dlamini", company="Northwind", role="BDM")
     s.add_memory("Sam Dlamini asked for Juniper Mist pricing on the Standard Bank deal", "person")
     s.add_memory("Sam Dlamini prefers WhatsApp over email", "preference")
     s.add_memory("The office Wi-Fi password changes monthly", "fact")
     c = people.card(pid)
     assert len(c["mentions"]) == 2 and sum(m["deal"] for m in c["mentions"]) == 1
     txt = people.summary(people.get(pid))
-    assert "Sam Dlamini — BDM, Axiz" in txt and "Deals & money" in txt and "WhatsApp" in txt
+    assert "Sam Dlamini — BDM, Northwind" in txt and "Deals & money" in txt and "WhatsApp" in txt
 
 
 # ── filing (Telegram forwarding) ──────────────────────────
 def test_file_forwarded_message(nova, monkeypatch):
     cfg, tmp = nova
-    scripted(nova, monkeypatch, people_json=[{"name": "Sam Dlamini", "company": "Axiz", "fact": "Needs Mist pricing"}],
-             summary={"title": "Axiz Mist pricing request", "summary": ["Needs pricing by Friday"], "type": "message"})
-    context.store.add_memory("TrueHome is Pieter's property platform project", "project")
-    r = inbox.file_text("Hi Pieter, please send TrueHome listing pricing and the Mist quote by Friday. Sam",
+    scripted(nova, monkeypatch, people_json=[{"name": "Sam Dlamini", "company": "Northwind", "fact": "Needs Mist pricing"}],
+             summary={"title": "Northwind Mist pricing request", "summary": ["Needs pricing by Friday"], "type": "message"})
+    context.store.add_memory("TrueHome is Alex's property platform project", "project")
+    r = inbox.file_text("Hi Alex, please send TrueHome listing pricing and the Mist quote by Friday. Sam",
                         from_who="Sam Dlamini")
     p = Path(r["path"])
     assert p.exists() and p.parent.name == "02_Clients_&_Partners" and p.parent.parent.name == "02_Work"
-    assert p.name.endswith("_Axiz_Mist_Pricing_Request.md") and "Axiz Mist pricing request" in p.read_text()
+    assert p.name.endswith("_Northwind_Mist_Pricing_Request.md") and "Northwind Mist pricing request" in p.read_text()
     assert "From: Sam Dlamini" in p.read_text()
     assert r["people"] == ["Sam Dlamini"] and people.find("Sam Dlamini")["last_contact"]
     assert r["project"].startswith("TrueHome")
     text = inbox.reply_text(r)
-    assert "📥 Filed in your brain: Axiz Mist pricing request" in text and "📁 Project: TrueHome" in text
+    assert "📥 Filed in your brain: Northwind Mist pricing request" in text and "📁 Project: TrueHome" in text
     assert context.store.search_notes("Mist quote")
 
 
@@ -135,8 +135,8 @@ def test_telegram_helpers():
 def test_ask_brain_cites_sources(nova, monkeypatch):
     scripted(nova, monkeypatch)
     s = context.store
-    people.upsert("Sam Dlamini", company="Axiz")
-    s.add_memory("Sam Dlamini at Axiz wants Juniper Mist pricing", "person")
+    people.upsert("Sam Dlamini", company="Northwind")
+    s.add_memory("Sam Dlamini at Northwind wants Juniper Mist pricing", "person")
     s.add_memory("Avaya renewals are due in March", "fact")
     r = answers.ask("What does Sam Dlamini want?")
     assert r["answer"].startswith("Sam Dlamini") and [x["n"] for x in r["sources"]] == [1, 2]
@@ -146,7 +146,7 @@ def test_ask_brain_cites_sources(nova, monkeypatch):
     empty = answers.ask("What is the capital of Mars colony?")
     assert empty["sources"] == [] or empty["answer"]
     from nova.tools import REGISTRY, select_tools
-    assert "ask_brain" in {t.name for t in select_tools("what do I know about the Axiz deal")}
+    assert "ask_brain" in {t.name for t in select_tools("what do I know about the Northwind deal")}
     assert "person_card" in {t.name for t in select_tools("what's Sam Dlamini's number")}   # names are triggers
     assert "Sam Dlamini" in REGISTRY["person_card"].run({"name": "Sam"})
 
@@ -197,7 +197,7 @@ def call(path, body=None):
 def test_dashboard_people_and_ask(dash, nova, monkeypatch):
     scripted(nova, monkeypatch)
     s = context.store
-    pid, _ = people.upsert("Sam Dlamini", company="Axiz")
+    pid, _ = people.upsert("Sam Dlamini", company="Northwind")
     s.add_memory("Sam Dlamini asked for the Mist quote", "person")
     g = dash.graph()
     node = next(n for n in g["nodes"] if n["id"] == f"person:{pid}")
@@ -205,7 +205,7 @@ def test_dashboard_people_and_ask(dash, nova, monkeypatch):
     assert any(ln["type"] == "mention" and ln["source"] == f"person:{pid}" for ln in g["links"])
     assert all(n.get("created") for n in g["nodes"] if n["kind"] == "note")
     it = call(f"/api/item?id=person:{pid}")
-    assert it["type"] == "person" and it["person"]["company"] == "Axiz" and "Deals & money" in it["mentions"]
+    assert it["type"] == "person" and it["person"]["company"] == "Northwind" and "Deals & money" in it["mentions"]
     call("/api/person", {"id": f"person:{pid}", "phone": "082 000 1111", "role": "BDM"})
     assert people.get(pid)["phone"] == "082 000 1111"
     new = call("/api/person", {"new": True, "name": "Nomsa Khumalo", "company": "Nokia"})

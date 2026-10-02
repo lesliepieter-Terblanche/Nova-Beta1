@@ -488,7 +488,7 @@ def sheets_create_table(title: str, header: list[str], rows: str = "", currency_
     Args:
         title: sheet title
         header: column names
-        rows: the data, one row per line, cells separated by | (e.g. "Axiz | Juniper | 1200000")
+        rows: the data, one row per line, cells separated by | (e.g. "Northwind | Juniper | 1200000")
         currency_columns: header names to format as rand amounts
     """
     data = [[c.strip() for c in line.split("|")] for line in (rows or "").splitlines() if line.strip()]
@@ -545,8 +545,8 @@ def slides_create(title: str, outline: str, subtitle: str = "", export_pptx: boo
     Args:
         title: presentation title (also the title slide)
         outline: one slide per "# Slide title" line, followed by "- bullet" lines, e.g.
-                 "# Q3 results\n- Revenue R6.2m\n- GP 17.4%\n# Next steps\n- Mist refresh with Axiz"
-        subtitle: text under the title on the first slide (e.g. "Avaya QBR · Axiz · October 2026")
+                 "# Q3 results\n- Revenue R6.2m\n- GP 17.4%\n# Next steps\n- Mist refresh with Northwind"
+        subtitle: text under the title on the first slide (e.g. "Avaya QBR · Northwind · October 2026")
         export_pptx: also save a PowerPoint copy on the PC and send it with the reply
     """
     import uuid

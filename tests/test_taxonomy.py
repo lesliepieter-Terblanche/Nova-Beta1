@@ -30,7 +30,7 @@ RULES = [
     (["gym", "blood pressure"], {"domain": "personal", "category": "02_Health_&_Fitness", "confidence": 0.9, "reason": "health"}),
     (["fishing"], {"domain": "personal", "category": "03_Interests_&_Projects", "subfolder": "Hobbies", "confidence": 0.9,
                    "reason": "hobby"}),
-    (["axiz", "juniper"], {"domain": "work", "category": "02_Clients_&_Partners", "subfolder": "Active_Accounts",
+    (["northwind", "juniper"], {"domain": "work", "category": "02_Clients_&_Partners", "subfolder": "Active_Accounts",
                            "confidence": 0.92, "reason": "client"}),
     (["laptop"], {"domain": "work", "category": "04_Resources_&_Reference", "confidence": 0.5,
                   "reason": "could be personal or work"}),
@@ -40,7 +40,7 @@ RULES = [
 def test_names_are_pascal_snake_case():
     assert tx.clean_name("vehicle maintenance log!") == "Vehicle_Maintenance_Log"
     assert tx.clean_name("Q4 QBR notes for the EX4400 deal") == "Q4_QBR_Notes_for_the_EX4400_Deal"
-    assert tx.file_like("2026-09-12 Axiz mist pricing (2).md") == "2026-09-12_Axiz_Mist_Pricing_2.md"
+    assert tx.file_like("2026-09-12 Northwind mist pricing (2).md") == "2026-09-12_Northwind_Mist_Pricing_2.md"
     assert tx.file_like("2026-10-02.md") == "2026-10-02.md" and tx.file_like("2026-W40.md") == "2026-W40.md"
     assert tx.category_named("health") == ("01_Personal", "02_Health_&_Fitness")
     assert tx.category_named("Clients") == ("02_Work", "02_Clients_&_Partners")
@@ -50,9 +50,9 @@ def test_names_are_pascal_snake_case():
 def test_new_notes_are_filed_by_the_rules(nova):
     context.llm.complete = answer_with()
     v = Path(nova[0]["brain"]["vault_dir"])
-    p = tx.place("Axiz Mist pricing", "Juniper quote for Axiz")
+    p = tx.place("Northwind Mist pricing", "Juniper quote for Northwind")
     assert p.relative_to(v).parts[:3] == ("02_Work", "02_Clients_&_Partners", "Active_Accounts")
-    assert p.name.endswith("_Axiz_Mist_Pricing.md")
+    assert p.name.endswith("_Northwind_Mist_Pricing.md")
     p = tx.place("Service the car", "XUV500 60 000 km service", dated=False)
     assert p.relative_to(v).as_posix() == "01_Personal/01_Life_Admin/Service_the_Car.md"
     assert tx.place("Today", "", hint="journal", dated=False).parent.relative_to(v).as_posix() == "01_Personal/05_Journal"
@@ -74,11 +74,11 @@ def old_brain(nova):
     context.llm.complete = answer_with()
     v = Path(nova[0]["brain"]["vault_dir"])
     files = {
-        "Inbox/2026-09-12 Axiz Mist pricing.md": "# Axiz Mist pricing\n\nJuniper quote for Axiz. See [[Fishing trip Vaal]] "
+        "Inbox/2026-09-12 Northwind Mist pricing.md": "# Northwind Mist pricing\n\nJuniper quote for Northwind. See [[Fishing trip Vaal]] "
                                                  "and [[2026-09-30|that journal]].\n\n![card](Inbox/attachments/card 1.png)\n",
         "Inbox/attachments/card 1.png": "PNG",
         "Inbox/attachments/orphan.png": "PNG",
-        "Notes/Fishing trip Vaal.md": "# Fishing trip\n\nfishing at the Vaal with [[2026-09-12 Axiz Mist pricing]] and "
+        "Notes/Fishing trip Vaal.md": "# Fishing trip\n\nfishing at the Vaal with [[2026-09-12 Northwind Mist pricing]] and "
                                       "[[Journal/2026-09-30]]\n\n![[permit scan.pdf]]\n[map](pics/vaal map.png)\n"
                                       "[site](https://example.com/a b)\n",
         "Notes/pics/vaal map.png": "PNG",
@@ -87,8 +87,8 @@ def old_brain(nova):
                                                         "[[New laptop]]\n",
         "Notes/New laptop.md": "# New laptop\n\nwhich laptop should I get\n",
         "Journal/2026-09-30.md": "# Journal\n\nGood day.\n",
-        "Meetings/2026-09-29 Axiz QBR.md": "# Axiz QBR\n\nminutes\n",
-        "Projects/Mist rollout/deep/Plan.md": "# Plan\n\naxiz rollout plan\n",
+        "Meetings/2026-09-29 Northwind QBR.md": "# Northwind QBR\n\nminutes\n",
+        "Projects/Mist rollout/deep/Plan.md": "# Plan\n\nnorthwind rollout plan\n",
         "_Nova Memory.md": "# What Nova knows\n",
     }
     for rel, text in files.items():
@@ -97,7 +97,7 @@ def old_brain(nova):
         f.write_text(text, encoding="utf-8")
     s = context.store
     s.sync_vault(v)
-    note = str(v / "Inbox/2026-09-12 Axiz Mist pricing.md")
+    note = str(v / "Inbox/2026-09-12 Northwind Mist pricing.md")
     s.set_tracking(f"note:{note}", status="doing", pinned=True, note="chase Sam")
     s.db.execute("CREATE TABLE IF NOT EXISTS links(item TEXT PRIMARY KEY, project TEXT)")
     s.db.execute("INSERT INTO links(item, project) VALUES(?, 'memory:1')", (f"note:{note}",))
@@ -111,10 +111,10 @@ def test_plan_moves_nothing_and_asks_when_unsure(old_brain):
     plan = tx.build_plan()
     assert sorted(p.relative_to(v).as_posix() for p in v.rglob("*") if p.is_file()) == before      # nothing moved
     by = {i["rel"]: i for i in plan["items"]}
-    assert by["Inbox/2026-09-12 Axiz Mist pricing.md"]["target"] == \
-        "02_Work/02_Clients_&_Partners/Active_Accounts/2026-09-12_Axiz_Mist_Pricing.md"
+    assert by["Inbox/2026-09-12 Northwind Mist pricing.md"]["target"] == \
+        "02_Work/02_Clients_&_Partners/Active_Accounts/2026-09-12_Northwind_Mist_Pricing.md"
     assert by["Journal/2026-09-30.md"]["target"] == "01_Personal/05_Journal/2026-09-30.md"
-    assert by["Meetings/2026-09-29 Axiz QBR.md"]["target"] == "02_Work/05_Meetings_&_Reports/Meetings/2026-09-29_Axiz_QBR.md"
+    assert by["Meetings/2026-09-29 Northwind QBR.md"]["target"] == "02_Work/05_Meetings_&_Reports/Meetings/2026-09-29_Northwind_QBR.md"
     assert by["_Nova Memory.md"]["target"] == "01_Personal/05_Journal/Nova_Memory.md"
     assert by["Projects/Mist rollout/deep/Plan.md"]["target"] == \
         "02_Work/03_Projects_&_Strategy/Mist_Rollout/Deep_Plan.md"                                # three deep, project kept
@@ -133,15 +133,15 @@ def test_apply_keeps_links_pins_projects_and_attachments(old_brain):
     assert tx.answer("Notes/New laptop.md", "01_Personal", "Life Admin")["target"] == "01_Personal/01_Life_Admin/New_Laptop.md"
     r = tx.apply_plan()
     assert r["moved"] >= 7 and r["left"] == 0 and Path(r["backup"]).is_dir()
-    assert (Path(r["backup"]) / "Inbox/2026-09-12 Axiz Mist pricing.md").exists()                  # backup has the old layout
+    assert (Path(r["backup"]) / "Inbox/2026-09-12 Northwind Mist pricing.md").exists()                  # backup has the old layout
     assert sorted(d.name for d in v.iterdir()) == ["01_Personal", "02_Work"]                       # rule 1
     assert tx.audit() == []                                                                       # rules 2-4
-    new = v / "02_Work/02_Clients_&_Partners/Active_Accounts/2026-09-12_Axiz_Mist_Pricing.md"
+    new = v / "02_Work/02_Clients_&_Partners/Active_Accounts/2026-09-12_Northwind_Mist_Pricing.md"
     text = new.read_text()
     # links between notes follow the renames, with the readable words kept
     assert "[[Fishing_Trip_Vaal|Fishing trip Vaal]]" in text and "[[2026-09-30|that journal]]" in text
     fish = (v / "01_Personal/03_Interests_&_Projects/Hobbies/Fishing_Trip_Vaal.md").read_text()
-    assert "[[2026-09-12_Axiz_Mist_Pricing|2026-09-12 Axiz Mist pricing]]" in fish
+    assert "[[2026-09-12_Northwind_Mist_Pricing|2026-09-12 Northwind Mist pricing]]" in fish
     # the picture moved to the category's Attachments and the note still points at it
     assert "](02_Work/02_Clients_&_Partners/Attachments/Card_1.png)" in text
     assert (v / "02_Work/02_Clients_&_Partners/Attachments/Card_1.png").exists()
@@ -192,7 +192,7 @@ def test_search_can_stay_on_one_side_of_the_brain(old_brain):
     v, _ = old_brain
     tx.build_plan()
     tx.apply_plan(include_unanswered=True)
-    work = context.store.search_notes("axiz", domain="02_Work", min_score=0.01)
+    work = context.store.search_notes("northwind", domain="02_Work", min_score=0.01)
     personal = context.store.search_notes("fishing vaal", domain="01_Personal", min_score=0.01)
     assert work and all("/02_Work/" in c["path"] for _, c in work)
     assert personal and all("/01_Personal/" in c["path"] for _, c in personal)
@@ -213,8 +213,8 @@ def test_startup_prepares_the_plan_and_tells_you(old_brain, monkeypatch):
 def test_every_note_carries_its_domain_and_status(nova):
     context.llm.complete = answer_with()
     v = Path(nova[0]["brain"]["vault_dir"])
-    out = REGISTRY["write_note"].run({"title": "Axiz renewal brief", "content": "Juniper renewal for Axiz"})
-    f = next((v / "02_Work").rglob("*Axiz_Renewal_Brief.md"))
+    out = REGISTRY["write_note"].run({"title": "Northwind renewal brief", "content": "Juniper renewal for Northwind"})
+    f = next((v / "02_Work").rglob("*Northwind_Renewal_Brief.md"))
     lines = f.read_text().splitlines()
     assert lines[0] == "[LABEL: DOMAIN: WORK]" and lines[1].startswith("[LABEL: STATUS: ") and out
     assert lines[1][len("[LABEL: STATUS: "):-1] in tx.STATUSES
@@ -241,8 +241,8 @@ def test_status_boards_show_what_waits_on_you(nova):
     context.llm.complete = answer_with()
     v = Path(nova[0]["brain"]["vault_dir"])
     s = context.store
-    a = tx.place("Axiz renewal", "Juniper renewal for Axiz", dated=False)
-    a.write_text("# Axiz renewal\n")
+    a = tx.place("Northwind renewal", "Juniper renewal for Northwind", dated=False)
+    a.write_text("# Northwind renewal\n")
     s.index_note(a)
     s.set_tracking(f"note:{a}", status="waiting", note="need the PO number")
     b = tx.place("Gym plan", "gym", dated=False)
@@ -254,7 +254,7 @@ def test_status_boards_show_what_waits_on_you(nova):
     home = (v / "01_Personal/05_Journal/Status_Board.md").read_text()
     assert work.splitlines()[0] == "[LABEL: DOMAIN: WORK]" and home.splitlines()[0] == "[LABEL: DOMAIN: PERSONAL]"
     top = work.index("[LABEL: STATUS: WAITING-ON-USER]")
-    assert "[[Axiz_Renewal]] — need the PO number" in work[top:] and "Axiz_Renewal" not in home
+    assert "[[Northwind_Renewal]] — need the PO number" in work[top:] and "Northwind_Renewal" not in home
     assert "[[Gym_Plan]]" in home[home.index("[LABEL: STATUS: IN-PROGRESS]"):]
     assert all(f"[LABEL: STATUS: {st}]" in work for st in tx.STATUSES)
     assert tx.audit() == []                                 # the boards themselves obey the rules
@@ -265,8 +265,8 @@ def test_index_data_has_domain_status_and_bottlenecks(nova):
     from nova.dashboard.server import Dashboard
     context.llm.complete = answer_with()
     s = context.store
-    a = tx.place("Axiz renewal", "Juniper renewal for Axiz", dated=False)
-    a.write_text("# Axiz renewal\n")
+    a = tx.place("Northwind renewal", "Juniper renewal for Northwind", dated=False)
+    a.write_text("# Northwind renewal\n")
     s.index_note(a)
     b = tx.place("Gym plan", "gym", dated=False)
     b.write_text("# Gym plan\n")
@@ -283,7 +283,7 @@ def test_index_data_has_domain_status_and_bottlenecks(nova):
     assert home["domain"] == "01_Personal" and home["status"] == "COMPLETED"
     assert list(g["tree"]) == ["01_Personal", "02_Work"] and g["tree"]["02_Work"][0] == "01_Role_&_Responsibilities"
     assert all(n.get("domain") in g["tree"] for n in g["nodes"] if n["kind"] != "core")       # nothing without a domain
-    assert g["bottlenecks"] == [{"id": f"note:{a}", "text": "Axiz Renewal", "why": "need the PO number", "domain": "02_Work"}]
+    assert g["bottlenecks"] == [{"id": f"note:{a}", "text": "Northwind Renewal", "why": "need the PO number", "domain": "02_Work"}]
     assert g["audit"]["moves"] == 0
     assert d.topic("cat:02_Work/02_Clients_&_Partners")["total"] == 1
     # the short form of the labels is understood too
@@ -300,11 +300,11 @@ def test_move_and_delete_from_the_dashboard(old_brain):
     tx.build_plan()
     # a note that is still in the old layout goes straight where you say — links and its pin follow
     r = tx.move_item(f"note:{note}", "01_Personal", "04_Finance_&_Budgets")
-    new = v / "01_Personal/04_Finance_&_Budgets/2026-09-12_Axiz_Mist_Pricing.md"
+    new = v / "01_Personal/04_Finance_&_Budgets/2026-09-12_Northwind_Mist_Pricing.md"
     assert r["where"] == new.relative_to(v).as_posix() and new.exists() and not Path(note).exists()
     assert new.read_text().startswith("[LABEL: DOMAIN: PERSONAL]") and s.get_tracking(f"note:{new}")["pinned"]
-    assert "[[2026-09-12_Axiz_Mist_Pricing|" in (v / "Notes/Fishing trip Vaal.md").read_text()
-    assert all(i["rel"] != "Inbox/2026-09-12 Axiz Mist pricing.md" for i in tx.load_plan()["items"])
+    assert "[[2026-09-12_Northwind_Mist_Pricing|" in (v / "Notes/Fishing trip Vaal.md").read_text()
+    assert all(i["rel"] != "Inbox/2026-09-12 Northwind Mist pricing.md" for i in tx.load_plan()["items"])
     # only the side chosen: it keeps the same kind of category on the other side
     r = tx.move_item(f"note:{new}", "02_Work")
     assert r["where"].startswith("02_Work/04_Resources_&_Reference/") and (v / r["where"]).exists()

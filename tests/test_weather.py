@@ -32,12 +32,12 @@ def fake_api(monkeypatch):
 
 
 def test_weather_uses_home_city_and_speaks(nova, fake_api):
-    nova[0]["assistant"]["city"] = "Roodepoort"
+    nova[0]["assistant"]["city"] = "Sandton"
     text = weather.get_weather()
-    assert text.startswith("Right now in Roodepoort it's 24 degrees and partly cloudy")
+    assert text.startswith("Right now in Sandton it's 24 degrees and partly cloudy")
     assert "Tomorrow: overcast" in text and "UV is very high" in text
     assert "http" not in text
-    assert fake_api[0][1]["name"] == "Roodepoort"
+    assert fake_api[0][1]["name"] == "Sandton"
     assert any(c[0] == "browser" and "/weather?day=0" in c[1][0] for c in fake_api)
     data = json.loads(Path("workspace/weather/latest.json").read_text())
     assert len(data["hours"]) == 24 and len(data["days"]) == 7
@@ -47,7 +47,7 @@ def test_weather_for_a_named_day(nova, fake_api):
     text = weather.get_weather("Durban", "Wednesday", show=False)
     d = weather.fetch("Durban")["days"]
     wanted = d[1]                                   # 29 Sep 2026 is a Tuesday, so Wednesday = tomorrow
-    assert text.startswith(f"Tomorrow in Roodepoort: {wanted['desc']}")
+    assert text.startswith(f"Tomorrow in Sandton: {wanted['desc']}")
     assert not any(c[0] == "browser" for c in fake_api)
 
 

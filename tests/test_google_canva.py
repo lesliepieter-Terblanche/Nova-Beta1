@@ -78,19 +78,19 @@ def test_outline_parsing(g):
 def test_slides_create_with_pptx_copy(g, tmp_path, monkeypatch):
     gw, fakes = g
     monkeypatch.setattr(gw, "resolve", lambda p: tmp_path / p)
-    out = gw.slides_create("Avaya QBR", "# Q3\n- Revenue R6.2m\n# Next steps\n- Renewals", subtitle="Axiz · Oct 2026")
+    out = gw.slides_create("Avaya QBR", "# Q3\n- Revenue R6.2m\n# Next steps\n- Renewals", subtitle="Northwind · Oct 2026")
     assert "3 slides" in out and "PowerPoint copy" in out
     reqs = fakes["slides"].log[1][1]["requests"]
     kinds = [next(iter(r)) for r in reqs]
     assert kinds.count("createSlide") == 3 and kinds[-1] == "deleteObject"
     texts = [r["insertText"]["text"] for r in reqs if "insertText" in r]
-    assert texts[:2] == ["Avaya QBR", "Axiz · Oct 2026"] and "Revenue R6.2m" in texts
+    assert texts[:2] == ["Avaya QBR", "Northwind · Oct 2026"] and "Revenue R6.2m" in texts
     assert (tmp_path / "workspace/docs/Avaya QBR.pptx").read_bytes() == b"PK-fake-pptx"
 
 
 def test_sheets_create_table(g):
     gw, fakes = g
-    out = gw.sheets_create_table("Q4 deals", ["Partner", "Vendor", "Value"], "Axiz | Juniper | 1200000\nDimension Data | Avaya | 800000",
+    out = gw.sheets_create_table("Q4 deals", ["Partner", "Vendor", "Value"], "Northwind | Juniper | 1200000\nDimension Data | Avaya | 800000",
                                  currency_columns=["Value"])
     assert "2 rows" in out
     vals = fakes["sheets"].log[0][1]

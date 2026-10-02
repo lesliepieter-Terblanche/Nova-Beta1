@@ -7,7 +7,7 @@ import pytest
 
 from nova import remote
 
-STATUS = {"BackendState": "Running", "Self": {"DNSName": "pieter-pc.tail1234.ts.net.", "TailscaleIPs": ["100.64.1.2"]}}
+STATUS = {"BackendState": "Running", "Self": {"DNSName": "alex-pc.tail1234.ts.net.", "TailscaleIPs": ["100.64.1.2"]}}
 
 
 @pytest.fixture()
@@ -62,12 +62,12 @@ def test_needs_login(nova, ts):
 
 def test_enable_serves_dashboard_and_globe_then_disable(nova, ts):
     st = remote.status(fresh=True)
-    assert st["running"] and st["dns_name"] == "pieter-pc.tail1234.ts.net" and not st["serving"]
+    assert st["running"] and st["dns_name"] == "alex-pc.tail1234.ts.net" and not st["serving"]
     r = remote.enable()
-    assert r["ok"] and r["url"] == "https://pieter-pc.tail1234.ts.net/"
-    assert r["globe_url"] == "https://pieter-pc.tail1234.ts.net:8443/"
+    assert r["ok"] and r["url"] == "https://alex-pc.tail1234.ts.net/"
+    assert r["globe_url"] == "https://alex-pc.tail1234.ts.net:8443/"
     assert ts["served"] == {"443": "http://127.0.0.1:8765", "8443": "http://127.0.0.1:4173"}
-    assert remote.allowed_host("pieter-pc.tail1234.ts.net") and remote.allowed_host("PIETER-PC.tail1234.ts.net:443")
+    assert remote.allowed_host("alex-pc.tail1234.ts.net") and remote.allowed_host("ALEX-PC.tail1234.ts.net:443")
     assert not remote.allowed_host("evil.tail9999.ts.net") and not remote.allowed_host("example.com")
     assert remote.qr_svg(r["url"]).startswith("<svg")
     d = remote.disable()
@@ -121,7 +121,7 @@ def test_dashboard_accepts_tailscale_host_and_blocks_others(nova, ts, monkeypatc
         except urllib.error.HTTPError as e:
             return e.code, b""
 
-    assert get("pieter-pc.tail1234.ts.net")[0] == 200
+    assert get("alex-pc.tail1234.ts.net")[0] == 200
     assert get("attacker.example")[0] == 403
     code, body = get("localhost:8797", "/api/remote")
     data = json.loads(body)
@@ -129,8 +129,8 @@ def test_dashboard_accepts_tailscale_host_and_blocks_others(nova, ts, monkeypatc
 
     # changing remote access is only allowed from the PC itself
     req = urllib.request.Request("http://127.0.0.1:8797/api/remote", data=b'{"on": false}', method="POST",
-                                 headers={"Host": "pieter-pc.tail1234.ts.net", "Content-Type": "application/json",
-                                          "Origin": "https://pieter-pc.tail1234.ts.net"})
+                                 headers={"Host": "alex-pc.tail1234.ts.net", "Content-Type": "application/json",
+                                          "Origin": "https://alex-pc.tail1234.ts.net"})
     with pytest.raises(urllib.error.HTTPError) as e:
         urllib.request.urlopen(req, timeout=5)
     assert e.value.code == 403
@@ -140,14 +140,14 @@ def test_dashboard_accepts_tailscale_host_and_blocks_others(nova, ts, monkeypatc
 def test_remote_tool(nova, ts):
     from nova.tools import REGISTRY, select_tools
     assert "remote_access" in {t.name for t in select_tools("set up tailscale so I can use nova from my phone")}
-    assert "Done — open https://pieter-pc.tail1234.ts.net/" in REGISTRY["remote_access"].run({"action": "on"})
+    assert "Done — open https://alex-pc.tail1234.ts.net/" in REGISTRY["remote_access"].run({"action": "on"})
     assert "Remote access is on" in REGISTRY["remote_access"].run({})
 
 
 def test_globe_allows_the_tailscale_host(nova, ts):
     from nova.skills import globe
     remote.enable()
-    assert globe._remote_env() == {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": ".ts.net,pieter-pc.tail1234.ts.net"}
+    assert globe._remote_env() == {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": ".ts.net,alex-pc.tail1234.ts.net"}
 
 
 _ = threading
@@ -172,7 +172,7 @@ def test_setup_is_remembered_and_restored_on_start(nova, ts):
     finally:
         mp.undo()
     assert ["up"] in ts["calls"][calls_before:]
-    assert st["url"] == "https://pieter-pc.tail1234.ts.net/" and "8443" in ts["served"]
+    assert st["url"] == "https://alex-pc.tail1234.ts.net/" and "8443" in ts["served"]
     remote.disable()
     assert ts["remembered"] == [True, False]
 
@@ -201,8 +201,8 @@ def test_startup_summary_lines(nova, capsys):
 def test_real_serve_status_and_fixing_a_wrong_mapping(ts, monkeypatch):
     """Tailscale's real JSON: the address pointed at the globe (Vite said 'Blocked request') → Nova puts it back."""
     real = {"TCP": {"443": {"HTTPS": True}, "8443": {"HTTPS": True}},
-            "Web": {"pieter-pc.tail1234.ts.net:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}},
-                    "pieter-pc.tail1234.ts.net:8443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}}}}
+            "Web": {"alex-pc.tail1234.ts.net:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}},
+                    "alex-pc.tail1234.ts.net:8443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}}}}
     assert remote.serve_map(json.dumps(real)) == {"443": "http://127.0.0.1:4173", "8443": "http://127.0.0.1:4173"}
     fixed = []
     orig = remote._run
@@ -211,7 +211,7 @@ def test_real_serve_status_and_fixing_a_wrong_mapping(ts, monkeypatch):
         if args[:3] == ["serve", "status", "--json"]:
             return 0, json.dumps(real)
         if args[:2] == ["serve", "--bg"] and not any(a.startswith("--https=") for a in args):
-            real["Web"]["pieter-pc.tail1234.ts.net:443"]["Handlers"]["/"]["Proxy"] = args[-1]
+            real["Web"]["alex-pc.tail1234.ts.net:443"]["Handlers"]["/"]["Proxy"] = args[-1]
             fixed.append(args[-1])
             return 0, ""
         return orig(args, timeout)
@@ -221,4 +221,4 @@ def test_real_serve_status_and_fixing_a_wrong_mapping(ts, monkeypatch):
     st = remote.status(fresh=True)
     assert not st["serving"] and st["globe_serving"] and "instead of Nova" in st["message"]
     st = remote.ensure()
-    assert fixed == ["http://127.0.0.1:8765"] and st["serving"] and st["url"] == "https://pieter-pc.tail1234.ts.net/"
+    assert fixed == ["http://127.0.0.1:8765"] and st["serving"] and st["url"] == "https://alex-pc.tail1234.ts.net/"

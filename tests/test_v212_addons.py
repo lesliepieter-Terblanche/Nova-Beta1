@@ -213,9 +213,9 @@ def test_drift_nudge_only_in_work_hours_with_a_focus_task(nova, aw, monkeypatch)
     monkeypatch.setattr(context, "announce", said.append)
     tue = dt.datetime(2026, 9, 29, 10, 30)
     assert activity.check_drift(tue, clock=10_000) is None                 # no focus task → leave him be
-    focus.add("Send Axiz the Mist pricing", "now")
+    focus.add("Send Northwind the Mist pricing", "now")
     msg = activity.check_drift(tue, clock=10_000)
-    assert msg and "Youtube" in msg and "Send Axiz the Mist pricing" in msg and said
+    assert msg and "Youtube" in msg and "Send Northwind the Mist pricing" in msg and said
     assert activity.check_drift(tue, clock=10_600) is None                 # not again within 45 min
     assert activity.check_drift(tue, clock=13_000) is not None
     activity._last_nudge = 0
@@ -404,7 +404,7 @@ def test_web_agent_runs_in_its_own_process_and_reports(nova, monkeypatch, tmp_pa
     monkeypatch.setattr(web_agent.subprocess, "Popen",
                         lambda args, **kw: real_popen([args[0], str(fake), args[2]], **kw))
     got = []
-    msg = web_agent.start("register the Axiz deal on the Juniper portal", "submit", notify=got.append)
+    msg = web_agent.start("register the Northwind deal on the Juniper portal", "submit", notify=got.append)
     assert msg.startswith("On it")
     for _ in range(100):
         if got:

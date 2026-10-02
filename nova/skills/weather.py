@@ -46,7 +46,7 @@ def geocode(place: str) -> dict:
     r.raise_for_status()
     results = r.json().get("results") or []
     if not results:
-        # "Roodepoort, South Africa" -> try just the first part
+        # "Sandton, South Africa" -> try just the first part
         if "," in place:
             return geocode(place.split(",")[0].strip())
         raise ValueError(f"I couldn't find a place called '{place}'.")

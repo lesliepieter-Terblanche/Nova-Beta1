@@ -299,7 +299,7 @@ SCHEMA = [
     ]},
     {"id": "loadshedding", "title": "Load-shedding", "icon": "bolt", "fields": [
         {"path": "loadshedding.area_id", "label": "Your EskomSePush area id", "type": "text", "default": "",
-         "help": "Say 'find my load-shedding area Roodepoort' and Nova fills this in"},
+         "help": "Say 'find my load-shedding area Sandton' and Nova fills this in"},
         {"path": "loadshedding.warn", "label": "Warn me before the power goes off", "type": "bool", "default": True},
         {"path": "loadshedding.warn_minutes", "label": "…this many minutes before", "type": "number", "min": 5,
          "max": 120, "default": 30},

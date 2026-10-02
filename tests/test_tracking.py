@@ -95,7 +95,7 @@ def test_waiting_confirmation_is_tracked(nova):
 def test_memory_links_to_its_turn_and_recalls_are_counted(nova):
     s = context.store
     tid = s.begin_turn("voice", "remember my wife is Anri")
-    s.add_memory("Pieter's wife is Anri", "person")
+    s.add_memory("Alex's wife is Anri", "person")
     s.end_turn(tid, "done", 10)
     t2 = s.begin_turn("voice", "who is Anri")
     s.context_for("who is Anri wife")

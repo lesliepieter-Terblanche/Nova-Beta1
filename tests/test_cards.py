@@ -26,7 +26,7 @@ def test_cards_queue_and_viewer(nova):
 
 def test_weather_goes_to_the_dashboard_when_one_is_open(nova, monkeypatch):
     from nova.skills import weather
-    data = {"place": "Roodepoort, Gauteng", "short": "Roodepoort", "current": {"temp": 23, "feels": 23, "desc": "clear sky"},
+    data = {"place": "Sandton, Gauteng", "short": "Sandton", "current": {"temp": 23, "feels": 23, "desc": "clear sky"},
             "days": [{"date": "2026-10-01", "name": "Today", "desc": "clear sky", "max": 25, "min": 11, "rain": 0, "uv": 5,
                       "wind": 10}, {"date": "2026-10-02", "name": "Tomorrow", "desc": "rain", "max": 20, "min": 10,
                                     "rain": 70, "uv": 3, "wind": 20}]}
@@ -34,7 +34,7 @@ def test_weather_goes_to_the_dashboard_when_one_is_open(nova, monkeypatch):
     opened = []
     monkeypatch.setattr(weather.webbrowser, "open", opened.append)
     cards.recent(0)                                                  # a dashboard is watching
-    assert REGISTRY["get_weather"].run({"day": "tomorrow"}).startswith("Tomorrow in Roodepoort")
+    assert REGISTRY["get_weather"].run({"day": "tomorrow"}).startswith("Tomorrow in Sandton")
     c = cards.recent(0)[-1]
     assert c["kind"] == "weather" and c["data"]["day"] == 1 and opened == []
     cards._last_view = 0.0                                           # nobody watching: open the weather page
@@ -48,10 +48,10 @@ def test_pc_stats_card_and_show_on_screen(nova):
     assert c["kind"] == "pc" and 0 <= c["data"]["cpu"] <= 100 and c["data"]["ram_total_gb"] > 0 and "cpu_percent" in out
     REGISTRY["system_status"].run({"show": False})
     assert len(cards.recent(0)) == 1
-    assert REGISTRY["show_on_screen"].run({"title": "Axiz Q4", "content": "Open deals: 7\n- Send pricing"}) == \
+    assert REGISTRY["show_on_screen"].run({"title": "Northwind Q4", "content": "Open deals: 7\n- Send pricing"}) == \
         "Shown on the dashboard."
     last = cards.recent(0)[-1]
-    assert last["kind"] == "info" and last["title"] == "Axiz Q4" and "Open deals: 7" in last["data"]["text"]
+    assert last["kind"] == "info" and last["title"] == "Northwind Q4" and "Open deals: 7" in last["data"]["text"]
 
 
 def test_dashboard_delivers_cards_and_live_stats(nova):

@@ -22,9 +22,9 @@ def drain(feed):
 
 def test_sentences_come_out_as_soon_as_they_are_complete():
     f = SentenceFeed(limit=200)
-    for piece in ["You have ", "a QBR at ten", " with Axiz. ", "After that the R48.5 million ", "forecast call"]:
+    for piece in ["You have ", "a QBR at ten", " with Northwind. ", "After that the R48.5 million ", "forecast call"]:
         f(piece)
-    assert drain(f) == ["You have a QBR at ten with Axiz."]              # the first sentence didn't wait for the rest
+    assert drain(f) == ["You have a QBR at ten with Northwind."]              # the first sentence didn't wait for the rest
     f(" is at two.\n- **Bring** the deck")
     assert drain(f) == ["After that the R48.5 million forecast call is at two."]      # "R48.5" isn't a sentence end
     f.finish("ignored: something was already said")
@@ -130,11 +130,11 @@ def test_the_voice_starts_before_the_answer_is_finished(nova):
             return False
 
         def chat(self, messages, tools=None, prefer_smart=False, temperature=0.3, on_delta=None):
-            on_delta("Your next meeting is the Axiz QBR at ten. ")
+            on_delta("Your next meeting is the Northwind QBR at ten. ")
             time.sleep(0.4)
             on_delta("Sam asked you to bring the Mist pricing.")
             done_at["t"] = time.perf_counter()
-            return LLMReply("Your next meeting is the Axiz QBR at ten. Sam asked you to bring the Mist pricing.")
+            return LLMReply("Your next meeting is the Northwind QBR at ten. Sam asked you to bring the Mist pricing.")
 
         def complete(self, *a, **k):
             return '{"memories": []}'
@@ -144,7 +144,7 @@ def test_the_voice_starts_before_the_answer_is_finished(nova):
     reply = agent.handle("what's next?", "voice", on_delta=sp.feed)
     sp.finish(reply.text)
     sp.wait(3)
-    assert rec.said == ["Your next meeting is the Axiz QBR at ten.", "Sam asked you to bring the Mist pricing."]
+    assert rec.said == ["Your next meeting is the Northwind QBR at ten.", "Sam asked you to bring the Mist pricing."]
     assert rec.times[0] < done_at["t"] - 0.25                 # she was already talking while the model was still writing
     assert reply.text.endswith("Mist pricing.") and slow
 

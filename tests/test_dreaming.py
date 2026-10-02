@@ -33,7 +33,7 @@ def llm(nova, monkeypatch):
     def complete(prompt, system="", prefer_smart=True, temperature=0.5):
         calls.append(prompt)
         if "Merge them into ONE" in prompt:
-            return "Pieter's revenue target is R27 million at 17% GP across all vendors."
+            return "Alex's revenue target is R27 million at 17% GP across all vendors."
         if "reviewing" in prompt and "second brain" in prompt:
             return json.dumps({"connections": [{"pair": 1, "insight": "The Botswana reseller list fits the Avaya "
                                                                        "growth plan — start there."}]})
@@ -48,18 +48,18 @@ def llm(nova, monkeypatch):
 
 def test_consolidate_merges_duplicates_and_keeps_history(nova, llm):
     s = context.store
-    a = _mem("Pieter's revenue target is R27m", _vec(1, 0.02), importance=3, uses=4)
+    a = _mem("Alex's revenue target is R27m", _vec(1, 0.02), importance=3, uses=4)
     b = _mem("Revenue target: R27 million, 17% GP", _vec(1, 0.05), uses=2, created="2026-09-20T10:00:00")
-    c = _mem("Pieter lives in Roodepoort", _vec(0, 1))
-    d1 = _mem("Anri is Pieter's wife")
-    d2 = _mem("anri is pieter's wife!")                       # identical apart from case/punctuation
+    c = _mem("Alex lives in Sandton", _vec(0, 1))
+    d1 = _mem("Anri is Alex's wife")
+    d2 = _mem("anri is alex's wife!")                       # identical apart from case/punctuation
     s.set_tracking(f"memory:{b}", status="doing", note="check Q4")
     merged = Dreamer().consolidate()
     assert len(merged) == 2
     live = {r["text"]: dict(r) for r in s.db.execute("SELECT * FROM memories WHERE superseded_by IS NULL")}
-    assert "Pieter's revenue target is R27 million at 17% GP across all vendors." in live
-    assert "Pieter lives in Roodepoort" in live and len(live) == 3
-    new = live["Pieter's revenue target is R27 million at 17% GP across all vendors."]
+    assert "Alex's revenue target is R27 million at 17% GP across all vendors." in live
+    assert "Alex lives in Sandton" in live and len(live) == 3
+    new = live["Alex's revenue target is R27 million at 17% GP across all vendors."]
     assert new["importance"] == 3 and new["uses"] == 6
     assert s.db.execute("SELECT COUNT(*) FROM memories").fetchone()[0] == 6       # nothing deleted
     assert s.get_tracking(f"memory:{new['id']}")["note"] == "check Q4"
@@ -70,7 +70,7 @@ def test_consolidate_merges_duplicates_and_keeps_history(nova, llm):
 def test_connections_between_memory_and_note(nova, llm):
     s = context.store
     _mem("Avaya growth plan: add 3 new resellers in Botswana", _vec(1, 1, 0), kind="goal")
-    _mem("Pieter lives in Roodepoort", _vec(0, 0, 1))
+    _mem("Alex lives in Sandton", _vec(0, 0, 1))
     note = context.store.vault / "Botswana resellers.md"
     note.parent.mkdir(parents=True, exist_ok=True)
     note.write_text("Potential resellers in Gaborone and Francistown")
@@ -112,7 +112,7 @@ def test_backup_creates_passphrase_keeps_last_n_and_restores(nova, llm, monkeypa
     monkeypatch.setattr(settings, "read_env", lambda: dict(env))
     monkeypatch.setattr(settings, "write_env", lambda upd: env.update({k: v for k, v in upd.items() if v}))
     monkeypatch.delenv("NOVA_BACKUP_PASSPHRASE", raising=False)
-    _mem("Pieter's favourite braai spot is Hartbeespoort")
+    _mem("Alex's favourite braai spot is Hartbeespoort")
     note = context.store.vault / "Ideas.md"
     note.parent.mkdir(parents=True, exist_ok=True)
     note.write_text("Nova should dream")

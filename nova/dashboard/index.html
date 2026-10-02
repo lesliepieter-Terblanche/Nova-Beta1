@@ -1499,7 +1499,7 @@ function renderFocus() {
         <span style="flex:1"></span>${timer ? ringSvg() + `<button class="fbtn small" data-fa="stop">Stop</button>` :
           `<button class="fbtn small" data-fa="t25">⏱ 25</button><button class="fbtn small" data-fa="t50">⏱ 50</button>`}</div>`
     : `<div class="empty">What's the one thing that matters most right now?</div>
-       <div class="fdump" style="margin-top:12px"><textarea id="fx-now" placeholder="e.g. Send Axiz the Mist pricing" rows="1"></textarea><button class="fbtn go" data-fa="setnow">Focus</button></div>`) + `</div>`;
+       <div class="fdump" style="margin-top:12px"><textarea id="fx-now" placeholder="e.g. Send Northwind the Mist pricing" rows="1"></textarea><button class="fbtn go" data-fa="setnow">Focus</button></div>`) + `</div>`;
   if (F.next.length && !low) h += `<div class="fcard hide-low"><h6>Next${F.more ? ` · ${F.more} more after` : ""}</h6><div class="fnext">${F.next.map((t) =>
       `<div><span>${esc(t.text)}</span><button class="fbtn small" data-fa="open-now" data-id="${t.id}">Do now</button><button class="fbtn small" data-fa="later" data-id="${t.id}">Later</button></div>`).join("")}</div></div>`;
   h += `<div class="fcard"><h6>🧺 Brain dump — get it out of your head</h6><div class="fdump"><textarea id="fx-dump" rows="1" placeholder="Anything on your mind… (one per line) — Enter to park it"></textarea><button class="fbtn" data-fa="dump">Park</button></div>
@@ -2058,7 +2058,7 @@ async function renderItem(v) {
 function personBody(it) {
   const p = it.person;
   const f = (k, label, type = "text", ph = "") => `<label for="pf-${k}">${label}</label><input id="pf-${k}" data-pf="${k}" type="${type}" value="${esc(p[k] || "")}" placeholder="${ph}">`;
-  let h = `<div class="pcardx">${f("company", "Company", "text", "e.g. Axiz")}${f("role", "Role", "text", "e.g. Juniper BDM")}
+  let h = `<div class="pcardx">${f("company", "Company", "text", "e.g. Northwind")}${f("role", "Role", "text", "e.g. Juniper BDM")}
     ${f("email", "Email", "email")}${f("phone", "Phone", "tel")}
     <label for="pf-aliases">Also called</label><input id="pf-aliases" data-pf="aliases" value="${esc((p.aliases || []).join(", "))}" placeholder="nicknames, comma separated">
     <textarea id="pf-notes" data-pf="notes" placeholder="Notes about ${esc(p.name.split(" ")[0])}…">${esc(p.notes || "")}</textarea></div>
@@ -2362,7 +2362,7 @@ addEventListener("keydown", (e) => {
 
 // ── views ─────────────────────────────────────────────
 // ── ask Nova ──────────────────────────────────────────
-$("brainmode").onchange = () => { $("ask-in").placeholder = $("brainmode").checked ? "Ask your brain — e.g. What do I know about the Axiz Mist deal?" : "Ask Nova or tell it something to remember…"; };
+$("brainmode").onchange = () => { $("ask-in").placeholder = $("brainmode").checked ? "Ask your brain — e.g. What do I know about the Northwind Mist deal?" : "Ask Nova or tell it something to remember…"; };
 $("ask").addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = $("ask-in").value.trim(); if (!text) return;

@@ -25,7 +25,7 @@ def cfgfiles(tmp_path, monkeypatch):
 def test_save_keeps_comments_and_quotes_times(cfgfiles):
     cfg, _ = cfgfiles
     r = settings.apply({
-        "values": {"assistant.owner": "Pieter", "voice.wake_threshold": 0.6, "telegram.allowed_user_ids": "123, 456",
+        "values": {"assistant.owner": "Alex", "voice.wake_threshold": 0.6, "telegram.allowed_user_ids": "123, 456",
                    "dashboard.theme.accent": "#52FFA8"},
         "routines": [{"name": "Brief", "at": "7:30", "days": ["mon", "fri"], "prompt": "Morning briefing", "speak": True}],
     })
@@ -34,7 +34,7 @@ def test_save_keeps_comments_and_quotes_times(cfgfiles):
     assert text.startswith("# ─")                                                    # header comment kept
     assert "wake_word: hey_jarvis      # built-in openWakeWord models" in text      # inline comments survive
     data = yaml.safe_load(text)                                                     # PyYAML (what Nova uses) reads it right
-    assert data["assistant"]["owner"] == "Pieter"
+    assert data["assistant"]["owner"] == "Alex"
     assert data["telegram"]["allowed_user_ids"] == [123, 456]
     assert data["routines"][0]["at"] == "07:30" and data["routines"][0]["days"] == ["mon", "fri"]
     assert data["dashboard"]["theme"]["accent"] == "#52ffa8"

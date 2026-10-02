@@ -336,7 +336,7 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 - **🎨 Canva (official connector)** — first in Settings → Extensions → *Add an MCP server*. Nova can create and edit
   posters, social posts, presentations, thumbnails and flyers in your Canva account, find, resize and export designs.
   The first start opens a Canva sign-in in your browser; after that it stays signed in.
-- **Google Slides:** "Make a 6-slide Avaya QBR deck for Axiz" → a Google Slides presentation **plus a PowerPoint
+- **Google Slides:** "Make a 6-slide Avaya QBR deck for Northwind" → a Google Slides presentation **plus a PowerPoint
   (.pptx) copy** on your PC (sent with the reply on Telegram).
 - **Ready-to-use Google Sheets:** coloured bold header, frozen top row, filters, sized columns and rand formatting.
 ### Changed
@@ -409,7 +409,7 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 ### Added
 - **⚡ Load-shedding** (plugins/loadshedding.py, EskomSePush): "what stage are we on?", your area's schedule, and a
   spoken + Telegram heads-up 30 minutes before your power goes off. Free token (Settings → API keys → EskomSePush
-  token); say "find my load-shedding area Roodepoort", then "use area <id>". Checks are cached so Nova stays well
+  token); say "find my load-shedding area Sandton", then "use area <id>". Checks are cached so Nova stays well
   inside the free 50-a-day allowance.
 - **💸 Price watcher** (plugins/price_watch.py): "tell me when this drops below R8,000" + a Takealot or other shop link.
   Nova checks every few hours (Takealot via its product API, other shops via the price they publish for Google)

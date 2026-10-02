@@ -76,7 +76,7 @@ wellbeing:
   signals_telegram: false
   plan: ""                    # what you agreed with your doctor to do when a heads-up shows
 
-# Load-shedding (EskomSePush) — free token in .env (ESP_TOKEN); say "find my load-shedding area Roodepoort".
+# Load-shedding (EskomSePush) — free token in .env (ESP_TOKEN); say "find my load-shedding area Sandton".
 loadshedding:
   area_id: ""
   warn: true                  # spoken + Telegram heads-up before your area's power goes off

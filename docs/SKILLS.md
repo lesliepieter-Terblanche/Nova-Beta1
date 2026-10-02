@@ -70,7 +70,7 @@ register_group("power", ["load shedding", "loadshedding", "eskom", "power cut", 
 def load_shedding_status(area: str) -> str:
     """Get the load-shedding schedule for an area.
     Args:
-        area: suburb or area name, e.g. Roodepoort
+        area: suburb or area name, e.g. Sandton
     """
     r = httpx.get("https://example-api/...", params={"area": area}, timeout=15)
     return r.text[:2000]

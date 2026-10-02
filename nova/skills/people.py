@@ -80,7 +80,7 @@ def save_person(name: str, company: str = "", role: str = "", email: str = "", p
 def list_people(company: str = "", limit: int = 40) -> str:
     """List people cards, optionally only those at one company.
     Args:
-        company: e.g. Axiz (empty = everyone)
+        company: e.g. Northwind (empty = everyone)
         limit: how many
     """
     ppl = [p for p in people.all_people() if not company or company.lower() in (p["company"] or "").lower()]

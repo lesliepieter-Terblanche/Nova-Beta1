@@ -1,7 +1,7 @@
 """People cards: everyone you deal with — partners, resellers, vendor contacts, family — on one card each.
 
 A card holds name, company, role, email, phone and short notes. Cards are made and kept up to date from:
-  - what you tell Nova ("Sam Dlamini at Axiz is the Juniper BDM"),
+  - what you tell Nova ("Sam Dlamini at Northwind is the Juniper BDM"),
   - meeting notes (the People list), business cards and anything forwarded on Telegram,
   - the nightly dream (catches up on every person-memory it hasn't turned into a card yet).
 Everything that mentions the person (memories, notes, creations, requests) is linked to their card in the 2nd brain.
@@ -196,7 +196,7 @@ def delete(pid: int) -> None:
 
 # ── learning people from text ─────────────────────────────
 def from_line(line: str, source: str = "") -> int | None:
-    """Meeting-note style 'Sam Dlamini – BDM, Axiz' → card (no model needed)."""
+    """Meeting-note style 'Sam Dlamini – BDM, Northwind' → card (no model needed)."""
     parts = re.split(r"\s+[–—-]\s+|\s*\|\s*", line.strip(), maxsplit=1)
     name = _norm(parts[0])
     if not name or len(name) < 2 or not name[0].isupper():

@@ -1,7 +1,7 @@
 """Load-shedding (EskomSePush): today's stage and your area's schedule, plus a heads-up before the power goes off.
 
 Setup (free): get a token at https://eskomsepush.gumroad.com/l/api (free tier, 50 checks a day), paste it in
-Settings → API keys → EskomSePush token, then say "find my load-shedding area Roodepoort" and "use area <id>".
+Settings → API keys → EskomSePush token, then say "find my load-shedding area Sandton" and "use area <id>".
 Nova then warns you (spoken + Telegram) 30 minutes before each slot. It checks at most every 3 hours, which stays
 well inside the free allowance.
 """
@@ -89,7 +89,7 @@ def loadshedding_status(area_id: str = "") -> str:
     try:
         head = national_stage()
         if not area_id:
-            return head + " Tell me your suburb ('find my load-shedding area Roodepoort') to get your own schedule."
+            return head + " Tell me your suburb ('find my load-shedding area Sandton') to get your own schedule."
         name, events = area_events(area_id)
     except Exception as e:
         return f"ERROR: {e}"
@@ -110,7 +110,7 @@ def loadshedding_status(area_id: str = "") -> str:
 def find_loadshedding_area(place: str) -> str:
     """Search EskomSePush for your load-shedding area (to get its id).
     Args:
-        place: suburb or town, e.g. Roodepoort
+        place: suburb or town, e.g. Sandton
     """
     try:
         areas = _get("/areas_search", {"text": place}).get("areas") or []
@@ -126,7 +126,7 @@ def find_loadshedding_area(place: str) -> str:
 def set_loadshedding_area(area_id: str) -> str:
     """Save your load-shedding area so Nova can show your schedule and warn you before outages.
     Args:
-        area_id: the id from find_loadshedding_area, e.g. eskde-10-roodepoortcityofjohannesburggauteng
+        area_id: the id from find_loadshedding_area, e.g. eskde-10-sandtoncityofjohannesburggauteng
     """
     from nova import settings
     r = settings.apply({"values": {"loadshedding.area_id": area_id.strip()}})

@@ -130,7 +130,7 @@ _lock = threading.Lock()
 def start_meeting_recording(title: str = "", include_pc_audio: bool = True) -> str:
     """Start recording a meeting or call: your microphone plus the PC's sound (Teams, Zoom, Meet…).
     Args:
-        title: optional meeting name, e.g. "Axiz QBR"
+        title: optional meeting name, e.g. "Northwind QBR"
         include_pc_audio: also record what the PC plays (the other people on the call)
     """
     global _session

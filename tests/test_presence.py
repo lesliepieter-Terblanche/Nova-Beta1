@@ -27,12 +27,12 @@ def test_arrive_leave_and_welcome_back(nova, monkeypatch):
     assert p.update(0, 63) == "left" and p.present is False and stopped
     assert context.store.status == "away"
 
-    assert p.hold_or_say("Reminder: call Axiz about the Mist deal.")
+    assert p.hold_or_say("Reminder: call Northwind about the Mist deal.")
     assert p.held and said == []
 
     p.update(1, 500)
     assert p.update(1, 503) == "arrived"
-    assert said and said[0].startswith("Welcome back, Friend. While you were away: Reminder: call Axiz")
+    assert said and said[0].startswith("Welcome back, Friend. While you were away: Reminder: call Northwind")
     assert p.held == [] and context.store.status == "idle"
 
 

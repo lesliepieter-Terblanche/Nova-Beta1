@@ -47,24 +47,24 @@ def test_loadshedding_status_and_warning(plugins, nova, monkeypatch):
         if url.endswith("/status"):
             return Resp({"status": {"eskom": {"stage": "2", "next_stages": []}}})
         if url.endswith("/areas_search"):
-            return Resp({"areas": [{"id": "eskde-10-roodepoort", "name": "Roodepoort", "region": "Eskom Direct"}]})
-        return Resp({"info": {"name": "Roodepoort"}, "events": [
+            return Resp({"areas": [{"id": "eskde-10-sandton", "name": "Sandton", "region": "Eskom Direct"}]})
+        return Resp({"info": {"name": "Sandton"}, "events": [
             {"start": _soon(20), "end": _soon(140), "note": "Stage 2"}]})
     monkeypatch.setattr(ls.httpx, "get", get)
     monkeypatch.delenv("ESP_TOKEN", raising=False)
     assert "No EskomSePush token" in REGISTRY["loadshedding_status"].run({})
     monkeypatch.setenv("ESP_TOKEN", "tok")
-    assert "id eskde-10-roodepoort" in REGISTRY["find_loadshedding_area"].run({"place": "Roodepoort"})
-    out = REGISTRY["loadshedding_status"].run({"area_id": "eskde-10-roodepoort"})
-    assert "stage 2" in out and ("Roodepoort: today" in out or "Roodepoort: tomorrow" in out)   # near midnight
-    nova[0]["loadshedding"] = {"area_id": "eskde-10-roodepoort", "warn_minutes": 30}
+    assert "id eskde-10-sandton" in REGISTRY["find_loadshedding_area"].run({"place": "Sandton"})
+    out = REGISTRY["loadshedding_status"].run({"area_id": "eskde-10-sandton"})
+    assert "stage 2" in out and ("Sandton: today" in out or "Sandton: tomorrow" in out)   # near midnight
+    nova[0]["loadshedding"] = {"area_id": "eskde-10-sandton", "warn_minutes": 30}
     said = []
     monkeypatch.setattr(ls.context, "announce", said.append)
     msg = ls.check_and_warn()
-    assert msg and "Load-shedding in 20 minutes for Roodepoort" in msg and said
+    assert msg and "Load-shedding in 20 minutes for Sandton" in msg and said
     assert ls.check_and_warn() is None                     # warns once per slot
     n = len(calls)
-    ls.loadshedding_status("eskde-10-roodepoort")
+    ls.loadshedding_status("eskde-10-sandton")
     assert len(calls) == n                                  # cached, saves the 50-a-day allowance
     assert "loadshedding_status" in {t.name for t in select_tools("what stage of load shedding are we on")}
 

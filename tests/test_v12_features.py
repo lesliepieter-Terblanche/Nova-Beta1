@@ -92,12 +92,12 @@ def test_meeting_processing_files_notes_and_memories(nova, monkeypatch):
     monkeypatch.setattr(context, "notify", lambda text, files: pushed.append((text, files)))
     cfg["meetings"] = {"create_tasks": False, "folder": str(tmp / "meet")}
     import datetime as dt
-    note = meetings.process_recording(wav, "Axiz QBR", dt.datetime(2026, 9, 29, 10, 0))
+    note = meetings.process_recording(wav, "Northwind QBR", dt.datetime(2026, 9, 29, 10, 0))
     body = note.read_text()
-    for section in ("## Summary", "## Decisions", "## Action items", "## Transcript", "Send pricing to Axiz"):
+    for section in ("## Summary", "## Decisions", "## Action items", "## Transcript", "Send pricing to Northwind"):
         assert section in body
     mems = [r["text"] for r in context.store.db.execute("SELECT text FROM memories")]
-    assert any("Push Mist bundle" in m for m in mems) and any("Send pricing to Axiz" in m for m in mems)
+    assert any("Push Mist bundle" in m for m in mems) and any("Send pricing to Northwind" in m for m in mems)
     assert pushed and "Notes ready" in pushed[0][0]
 
 

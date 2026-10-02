@@ -19,7 +19,7 @@ def wb(nova, monkeypatch):
 
 # ── focus ─────────────────────────────────────────────────
 def test_now_next_later_and_wins(wb):
-    a = focus.add("Send Axiz the Mist pricing", "end")
+    a = focus.add("Send Northwind the Mist pricing", "end")
     b = focus.add("Prep the Avaya QBR", "end")
     c = focus.add("Call Lerato", "end")
     st = focus.state()
@@ -113,7 +113,7 @@ def test_low_run_and_burst(wb):
 def test_should_hold(wb):
     night = dt.datetime.combine(dt.date.today(), dt.time(23, 40))
     day = dt.datetime.combine(dt.date.today(), dt.time(14, 0))
-    reason, due = wellbeing.should_hold("gmail_send", {"to": "sam@axiz.co.za"}, night)
+    reason, due = wellbeing.should_hold("gmail_send", {"to": "sam@northwind.co.za"}, night)
     assert "fresh look" in reason and due.strftime("%H:%M") == "08:00" and due.date() > night.date()
     assert wellbeing.should_hold("gmail_send", {}, day) is None
     assert wellbeing.should_hold("web_search", {}, night) is None
@@ -193,10 +193,10 @@ def test_dashboard_focus_api(wb):
         with urllib.request.urlopen(req, timeout=10) as r:
             raw = r.read()
             return json.loads(raw) if r.headers.get_content_type() == "application/json" else raw.decode()
-    call("/api/focus", {"action": "add", "text": "Send Axiz pricing", "where": "now"})
+    call("/api/focus", {"action": "add", "text": "Send Northwind pricing", "where": "now"})
     call("/api/focus", {"action": "dump", "text": "ink; licence"})
     st = call("/api/focus")
-    assert st["now"]["text"] == "Send Axiz pricing" and len(st["later"]) == 2 and not st["wb"]["checked_in"]
+    assert st["now"]["text"] == "Send Northwind pricing" and len(st["later"]) == 2 and not st["wb"]["checked_in"]
     call("/api/wellbeing", {"action": "checkin", "energy": 4, "mood": 4, "sleep": 7.5})
     st = call("/api/focus")
     assert st["wb"]["checked_in"] and st["wb"]["anchors"]

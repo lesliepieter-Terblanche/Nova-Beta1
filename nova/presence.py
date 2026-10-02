@@ -1,6 +1,6 @@
 """Presence awareness: Nova notices when you sit down and when you walk away.
 
-  • Sit down  → "Welcome back, Pieter" (first time today: your morning briefing), plus anything Nova wanted to
+  • Sit down  → "Welcome back, Alex" (first time today: your morning briefing), plus anything Nova wanted to
                 say while you were away.
   • Walk away → Nova stops talking, holds what it wanted to say until you're back (reminders still reach Telegram),
                 and can lock the PC.

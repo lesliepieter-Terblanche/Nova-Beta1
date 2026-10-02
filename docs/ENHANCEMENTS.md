@@ -132,7 +132,7 @@ _Barge-in and push-to-talk shipped in v1.2._
 
 | Option | Notes | Status |
 |---|---|---|
-| **Pipeline sheet** | Deal tracker in Google Sheets. "Add a R1.2m Juniper deal for Axiz, closing Nov." | 🧩 playbook |
+| **Pipeline sheet** | Deal tracker in Google Sheets. "Add a R1.2m Juniper deal for Northwind, closing Nov." | 🧩 playbook |
 | **QBR pack builder** | Pulls numbers from Sheets → PowerPoint from your template | 🧩 |
 | **Quote/proposal drafts** | Word template + price list → PDF | 🧩 |
 | **CRM via MCP** | HubSpot/Salesforce/Pipedrive MCP servers (cloud services) | ⚙ |

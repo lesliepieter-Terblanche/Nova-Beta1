@@ -147,7 +147,7 @@ brain:
 ```
 
 - Only those two folders at the top; numbered categories; at most three folders deep; `Pascal_Snake_Case` file names
-  (dates stay in front: `2026-09-12_Axiz_Mist_Pricing.md`). Pictures and files a note links to sit in the category's
+  (dates stay in front: `2026-09-12_Northwind_Mist_Pricing.md`). Pictures and files a note links to sit in the category's
   `Attachments/` folder.
 - Every new note is placed straight away. If something fits both sides it goes where it is mainly *used*; below 70 %
   certainty Nova files it on her best guess and asks you on the dashboard (🗂) whether that is right.

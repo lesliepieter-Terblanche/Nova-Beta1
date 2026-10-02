@@ -140,7 +140,7 @@ Full walkthrough, including Telegram, Google and GitHub: **[docs/INSTALL.md](doc
 "Make a 60-second vertical video explaining Wi-Fi 7 to small businesses."
 "Record this meeting." … "Stop recording."           → notes + action items a few minutes later
 "Look at my screen — what's this error?"
-"What do I know about the Axiz Mist deal?"          → answer from your brain, with sources
+"What do I know about the Northwind Mist deal?"          → answer from your brain, with sources
 "Who is Sam? What's his number?"                      → people card
 "Save this to my brain: <link>"                       → or just forward it to the Telegram bot
 "What stage of load-shedding are we on?"

@@ -105,7 +105,7 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | Module | Group(s) | Summary |
 |---|---|---|
 | `system.py` | system | time, apps, URLs, status, screenshots, vision, clipboard, shell 🔒, power 🔒, reminders |
-| `memory.py` | brain | remember, recall, correct, notes, journal, ingest web pages/documents |
+| `memory.py` | brain | remember, recall, correct, notes, journal, ingest web pages/documents, brain filing rules (`brain_structure`, `plan_brain_reorganisation`, `apply_brain_plan`) |
 | `files.py` | files | list, find, read (PDF/Word/PowerPoint/Excel/.msg/EPUB via markitdown, docling optional), to Markdown, tables → Excel, write, copy, move 🔒, delete 🔒, tidy 🔒, zip, open, send to phone |
 | `web.py` | web | search, scrape page/links/tables, build/edit/list/open websites |
 | `browser.py` | browser | open, read, click, type, submit 🔒, scroll, back, keys, screenshot, look |

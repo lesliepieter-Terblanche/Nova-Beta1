@@ -131,16 +131,44 @@ brain:
   db_file: data/nova.db       # memories, search index, activity log, creations
   embed_model: nomic-embed-text
   learn_automatically: true   # extract durable memories after each conversation
+  structure: strict           # the filing rules below (off = the old free layout)
 ```
 
-The file `data/brain/_Nova Memory.md` is a readable mirror of everything Nova knows. To change a memory,
+### Filing rules (`structure: strict`)
+
+```
+01_Personal/                          02_Work/
+  01_Life_Admin/                        01_Role_&_Responsibilities/   Standard_Operating_Procedures/
+  02_Health_&_Fitness/                  02_Clients_&_Partners/        Active_Accounts/  Partner_Network/
+  03_Interests_&_Projects/              03_Projects_&_Strategy/       <Project_Name>/  Strategic_Growth_Plans/
+      Hobbies/  Travel/                 04_Resources_&_Reference/     Technical_Documentation/
+  04_Finance_&_Budgets/                 05_Meetings_&_Reports/        Meetings/  Digests/  Missions/
+  05_Journal/   Dreams/
+```
+
+- Only those two folders at the top; numbered categories; at most three folders deep; `Pascal_Snake_Case` file names
+  (dates stay in front: `2026-09-12_Axiz_Mist_Pricing.md`). Pictures and files a note links to sit in the category's
+  `Attachments/` folder.
+- Every new note is placed straight away. If something fits both sides it goes where it is mainly *used*; below 70 %
+  certainty Nova files it on her best guess and asks you on the dashboard (🗂) whether that is right.
+- **Existing notes are never moved by themselves.** Nova prepares a plan; you answer her questions and press *Back up
+  and move*. A copy of the whole brain and the database goes to `backups/brain-before-reorganise-…` first, and links,
+  embeds, attachments, pins, statuses and project links are carried along.
+- Every note starts with two label lines, e.g. `[LABEL: DOMAIN: WORK]` and `[LABEL: STATUS: WAITING-ON-USER]`.
+  Statuses: `IN-PROGRESS` (Nova is busy with it), `WAITING-ON-USER` (needs your decision, file or answer),
+  `COMPLETED` (finished and delivered), `BACKLOG` (planned, not started). It is the same status as *Track this* on
+  the dashboard; editing the label in the file works too. Filed documents default to `COMPLETED`.
+- `Status_Board.md` in `02_Work/05_Meetings_&_Reports/` and `01_Personal/05_Journal/` lists everything by status,
+  what waits on you first.
+
+The file `01_Personal/05_Journal/Nova_Memory.md` is a readable mirror of everything Nova knows. To change a memory,
 tell Nova ("that's wrong, Sam moved to Globex"). The old version is kept as history.
 
 ## meetings
 
 ```yaml
 meetings:
-  folder: workspace/meetings   # the recordings (notes go to data/brain/Meetings/)
+  folder: workspace/meetings   # the recordings (notes go to 02_Work/05_Meetings_&_Reports/Meetings/ in the brain)
   stt_model: small.en          # transcription model for recordings (more accurate than live voice)
   create_tasks: true           # add *your* action items to Google Tasks
 ```

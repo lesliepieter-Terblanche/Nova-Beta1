@@ -137,7 +137,8 @@ def digest(days: int = 7, save: bool = True) -> str:
     if save:
         vault = resolve(context.cfg.brain.vault_dir) if context.cfg else resolve("brain")
         y, w, _ = dt.date.today().isocalendar()
-        path = vault / "Digests" / f"{y}-W{w:02d}.md"
+        from . import taxonomy
+        path = (taxonomy.system_folder("digests") if taxonomy.enabled() else vault / "Digests") / f"{y}-W{w:02d}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"# Brain digest — week {w}, {y}\n\n_{counts}_\n\n{body}\n", encoding="utf-8")
         context.store.index_note(path)

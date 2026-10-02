@@ -41,6 +41,9 @@ Offered to the model when you say things like: _remember, memory, memories, forg
 | `list_notes` | List the most recently changed notes. | `folder`?, `limit`? |
 | `journal` | Add an entry to today's journal / daily log. | `entry` |
 | `ingest_to_brain` | Save a web page or document into the 2nd brain so it can be searched later (summarised, with the people in it getting cards and the right project linked). | `source`, `title`? |
+| `brain_structure` | How the 2nd brain is organised (01_Personal / 02_Work and their numbered categories), how many notes are in each, and whether a reorganisation is waiting for the user's approval. | — |
+| `plan_brain_reorganisation` | Check every note against the filing rules and prepare a plan for anything in the wrong place. Moves nothing. | — |
+| `apply_brain_plan` 🔒 | Carry out the approved reorganisation of the 2nd brain (backup first; links, pins and projects are kept). | `include_best_guesses`? |
 
 ## Files & folders
 

@@ -122,6 +122,9 @@ SCHEMA = [
         {"path": "llm.max_tool_rounds", "label": "Max tool steps per request", "type": "number", "min": 2, "max": 15},
         {"path": "brain.learn_automatically", "label": "Learn new memories after each conversation", "type": "bool"},
         {"path": "brain.embed_model", "label": "Embedding model", "type": "text"},
+        {"path": "brain.structure", "label": "Filing rules (01_Personal / 02_Work, numbered categories)", "type": "select",
+         "default": "strict", "options": ["strict", "off"],
+         "help": "strict = every note is filed by the rules the moment it's created"},
     ]},
     {"id": "telegram", "title": "Telegram", "icon": "send", "fields": [
         {"path": "telegram.enabled", "label": "Telegram bot enabled", "type": "bool"},

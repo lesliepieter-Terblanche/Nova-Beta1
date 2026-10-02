@@ -207,6 +207,7 @@ brain:
   db_file: data/nova.db      # permanent memory, activity log, search index
   embed_model: nomic-embed-text
   learn_automatically: true  # extract new memories after every conversation
+  structure: strict          # notes are filed under 01_Personal/ or 02_Work/ → numbered category (nova/taxonomy.py)
 
 meetings:
   folder: workspace/meetings   # recordings (the notes go to the brain's Meetings folder)

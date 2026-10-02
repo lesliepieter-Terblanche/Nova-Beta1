@@ -198,3 +198,16 @@ lines around the error. Remove keys and personal details first.
 | Download of the Android tools fails | Get *SDK Platform-Tools for Windows* from developer.android.com, unzip, and put the path to `adb.exe` in Settings → Phone. |
 | Black screenshot / can't read the screen | Banking, payment and some streaming apps block this on purpose. |
 | "Your phone is locked" | Unlock it yourself — Nova never enters your PIN. |
+
+## Brain filing (01_Personal / 02_Work)
+
+- **Nothing moved after the update** — correct: Nova only prepares a plan. Open the dashboard, press 🗂, answer the
+  questions and press *Back up and move*. Or say "show me the brain structure" / "plan the brain reorganisation".
+- **A note went to the wrong place** — 🗂 → pick the right domain and category → *Move it here* (links follow). Or
+  tell Nova "move the note … to Personal, Finance".
+- **Something looks wrong after the move** — the whole brain as it was is in `backups/brain-before-reorganise-<date>`
+  (the 🗂 window shows the exact folder), together with `_nova_database_backup.db`. Close Nova, copy the folder back
+  over `data/brain` and the database over `data/nova.db`.
+- **I don't want the label lines or the rules** — `brain.structure: off` in `config.yaml`.
+- **A status is wrong** — change it with *Track this* on the dashboard, or edit the `[LABEL: STATUS: …]` line in the
+  note; the status boards follow.

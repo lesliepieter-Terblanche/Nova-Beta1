@@ -81,7 +81,8 @@ def test_file_forwarded_message(nova, monkeypatch):
     r = inbox.file_text("Hi Pieter, please send TrueHome listing pricing and the Mist quote by Friday. Sam",
                         from_who="Sam Dlamini")
     p = Path(r["path"])
-    assert p.exists() and p.parent.name == "Inbox" and "Axiz Mist pricing request" in p.read_text()
+    assert p.exists() and p.parent.name == "02_Clients_&_Partners" and p.parent.parent.name == "02_Work"
+    assert p.name.endswith("_Axiz_Mist_Pricing_Request.md") and "Axiz Mist pricing request" in p.read_text()
     assert "From: Sam Dlamini" in p.read_text()
     assert r["people"] == ["Sam Dlamini"] and people.find("Sam Dlamini")["last_contact"]
     assert r["project"].startswith("TrueHome")
@@ -102,7 +103,7 @@ def test_file_business_card_photo(nova, monkeypatch, tmp_path):
     p = people.find("Johan Pretorius")
     assert p and p["phone"] == "+27 82 555 0101" and r["person"]["created"]
     assert "New card: Johan Pretorius" in inbox.reply_text(r)
-    assert (Path(r["path"]).parent / "attachments").is_dir()
+    assert any((Path(r["path"]).parent / "Attachments").iterdir())          # picture kept beside its category
 
 
 def test_file_whiteboard_and_link(nova, monkeypatch, tmp_path):
@@ -157,7 +158,8 @@ def test_digest(nova, monkeypatch):
     d = answers.digest(7)
     assert "1 new people" in d and "Busy week" in d
     y, w, _ = __import__("datetime").date.today().isocalendar()
-    assert (Path(nova[0]["brain"]["vault_dir"]) / "Digests" / f"{y}-W{w:02d}.md").exists()
+    assert (Path(nova[0]["brain"]["vault_dir"]) / "02_Work" / "05_Meetings_&_Reports" / "Digests"
+            / f"{y}-W{w:02d}.md").exists()
 
 
 def test_catch_up_reads_each_memory_once(nova, monkeypatch):

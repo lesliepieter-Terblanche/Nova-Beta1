@@ -375,7 +375,8 @@ class Dreamer:
         text = context.llm.complete(JOURNAL_PROMPT.format(owner=owner, day=f"{day:%A %d %B %Y}", turns=t, made=mk,
                                                           loops=lp or "(none)"), prefer_smart=True, temperature=0.5)
         vault = resolve(context.cfg.brain.vault_dir) if context.cfg else resolve("brain")
-        path = vault / "Journal" / f"{day.isoformat()}.md"
+        from . import taxonomy
+        path = (taxonomy.system_folder("journal") if taxonomy.enabled() else vault / "Journal") / f"{day.isoformat()}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"# Journal — {day:%A %d %B %Y}\n\n{text.strip()}\n", encoding="utf-8")
         s.index_note(path)
@@ -462,7 +463,8 @@ class Dreamer:
 
     def _report(self, day, merged, links, journal, bk, errors) -> str:
         vault = resolve(context.cfg.brain.vault_dir) if context.cfg else resolve("brain")
-        path = vault / "Dreams" / f"{day.isoformat()}.md"
+        from . import taxonomy
+        path = (taxonomy.system_folder("dreams") if taxonomy.enabled() else vault / "Dreams") / f"{day.isoformat()}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         lines = [f"# Dream — night after {day:%A %d %B %Y}", ""]
         if links:

@@ -548,6 +548,24 @@
     border-bottom: 1px solid var(--line); font-size: 14px; }
   .donut-legend i { width: 12px; height: 12px; border-radius: 4px; }
   .donut-legend b { font-weight: 500; color: var(--muted); }
+  .badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: none;
+    background: #ff5fa2; color: #fff; font: 600 11px/18px var(--body); text-align: center; }
+  .badge.show { display: block; }
+  .rg p.lead { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; }
+  .rg h4 { margin: 18px 0 8px; font: 600 14px var(--display); letter-spacing: .04em; color: var(--accent-2); }
+  .rg .q { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--line); margin-bottom: 10px; }
+  .rg .q.ok { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+  .rg .q b { display: block; font-size: 14px; word-break: break-word; } .rg .q small { color: var(--muted); display: block; margin: 3px 0 8px; overflow-wrap: anywhere; }
+  .rg .q .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .rg select, .rg input[type=text] { background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 9px; color: var(--text);
+    padding: 7px 9px; font: 13px var(--body); max-width: 100%; }
+  .rg button { border: 1px solid var(--line-strong); background: rgba(255,255,255,.05); color: var(--text); border-radius: 999px;
+    padding: 7px 14px; font: 600 12.5px var(--body); cursor: pointer; }
+  .rg button.go { border: 0; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #070914; padding: 10px 18px; font-size: 13.5px; }
+  .rg .moves { max-height: 34vh; overflow: auto; font: 12.5px/1.5 ui-monospace, Consolas, monospace; }
+  .rg .moves div { padding: 5px 0; border-bottom: 1px solid var(--line); word-break: break-all; }
+  .rg .moves i { color: var(--muted); font-style: normal; } .rg .moves span { color: var(--accent-2); }
+  .rg .foot { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
   .info-body { font-size: 15px; line-height: 1.6; }
   .info-body h3 { font: 600 15px var(--display); margin: 14px 0 6px; color: var(--accent-2); letter-spacing: .03em; }
   .info-body ul { margin: 6px 0; padding-left: 20px; } .info-body li { margin: 4px 0; }
@@ -629,6 +647,7 @@
     <div class="stat" data-open="creations" title="Files, sites, videos, ads… Nova made"><div class="n" id="s-art">0</div><div class="l">Creations</div><div class="sub"></div></div>
     <div class="stat" data-open="actions" title="Every request and the steps Nova took"><div class="n" id="s-act">0</div><div class="l">Actions</div><div class="sub"></div></div>
   </div>
+    <button class="gear glass" id="filing-btn" title="Brain filing: 01_Personal / 02_Work — review moves and questions" aria-label="Brain filing" style="border:1px solid var(--line);cursor:pointer;font-size:18px;color:var(--text);position:relative">🗂<span class="badge" id="filing-badge"></span></button>
     <button class="gear glass" id="focus-btn" title="Focus mode — one thing at a time (F)" aria-label="Focus mode" style="border:1px solid var(--line);cursor:pointer;font-size:20px;color:var(--text)">◎</button>
     <button class="gear glass" id="phone-btn" title="Open Nova on your phone (Tailscale)" aria-label="Open on phone" style="border:1px solid var(--line);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
     <a class="gear glass" href="/globe" target="_blank" title="God's Eye View — live 3D globe" aria-label="God's Eye View"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></a>
@@ -1573,9 +1592,76 @@ function showCard(c) {
 function closeStage(quiet = false) {
   clearInterval(stage.timer); stage.timer = null;
   if (!document.body.classList.contains("stage-on")) return;
-  document.body.classList.remove("stage-on"); $("stage-body").innerHTML = "";
+  document.body.classList.remove("stage-on"); $("stage-body").innerHTML = ""; stage.kind = "";
   try { Graph.resumeAnimation(); } catch {}
 }
+// ── brain filing review: Nova proposes where things go, you answer the questions and approve ──
+let RG = null;
+async function loadFiling(open = false) {
+  try { RG = await api("/api/brain/plan"); } catch { return; }
+  const s = RG.summary, n = s.questions + s.checks || (s.moves ? s.moves : 0);
+  $("filing-badge").textContent = n > 99 ? "99+" : n; $("filing-badge").classList.toggle("show", n > 0);
+  if (open || stage.kind === "reorg") renderFiling();
+}
+function placeControls(it, key) {
+  const dom = it.domain, cats = Object.keys(RG.tree[dom] || {});
+  return `<div class="row" data-rel="${esc(it.rel)}" data-key="${key}">
+    <select data-f="domain">${Object.keys(RG.tree).map((d) => `<option ${d === dom ? "selected" : ""}>${esc(d)}</option>`).join("")}</select>
+    <select data-f="category">${cats.map((c) => `<option ${c === it.category ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
+    <input type="text" data-f="sub" list="rg-subs" placeholder="sub-folder (optional)" value="${esc(it.sub || "")}" size="18">
+    <button data-act="answer">${key === "check" ? "Move it here" : "Put it here"}</button>
+    ${key === "check" ? `<button data-act="keep">It's right where it is</button>` : ""}</div>`;
+}
+function renderFiling() {
+  const s = RG.summary, body = $("stage-body");
+  stage.kind = "reorg"; $("stage-title").textContent = "Brain filing"; $("stage-kind").textContent = "🗂";
+  $("stage-sub").textContent = s.building ? `working… ${s.progress}` : "";
+  const qs = RG.items.filter((i) => i.question), sure = RG.items.filter((i) => !i.question);
+  const open = qs.filter((i) => !i.answered).length, ready = sure.length + qs.length - open;
+  let h = `<div class="rg"><p class="lead">Everything lives under <b>01_Personal</b> or <b>02_Work</b>, in numbered categories, never more than three folders deep. <b>Nothing moves until you approve it</b> — a full backup is made first, and links, pins and project connections move along.</p>
+    <datalist id="rg-subs">${[...new Set(Object.values(RG.tree).flatMap((c) => Object.values(c).flat()))].map((x) => `<option value="${esc(x)}">`).join("")}</datalist>`;
+  if (!RG.items.length && !RG.checks.length) h += `<div class="q ok"><b>✓ Your brain follows the filing rules.</b><small>New notes are filed into the right category as they arrive.</small></div>`;
+  if (qs.length) h += `<h4>❓ ${open ? `${open} question${open === 1 ? "" : "s"} — where should these go?` : "Questions — all answered"}</h4>` + qs.map((i) =>
+    `<div class="q ${i.answered ? "ok" : ""}"><b>${i.answered ? "✓ " : ""}${esc(i.rel)}</b><small>My guess: ${esc(i.target)}${i.reason ? " — " + esc(i.reason) : ""} (${Math.round(i.confidence * 100)}% sure)</small>${placeControls(i, "item")}</div>`).join("");
+  if (RG.checks.length) h += `<h4>🔎 Recently filed on my best guess — is this right?</h4>` + RG.checks.map((c) =>
+    `<div class="q"><b>${esc(c.rel)}</b><small>${esc(c.reason || "")} (${Math.round(c.confidence * 100)}% sure)</small>${placeControls(c, "check")}</div>`).join("");
+  if (sure.length) h += `<h4>📦 ${sure.length} move${sure.length === 1 ? "" : "s"} I'm sure about</h4><div class="moves">${sure.slice(0, 400).map((i) =>
+    `<div><i>${esc(i.rel)}</i><br>→ <span>${esc(i.target)}</span></div>`).join("")}${sure.length > 400 ? `<div>… and ${sure.length - 400} more</div>` : ""}</div>`;
+  h += `<div class="foot">${RG.items.length ? `<button class="go" data-act="apply">Back up and move ${ready} item${ready === 1 ? "" : "s"}</button>` : ""}
+    ${open ? `<label style="font-size:13px;color:var(--muted)"><input type="checkbox" id="rg-guess"> also move the ${open} unanswered using your best guess</label>` : ""}
+    <span style="flex:1"></span><button data-act="build">Check the whole brain again</button></div>
+    ${RG.backup ? `<p class="lead" style="margin-top:10px">Last backup: ${esc(RG.backup)}</p>` : ""}</div>`;
+  body.innerHTML = h;
+  document.body.classList.add("stage-on");
+  try { Graph.pauseAnimation(); } catch {}
+}
+$("stage-body").addEventListener("change", (e) => {         // category list follows the chosen domain
+  if (stage.kind !== "reorg" || e.target.dataset.f !== "domain") return;
+  const cat = e.target.parentElement.querySelector('[data-f="category"]');
+  cat.innerHTML = Object.keys(RG.tree[e.target.value] || {}).map((c) => `<option>${esc(c)}</option>`).join("");
+});
+$("stage-body").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-act]"); if (!b || stage.kind !== "reorg") return;
+  const act = b.dataset.act, row = b.closest("[data-rel]");
+  const val = (f) => row.querySelector(`[data-f="${f}"]`).value.trim();
+  b.disabled = true;
+  try {
+    if (act === "answer") { const r = await api("/api/brain/plan", { action: "answer", rel: row.dataset.rel, domain: val("domain"), category: val("category"), sub: val("sub") }); if (r.error) flash(r.error); else if (row.dataset.key === "check") { flash("Moved."); loadGraph(); } }
+    else if (act === "keep") await api("/api/brain/plan", { action: "keep", rel: row.dataset.rel });
+    else if (act === "build") { await api("/api/brain/plan", { action: "build" }); flash("Checking every note against the filing rules…"); }
+    else if (act === "apply") {
+      if (!confirm("Make a backup and move these notes into the new structure now?")) return;
+      b.textContent = "Backing up and moving…";
+      const r = await api("/api/brain/plan", { action: "apply", include_unanswered: !!$("rg-guess")?.checked });
+      flash(r.error ? r.error : `Moved ${r.moved} notes, re-linked ${r.links}. ${r.left ? r.left + " still waiting for an answer. " : ""}Backup: ${r.backup}`);
+      clearTimeout(flash.t); flash.t = setTimeout(() => $("reply").classList.remove("show"), 30000);
+      await loadGraph(); loadStats();
+    }
+  } finally { b.disabled = false; loadFiling(); }
+});
+$("filing-btn").onclick = () => loadFiling(true);
+setInterval(() => { if (RG?.summary?.building || stage.kind !== "reorg") loadFiling(); }, 20000);
+loadFiling();
 $("stage-x").onclick = () => closeStage();
 // 3D: the window tilts gently towards your mouse (or finger) and its cards float above it
 $("stage").addEventListener("pointermove", (e) => {
@@ -1621,7 +1707,7 @@ async function poll() {
 }
 
 // ── detail panel: topics, items, actions, skills ─────
-const TRACK = [["", "None"], ["todo", "To do"], ["doing", "In progress"], ["waiting", "Waiting"], ["done", "Done"]];
+const TRACK = [["", "None"], ["todo", "Backlog"], ["doing", "In progress"], ["waiting", "Waiting on you"], ["done", "Completed"]];
 const TRACK_TXT = Object.fromEntries(TRACK);
 const MARK = { ok: "✓", done: "✓", approved: "✓", error: "✕", running: "•", waiting: "?", declined: "⊘" };
 const TL_COLORS = { create: "#52ffa8", edit: "#ffd166", recall: "#4cc9f0", open: "#ff9f1c", track: "#f78fb3", dot: "#8f97bf" };

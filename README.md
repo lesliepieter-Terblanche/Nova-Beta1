@@ -35,6 +35,7 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 🎙 **Voice** | "Hey Jarvis, what's on tomorrow?" · follow-ups without the wake word · interrupt it mid-sentence · Ctrl+Alt+Space push-to-talk · custom "Hey Nova" |
 | 📝 **Meetings** | "Record this meeting" → mic + Teams/Zoom audio → transcript, summary, decisions, your action items (to Google Tasks) |
 | 🧠 **Memory & 2nd brain** | "Remember that…" · "What do you know about…?" · research saved as notes (Obsidian-compatible Markdown) |
+| 🗂 **Brain filing rules** | Everything under `01_Personal/` or `02_Work/`, numbered categories, three levels, clean names · every note labelled `[LABEL: DOMAIN: …]` `[LABEL: STATUS: …]` · status boards of what waits on you · reorganises your existing notes only after you approve (backup first, links kept) |
 | 🌌 **3D dashboard** | Everything sorted into project clusters (auto-linked, correctable) — or by category; every memory, note, creation and action as a star; click a topic to list and **track** items (status, pin, note), see where each came from and every step Nova took; projects & skills at a glance; live activity |
 | 📱 **Remote control** | Private Telegram bot: text or voice notes in; text, voice notes and files out |
 | 📧 **Google Workspace** | Gmail search/read/draft/send/reply · Calendar · Drive · Docs · Sheets · Tasks |

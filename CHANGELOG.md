@@ -4,6 +4,31 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.17.0] — 2026-10-02
+### Added — 🗂 Brain filing rules (permanent) and DOMAIN / STATUS labels
+- **Two roots only:** everything in the 2nd brain lives under `01_Personal/` or `02_Work/`, in numbered categories,
+  never more than three folders deep, with `Pascal_Snake_Case` names (`Vehicle_Maintenance_Log.md`).
+  Personal: `01_Life_Admin`, `02_Health_&_Fitness`, `03_Interests_&_Projects` (Hobbies, Travel),
+  `04_Finance_&_Budgets`, `05_Journal`. Work: `01_Role_&_Responsibilities` (Standard_Operating_Procedures),
+  `02_Clients_&_Partners` (Active_Accounts, Partner_Network), `03_Projects_&_Strategy` (one folder per project,
+  Strategic_Growth_Plans), `04_Resources_&_Reference` (Technical_Documentation), `05_Meetings_&_Reports`.
+- **Every new note is placed at once** — notes Nova writes, uploads, Telegram forwards, meetings, journal, dreams,
+  digests, mission reports. Things that blur both sides go where they are mainly *used*; when Nova is less than 70 %
+  sure she still files it but lists it under "is this right?" so you can correct it with one tap.
+- **Your existing brain is not touched until you approve.** After the update Nova checks every note and prepares a
+  plan (dashboard 🗂, or say "plan the brain reorganisation"): the moves she is sure about, and **questions** for the
+  ones she isn't. *Back up and move* first copies the whole brain and the database to `backups/`, then moves the
+  notes and takes along: attachments, `[[links]]` (the old words stay readable), `![[embeds]]`, markdown links, pins,
+  statuses, project links and the search index. Unanswered questions stay where they are.
+- **Labels at the top of every note:** `[LABEL: DOMAIN: PERSONAL|WORK]` and
+  `[LABEL: STATUS: IN-PROGRESS|WAITING-ON-USER|COMPLETED|BACKLOG]`. The status is the same one as *Track this* on the
+  dashboard — change either and the other follows (also when you edit the label in Obsidian).
+- **Status boards:** `02_Work/05_Meetings_&_Reports/Status_Board.md` and `01_Personal/05_Journal/Status_Board.md`
+  list what is waiting on you (first), in progress, in the backlog and completed — tracked notes and memories, focus
+  tasks, missions, held actions and open filing questions.
+- New tools: `brain_structure`, `plan_brain_reorganisation`, `apply_brain_plan` (always asks first). Search can stay
+  on one side ("only in my work notes"). `brain.structure: off` switches the rules off.
+
 ## [2.16.0] — 2026-10-02
 ### Added — 📎 Upload files into your 2nd brain
 - **📎 button on the Ask bar** (PC and phone): pick one or many files — on the phone it opens the normal picker for

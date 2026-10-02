@@ -295,6 +295,19 @@ def main() -> None:
     except Exception as e:
         print(f"[wellbeing] not started: {e}")
     try:
+        from nova import taxonomy            # 01_Personal / 02_Work filing rules: prepare the plan, move nothing
+
+        def _brain_check():
+            import time
+            time.sleep(45)                   # let the models warm up first
+            try:
+                taxonomy.startup_check()
+            except Exception as e:
+                print(f"[brain] structure check failed: {e}")
+        threading.Thread(target=_brain_check, daemon=True, name="brain-structure").start()
+    except Exception as e:
+        print(f"[brain] structure check not started: {e}")
+    try:
         from nova import activity
         activity.start()                 # ActivityWatch screen time: gentle drift nudges during work hours
     except Exception as e:

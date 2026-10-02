@@ -260,7 +260,11 @@ def process_recording(wav: Path, title: str, when: dt.datetime) -> Path | None:
 
         from .memory import vault
         safe_title = re.sub(r"[^\w\- ]", "", title)[:70]
-        note = vault() / "Meetings" / f"{when:%Y-%m-%d} {safe_title}.md"
+        from .. import taxonomy
+        if taxonomy.enabled():
+            note = taxonomy.unique(taxonomy.system_folder("meetings") / taxonomy.file_name(safe_title, when.date()))
+        else:
+            note = vault() / "Meetings" / f"{when:%Y-%m-%d} {safe_title}.md"
         note.parent.mkdir(parents=True, exist_ok=True)
         note.write_text(build_note(title, when, minutes, data, segments), encoding="utf-8")
         context.store.index_note(note)

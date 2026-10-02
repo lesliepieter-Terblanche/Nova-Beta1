@@ -101,14 +101,24 @@ def _project_for(text: str) -> str:
 
 def _save(title: str, text: str, info: dict, source: str, folder: str = "Inbox", origin: str = "",
           attachment: Path | None = None, note: str = "") -> dict:
+    from . import taxonomy
     vault = _vault()
     stamp = dt.datetime.now()
-    path = vault / folder / f"{stamp:%Y-%m-%d} {_slug(title)}.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    i = 2
-    while path.exists():
-        path = path.with_name(f"{stamp:%Y-%m-%d} {_slug(title)} ({i}).md")
-        i += 1
+    if taxonomy.enabled():       # filed straight into 01_Personal / 02_Work → numbered category (see nova/taxonomy.py)
+        path = taxonomy.place(title, f"{note}\n{text}", hint=folder, project=info.get("project", ""))
+        if attachment and attachment.exists():               # the picture lives in that category's Attachments
+            home = taxonomy.attachments_for(path.parent)
+            if attachment.parent.resolve() != home.resolve():
+                moved = taxonomy.unique(home / attachment.name.replace(" ", "_"))
+                shutil.move(str(attachment), str(moved))
+                attachment = moved
+    else:
+        path = vault / folder / f"{stamp:%Y-%m-%d} {_slug(title)}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        i = 2
+        while path.exists():
+            path = path.with_name(f"{stamp:%Y-%m-%d} {_slug(title)} ({i}).md")
+            i += 1
     lines = [f"# {title}", "", f"_Filed {stamp:%Y-%m-%d %H:%M} · {info.get('type', 'item')} · via {source}_"]
     if origin:
         lines += [f"Source: {origin}"]
@@ -169,7 +179,11 @@ def file_url(url: str, source: str = "telegram", note: str = "", folder: str = "
 
 def file_image(path: str | Path, source: str = "telegram", note: str = "", folder: str = "Inbox") -> dict:
     src = Path(path)
-    att_dir = _vault() / folder / "attachments"
+    from . import taxonomy
+    if taxonomy.enabled():       # parked here for a moment; _save moves it next to the note's category
+        att_dir = taxonomy.attachments_for(taxonomy.folder_for(taxonomy.WORK, "04_Resources_&_Reference"))
+    else:
+        att_dir = _vault() / folder / "attachments"
     att_dir.mkdir(parents=True, exist_ok=True)
     dest = att_dir / f"{dt.datetime.now():%Y%m%d-%H%M%S}-{src.name}"
     shutil.copy2(src, dest)

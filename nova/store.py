@@ -220,6 +220,11 @@ class Store:
     # ── notes (2nd brain vault) ───────────────────────────
     def index_note(self, path: Path) -> None:
         path = Path(path)
+        try:                                   # filing rules: domain + status labels stay at the top of every note
+            from . import taxonomy
+            taxonomy.on_index(path)
+        except Exception as e:
+            print(f"[brain] labels for {path.name}: {e}")
         text = path.read_text(encoding="utf-8", errors="ignore")
         parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
         chunks, buf = [], ""
@@ -236,6 +241,31 @@ class Store:
             self.db.executemany("INSERT INTO chunks(path,idx,text,mtime,embedding) VALUES(?,?,?,?,?)",
                                 [(str(path), i, c, path.stat().st_mtime, self._blob(v)) for i, (c, v) in enumerate(zip(chunks, vecs))])
             self.db.commit()
+
+    def rename_path(self, old: str, new: str) -> int:
+        """A note moved: carry everything that points at it along — search index, pins and status, project links,
+        people mentions, usage, activity, mission reports, focus items (any text column holding the old path)."""
+        forms = [(old, new)]
+        if "\\" in old:                                    # the same path as it appears inside saved JSON
+            forms.append((old.replace("\\", "\\\\"), new.replace("\\", "\\\\")))
+        changed = 0
+        with self.lock:
+            tables = [r[0] for r in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+            for t in tables:
+                cols = [r[1] for r in self.db.execute(f'PRAGMA table_info("{t}")')
+                        if (r[2] or "").upper() in ("TEXT", "") and r[1] not in ("embedding",)]
+                for c in cols:
+                    for a, b in forms:
+                        try:
+                            cur = self.db.execute(f'UPDATE "{t}" SET "{c}" = REPLACE("{c}", ?, ?) WHERE instr("{c}", ?) > 0',
+                                                  (a, b, a))
+                            changed += cur.rowcount
+                        except sqlite3.IntegrityError:       # the new place already has an entry: keep that one
+                            self.db.execute(f'DELETE FROM "{t}" WHERE instr("{c}", ?) > 0', (a,))
+                        except sqlite3.Error:
+                            pass
+            self.db.commit()
+        return changed
 
     def sync_vault(self, vault: Path) -> int:
         vault.mkdir(parents=True, exist_ok=True)
@@ -254,9 +284,12 @@ class Store:
             self.db.commit()
         return n
 
-    def search_notes(self, query: str, k: int = 5, min_score: float = 0.35):
+    def search_notes(self, query: str, k: int = 5, min_score: float = 0.35, domain: str = ""):
+        """domain: '01_Personal' or '02_Work' searches only that side of the brain."""
         with self.lock:
             rows = self.db.execute("SELECT * FROM chunks").fetchall()
+        if domain:
+            rows = [r for r in rows if f"/{domain}/" in r["path"].replace("\\", "/")]
         return self._rank(query, rows, k=k, min_score=min_score)
 
     # ── artifacts & activity ──────────────────────────────
@@ -331,7 +364,8 @@ class Store:
         return dict(r) if r else {"item": item, "status": "", "pinned": 0, "note": "", "updated": None}
 
     def set_tracking(self, item: str, status: str | None = None, pinned: bool | None = None,
-                     note: str | None = None) -> dict:
+                     note: str | None = None, _from_file: bool = False) -> dict:
+        changed_status = status is not None and status != self.get_tracking(item)["status"]
         cur = self.get_tracking(item)
         if status is not None:
             if status not in TRACK_STATUSES:
@@ -351,7 +385,16 @@ class Store:
                                 "note=excluded.note, updated=excluded.updated",
                                 (item, cur["status"], cur["pinned"], cur["note"], cur["updated"]))
             self.db.commit()
-        label = {"todo": "to do", "doing": "in progress", "waiting": "waiting", "done": "done"}.get(cur["status"], "")
+        if changed_status:                     # the note's own STATUS label follows, and so do the status boards
+            try:
+                from . import taxonomy
+                if item.startswith("note:") and not _from_file and Path(item[5:]).exists():
+                    taxonomy.set_labels(Path(item[5:]), taxonomy.TRACK_TO_STATUS.get(cur["status"], "COMPLETED"))
+                    self.index_note(Path(item[5:]))
+                taxonomy.write_status_boards()
+            except Exception as e:
+                print(f"[brain] status labels: {e}")
+        label = {"todo": "backlog", "doing": "in progress", "waiting": "waiting on you", "done": "completed"}.get(cur["status"], "")
         self.log("track", "dashboard", f"Tracking: {label or ('pinned' if cur['pinned'] else 'updated')}", item, item,
                  turn=0)
         return cur
@@ -389,6 +432,16 @@ class Store:
                 out += ["", f"## {kind.title()}s"]
             out.append(f"- {r['text']}  <!-- #{r['id']} -->")
         path = vault / "_Nova Memory.md"
+        try:
+            from . import context as _ctx
+            from . import taxonomy
+            if taxonomy.enabled() and _ctx.cfg is not None and taxonomy.vault().resolve() == Path(vault).resolve():
+                path = taxonomy.system_folder("memory") / "Nova_Memory.md"
+                old = vault / "_Nova Memory.md"
+                if old.exists():
+                    old.unlink()
+        except Exception:
+            pass
         path.write_text("\n".join(out) + "\n", encoding="utf-8")
         return path
 

@@ -363,10 +363,15 @@ class Missions:
 
     def _write_report(self, m: dict, started: dt.datetime, report: str, steps: list) -> str:
         vault = resolve(context.cfg.brain.vault_dir) if context.cfg else resolve("brain")
-        folder = vault / "Missions"
-        folder.mkdir(parents=True, exist_ok=True)
+        from . import taxonomy
         safe = re.sub(r"[^\w\- ]+", "", m["title"]).strip()[:60] or f"Mission {m['id']}"
-        path = folder / f"{safe} {started:%Y-%m-%d %H%M}.md"
+        if taxonomy.enabled():
+            path = taxonomy.unique(taxonomy.system_folder("missions")
+                                   / f"{started:%Y-%m-%d}_{taxonomy.clean_name(safe)}_{started:%H%M}.md")
+        else:
+            folder = vault / "Missions"
+            folder.mkdir(parents=True, exist_ok=True)
+            path = folder / f"{safe} {started:%Y-%m-%d %H%M}.md"
         body = [f"# {m['title']}", "", f"*Mission #{m['id']} · {describe(m['schedule'])} · {started:%A %d %B %Y %H:%M}*",
                 "", f"**Goal:** {m['goal']}", "", report, "", "---", "", "## Steps"]
         for i, st in enumerate(steps, 1):

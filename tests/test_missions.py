@@ -81,7 +81,7 @@ def test_mission_run_plans_works_reports_and_stays_safe(nova, monkeypatch):
     assert "Needs your OK" in out["steps"][1]["result"] and "delete path" in out["steps"][1]["result"]
     assert agent.waiting_session() is None                   # …and nothing is left hanging
     report = open(out["report"], encoding="utf-8").read()
-    assert report.startswith("# Mist competitors SADC") and "Aruba" in report and "Search news" in report
+    assert report.startswith("[LABEL: DOMAIN: WORK]\n[LABEL: STATUS: COMPLETED]\n\n# Mist competitors SADC") and "Aruba" in report and "Search news" in report
     assert out["summary"].startswith("Aruba and Cisco Meraki")
     assert pushed[-1][0].startswith("✅ Mission: Mist competitors SADC") and pushed[-1][1] == [out["report"]]
     assert said and said[-1].startswith("Mission Mist competitors SADC is done.")

@@ -70,9 +70,17 @@ def write_note(title: str, content: str, folder: str = "Notes") -> str:
     Args:
         title: note title
         content: markdown content to add
-        folder: vault folder, e.g. Notes, Ideas, Projects, People, Meetings
+        folder: optional hint — a category such as Health, Finance, Clients, Projects, Reference (Nova files it
+                under 01_Personal or 02_Work by what it is about)
     """
-    path = vault() / _slug(folder) / f"{_slug(title)}.md"
+    from .. import taxonomy
+    if taxonomy.enabled():
+        name = taxonomy.file_name(title)
+        existing = [p for p in vault().rglob(name) if not taxonomy.problems(p)]
+        path = existing[0] if existing else taxonomy.place(title, content, hint=folder, dated=False)
+        folder = path.parent.relative_to(vault()).as_posix()
+    else:
+        path = vault() / _slug(folder) / f"{_slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
     if path.exists():
@@ -117,7 +125,8 @@ def journal(entry: str) -> str:
         entry: what to log
     """
     today = dt.date.today()
-    path = vault() / "Journal" / f"{today:%Y-%m-%d}.md"
+    from .. import taxonomy
+    path = (taxonomy.system_folder("journal") if taxonomy.enabled() else vault() / "Journal") / f"{today:%Y-%m-%d}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
         path.write_text(f"# {today:%A %d %B %Y}\n", encoding="utf-8")
@@ -142,3 +151,41 @@ def ingest_to_brain(source: str, title: str = "") -> str:
     else:
         r = inbox.file_document(Path(source).expanduser(), "voice", title, folder="Library")
     return inbox.reply_text(r)
+
+
+@tool(group="brain")
+def brain_structure() -> str:
+    """How the 2nd brain is organised (01_Personal / 02_Work and their numbered categories), how many notes are in
+    each, and whether a reorganisation is waiting for the user's approval."""
+    from .. import taxonomy
+    s = taxonomy.plan_summary()
+    out = taxonomy.tree_text()
+    if s["moves"] or s["checks"]:
+        out += (f"\n\nWaiting for approval: {s['moves']} notes to move or rename, {s['questions']} open questions, "
+                f"{s['checks']} recent notes to confirm. Review them on the dashboard (🗂).")
+    return out
+
+
+@tool(group="brain")
+def plan_brain_reorganisation() -> str:
+    """Check every note against the filing rules and prepare a plan for anything in the wrong place. Moves nothing."""
+    from .. import taxonomy
+    s = taxonomy.plan_summary(taxonomy.build_plan())
+    if not s["moves"]:
+        return "Everything in your brain already follows the filing rules."
+    return (f"Plan ready: {s['moves']} notes to move or rename, {s['questions']} I'd like to ask you about. Nothing has "
+            "moved — review and approve it on the dashboard (🗂).")
+
+
+@tool(group="brain", confirm=True)
+def apply_brain_plan(include_best_guesses: bool = False) -> str:
+    """Carry out the approved reorganisation of the 2nd brain (backup first; links, pins and projects are kept).
+    Args:
+        include_best_guesses: also move the items the user hasn't answered, using Nova's best guess
+    """
+    from .. import taxonomy
+    r = taxonomy.apply_plan(include_best_guesses)
+    if not r["moved"]:
+        return "Nothing to move" + (f" — {r['left']} items are waiting for your answer on the dashboard." if r["left"] else ".")
+    return (f"Moved {r['moved']} notes into the new structure and fixed the links in {r['links']} notes. "
+            + (f"{r['left']} are still waiting for your answer. " if r["left"] else "") + f"Backup: {r['backup']}")

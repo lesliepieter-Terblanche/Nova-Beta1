@@ -9,6 +9,7 @@
   /api/track        set your status / pin / note on an item (POST)
   /api/open         open an item on the PC (POST {"id": ...})
   /api/ask          talk to Nova by typing (POST {"text": ..., "voice": true = spoken reply as audio for this device})
+  /api/brain/plan   the 01_Personal / 02_Work filing plan: review, answer questions, apply (see nova/taxonomy.py)
   /api/upload       file anything into the brain (POST the file; ?name=…&note=…)
   /api/voice        talk to Nova by voice from any browser (POST the recording; reply text + audio)
   /api/tts/<token>  a spoken reply: streamed from ElevenLabs, or made into one MP3 (kept for 30 minutes)
@@ -949,6 +950,13 @@ class Dashboard:
                                            "status": context.store.status,
                                            "cards": cards.recent(int(q.get("cards", 0))) if "cards" in q else [],
                                            "card_seq": cards.latest_id()})
+                    if u.path == "/api/brain/plan":
+                        from .. import taxonomy
+                        plan = taxonomy.load_plan()
+                        return self._json({"summary": taxonomy.plan_summary(plan), "items": plan.get("items", [])[:1500],
+                                           "checks": plan.get("checks", []), "backup": plan.get("last_backup", ""),
+                                           "tree": {d: {c: m["subs"] for c, m in cats.items()}
+                                                    for d, cats in taxonomy.TREE.items()}})
                     if u.path == "/api/pcstats":
                         from .. import cards
                         return self._json(cards.pc_stats())
@@ -1175,6 +1183,25 @@ class Dashboard:
                         fields = {k: body[k] for k in ("name", "company", "role", "email", "phone", "notes", "aliases")
                                   if k in body}
                         return self._json({"ok": True, "person": _people.update(pid, **fields)})
+                    if self.path == "/api/brain/plan":
+                        from .. import taxonomy
+                        act = body.get("action")
+                        if act == "build":
+                            if not taxonomy._build["running"]:
+                                threading.Thread(target=taxonomy.build_plan, daemon=True, name="brain-plan").start()
+                            return self._json({"ok": True, "message": "Working out where everything belongs…"})
+                        if act == "answer":
+                            return self._json(taxonomy.answer(str(body.get("rel", "")), str(body.get("domain", "")),
+                                                              str(body.get("category", "")), str(body.get("sub", "")),
+                                                              str(body.get("name", ""))))
+                        if act == "keep":                       # "yes, that's the right place"
+                            plan = taxonomy.load_plan()
+                            plan["checks"] = [c for c in plan.get("checks", []) if c["rel"] != body.get("rel")]
+                            taxonomy.save_plan(plan)
+                            return self._json({"ok": True})
+                        if act == "apply":
+                            return self._json({"ok": True, **taxonomy.apply_plan(bool(body.get("include_unanswered")))})
+                        return self._json({"error": "unknown action"}, 400)
                     if self.path == "/api/ask":
                         reply = dash.agent.handle(body.get("text", ""), session="dashboard")
                         if body.get("speak") and context.speech:           # out loud on the PC's speakers

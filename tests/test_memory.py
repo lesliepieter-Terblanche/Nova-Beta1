@@ -19,7 +19,7 @@ def test_corrections_keep_history(nova):
 def test_notes_are_indexed(nova):
     write_note("Launch plan", "Facebook ads and SEO for the property site", "Projects")
     hits = context.store.search_notes("property site SEO")
-    assert hits and "Launch plan" in hits[0][1]["path"]
+    assert hits and hits[0][1]["path"].endswith("Launch_Plan.md")
 
 
 def test_learning_supersedes(nova):

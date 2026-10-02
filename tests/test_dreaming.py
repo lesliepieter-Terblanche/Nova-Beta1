@@ -91,7 +91,7 @@ def test_journal_of_the_day(nova, llm):
     today = dt.date.today()
     path, summary = Dreamer().journal(today)
     text = open(path, encoding="utf-8").read()
-    assert text.startswith(f"# Journal — {today:%A}") and "Avaya deck" in text
+    assert text.split("\n\n", 1)[1].startswith(f"# Journal — {today:%A}") and "Avaya deck" in text
     assert "Build the Avaya QBR deck" in llm[0][-1]
     assert Dreamer().journal(today - dt.timedelta(days=30)) is None          # quiet day -> no journal
 
@@ -144,7 +144,7 @@ def test_full_dream_report_and_schedule(nova, llm, monkeypatch, tmp_path):
     out = d.dream(dt.date.today())
     assert out["status"] == "done" and out["merged"] == 1
     note = open(out["note"], encoding="utf-8").read()
-    assert note.startswith("# Dream") and "Memories merged" in note
+    assert note.startswith("[LABEL: DOMAIN: PERSONAL]\n[LABEL: STATUS: COMPLETED]\n\n# Dream") and "Memories merged" in note
     assert pushed[-1].startswith("🌙 While you slept I merged 1 duplicate memory")
     assert d.last()["stats"]["merged"] == 1
 

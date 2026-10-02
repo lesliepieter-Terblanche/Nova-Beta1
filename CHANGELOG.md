@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.29.1] — 2026-10-02
+### Added
+- **📱 button in the dashboard header** (next to God's Eye View and Settings) opens the phone card as a pop-up:
+  battery, storage, Wi-Fi, Ring, Where, Screenshot, Screen, Photo and your routines. On a phone-sized screen the
+  Overview column is hidden, so this is how you reach the card there. A green dot on the button means the phone is
+  connected.
+
 ## [2.29.0] — 2026-10-02
 ### Added — calls, the phone on your PC screen, timing, everyday shortcuts
 - **Calls.** "Call Fritz Smith" looks the name up in the phone's contacts (Nova still asks before dialling, and asks

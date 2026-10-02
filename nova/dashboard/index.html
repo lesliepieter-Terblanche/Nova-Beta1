@@ -782,6 +782,13 @@
   .stats.min { width: auto; padding: 10px 44px 10px 14px; cursor: pointer; } .stats.min .statlist, .stats.min .phcard { display: none; } .stats.min .railhd { position: static; }
   .phcard { margin: 8px 2px 2px; padding: 11px 10px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05); font-size: 11.5px; }
   .phcard[hidden] { display: none; }
+  #ph-open[hidden] { display: none; } #ph-open:hover { transform: scale(1.08); }
+  .phpip { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: #64748b; } #ph-open.on .phpip { background: #34d399; box-shadow: 0 0 8px #34d399; }
+  .phpop { display: none; position: fixed; z-index: 30; top: 84px; right: 18px; width: min(330px, calc(100vw - 24px)); padding: 34px 10px 10px; border-radius: 18px; border: 1px solid rgba(255,255,255,.22);
+    background: rgb(var(--deep, 12,18,34)); box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+  .phpop.show { display: block; } .phpop .phcard { margin: 0; font-size: 13px; } .phpop .phcard button { font-size: 12.5px; padding: 9px 6px; } .phpop .phhd b { font-size: 14.5px; }
+  .phx { position: absolute; top: 7px; right: 9px; width: 26px; height: 26px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: none; color: var(--text); cursor: pointer; }
+  @media (max-width: 900px) { .phpop { top: 64px; right: 12px; left: 12px; width: auto; } }
   .phhd { display: flex; align-items: center; gap: 7px; } .phhd b { font: 600 12.5px var(--body); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .phdot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; flex: none; } .phcard.on .phdot { background: #34d399; box-shadow: 0 0 8px #34d399; }
   .phstate { margin-left: auto; color: var(--muted); font-size: 10.5px; white-space: nowrap; }
@@ -955,6 +962,7 @@
   <div class="right">
     <button class="gear glass" id="filing-btn" title="Brain filing: 01_Personal / 02_Work — review moves and questions" aria-label="Brain filing" style="border:1px solid var(--line);cursor:pointer;font-size:18px;color:var(--text);position:relative">🗂<span class="badge" id="filing-badge"></span></button>
     <button class="gear glass" id="focus-btn" title="Focus mode — one thing at a time (F)" aria-label="Focus mode" style="border:1px solid var(--line);cursor:pointer;font-size:20px;color:var(--text)">◎</button>
+    <button class="gear glass" id="ph-open" hidden title="Your phone: battery, storage, ring, where, screenshot, routines" aria-label="Phone card" style="border:1px solid var(--line);cursor:pointer;font-size:18px;color:var(--text);position:relative">📱<span class="phpip" id="ph-pip"></span></button>
     <button class="gear glass" id="phone-btn" title="Open Nova on your phone (Tailscale)" aria-label="Open on phone" style="border:1px solid var(--line);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
     <a class="gear glass" href="/globe" target="_blank" title="God's Eye View — live 3D globe" aria-label="God's Eye View"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></a>
     <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
@@ -1038,6 +1046,7 @@
   <button class="minbtn" id="legend-min" title="Minimise" aria-label="Minimise colour key">▾</button>
   <div id="legend-body"><div class="lk c">✓ Completed</div><div class="lk i">● In progress</div><div class="lk w">● Waiting on you</div><div class="lk b">○ Backlog</div></div>
 </section>
+<div class="phpop" id="phpop" role="dialog" aria-label="Your phone"><button class="phx" id="ph-x" aria-label="Close">✕</button></div>
 <div class="notice glass" id="notice" role="status"><span id="notice-text"></span><button id="notice-x" aria-label="Close">✕</button></div>
 <div class="ctx glass" id="ctx" role="menu"></div>
 <div class="ticker" id="ticker"><span class="tab" id="ticker-state">System optimized</span><span class="msg" id="ticker-text">MONITORING ACTIVE.</span></div>
@@ -1470,7 +1479,8 @@ async function loadStats() {
 // ── the phone card: battery, storage, Wi-Fi, ring / screenshot / routines ─
 async function loadPhone() {
   let p; try { p = await api("/api/phone"); } catch { return; }
-  const card = $("phcard"); card.hidden = !p.configured; if (!p.configured) return;
+  const card = $("phcard"); card.hidden = !p.configured; $("ph-open").hidden = !p.configured; if (!p.configured) return;
+  $("ph-open").classList.toggle("on", !!p.online);
   card.classList.toggle("on", !!p.online); card.classList.toggle("off", !p.online);
   $("ph-name").textContent = p.name || "Phone";
   $("ph-state").textContent = p.busy ? "working…" : p.online ? "connected" : p.checked ? "not reachable" : "checking…";
@@ -1494,6 +1504,16 @@ $("phcard").addEventListener("click", async (e) => {
   catch { $("ph-msg").textContent = "That didn't work."; }
   btn.disabled = false; loadPhone(); clearTimeout(loadPhone.t); loadPhone.t = setTimeout(() => { $("ph-msg").textContent = ""; }, hold);
 });
+// the 📱 button in the header opens the same card as a pop-up (the only way to reach it on a phone-sized screen)
+function phonePop(show) {
+  const pop = $("phpop"), card = $("phcard");
+  if (show) { pop.appendChild(card); pop.classList.add("show"); loadPhone(); }
+  else { pop.classList.remove("show"); $("stats").appendChild(card); }
+}
+$("ph-open").onclick = (e) => { e.stopPropagation(); phonePop(!$("phpop").classList.contains("show")); };
+$("ph-x").onclick = () => phonePop(false);
+document.addEventListener("click", (e) => { if ($("phpop").classList.contains("show") && !e.target.closest("#phpop, #ph-open")) phonePop(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("phpop").classList.contains("show")) phonePop(false); });
 setInterval(loadPhone, 30000);
 
 function countTo(el, v) {

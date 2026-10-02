@@ -900,6 +900,16 @@
   .donut { background: conic-gradient(#ffd166 calc(var(--p) * 1%), rgba(255,255,255,.28) 0); }
   .donut.idle { background: rgba(255,255,255,.22); }
   .pane .sum .od { color: #ffd166; } .hero .k.od b { color: #ffd166; }
+  /* outstanding work in the status colours: red = waiting on you, blue = in progress, grey = backlog, green = done */
+  .donut { background: conic-gradient(var(--st-wait) 0 var(--a1), var(--st-ip) var(--a1) var(--a2), #aab4c8 var(--a2) var(--a3), color-mix(in srgb, var(--st-done) 55%, transparent) var(--a3) 100%); }
+  .donut.idle { background: rgba(255,255,255,.22); }
+  .dir small.sc { font-weight: 700; color: #fff; }
+  .dir small.sc.wait { background: var(--st-wait); color: #3b0612; } .dir small.sc.ip { background: var(--st-ip); color: #06263a; }
+  .dir small.sc.bl { background: none; border: 1.5px dashed #aab4c8; color: #dfe6f3; padding: 0 6px; }
+  li.f[data-status="BACKLOG"] > .trow { border: 1.5px dashed #aab4c8; background: rgba(170,180,200,.10); }
+  li.f[data-status="BACKLOG"] .stl { background: rgba(170,180,200,.28); color: #fff; border: 1px dashed #aab4c8; }
+  .pane .sum .od, .hero .k.od b { color: #fff; }
+  .lk.b { color: #cfd8e8; }
 </style>
 </head>
 <body>
@@ -1110,7 +1120,7 @@ function treeModel() {
 const fileName = (n) => n.kind === "note" ? n.label + ".md" : (n.short || n.label);
 function rowHtml(n) {
   const st = n.status || "", name = fileName(n);
-  const explicit = ACTIVE(st) || (st && n.track);
+  const explicit = ACTIVE(st) || (st && (n.track || n.isProject || n.kind === "project" || n.kind === "mission"));
   return `<li class="f" data-id="${esc(n.id)}"${st ? ` data-status="${st}"` : ""}${ACTIVE(st) ? ` data-flow="${st === "IN-PROGRESS" ? "ip" : "wait"}"` : ""}>` +
     `<button class="trow" title="${esc(n.label)}">${n.kind === "note" ? FILE : `<span class="pi k">${ICON[n.kind] || "◆"}</span>`}<span class="nm">${esc(name.length > 54 ? name.slice(0, 53) + "…" : name)}</span></button>` +
     (explicit ? `<div class="stl" title="[STATUS: ${st}]">${PILL[st] || st}</div>` : "") + `</li>`;
@@ -1122,12 +1132,15 @@ function dirHtml(dir, depth) {
   const all = [...rows.map((r) => r.status), ...subs.flatMap((s) => s.rows.map((r) => r.status))];
   const total = rows.length + subs.reduce((a, s) => a + s.rows.length, 0), flow = worst(all);
   const isOpen = !closed.has(dir.id);
-  const act = all.filter(ACTIVE).length;                              // a closed folder still says what is active inside
+  // what is still outstanding in this folder, in the status colours (shown open or closed)
+  const cnt = (st) => all.filter((x) => x === st).length, cw = cnt("WAITING-ON-USER"), ci = cnt("IN-PROGRESS"), cb = cnt("BACKLOG");
+  const chips = (cw ? `<small class="sc wait" title="${cw} waiting on you">● ${cw}</small>` : "") + (ci ? `<small class="sc ip" title="${ci} in progress">● ${ci}</small>` : "")
+    + (cb ? `<small class="sc bl" title="${cb} in the backlog">○ ${cb}</small>` : "");
   const more = expanded.has(dir.id), keep = Math.max(rowLimit, rows.filter((r) => ACTIVE(r.status)).length);
   const shown = more ? rows : rows.slice(0, keep);
   const look = depth ? null : catLook(dir.name);
   let h = `<li class="d${isOpen ? " open" : ""}${depth ? " sub" : ""}" data-dir="${esc(dir.id)}"${flow ? ` data-flow="${flow}"` : ""}${look ? ` style="--cc:${look[1]}"` : ""}>` +
-    `<button class="dir" aria-expanded="${isOpen}" title="${esc(dir.name)} — click to ${isOpen ? "collapse" : "expand"}">${look ? `<span class="chipi">${look[0]}</span>` : FOLDER}<span class="nm">${look ? esc(nice(dir.name)) : esc(dir.name).replace(/_/g, "_<wbr>")}</span><span class="chev">${isOpen ? "▾" : "▸"}</span><small>${total}</small>${!isOpen && act ? `<small class="act ${flow}">${act} active</small>` : ""}</button>`;
+    `<button class="dir" aria-expanded="${isOpen}" title="${esc(dir.name)} — click to ${isOpen ? "collapse" : "expand"}">${look ? `<span class="chipi">${look[0]}</span>` : FOLDER}<span class="nm">${look ? esc(nice(dir.name)) : esc(dir.name).replace(/_/g, "_<wbr>")}</span><span class="chev">${isOpen ? "▾" : "▸"}</span><small>${total}</small>${chips}</button>`;
   if (isOpen) {
     h += `<ul>${subs.map((s) => dirHtml(s, depth + 1)).join("")}${shown.map(rowHtml).join("")}`;
     if (rows.length > shown.length) h += `<li class="f more"><button class="trow" data-more="${esc(dir.id)}">+ ${rows.length - shown.length} more…</button></li>`;
@@ -1152,10 +1165,12 @@ function renderTree() {
     for (const st of sts) if (st in tally && st !== "COMPLETED") tally[st]++;
     tally.COMPLETED += work.length - open; tally.OPEN = (tally.OPEN || 0) + open; tally.WORK = (tally.WORK || 0) + work.length;
     const pct = work.length ? Math.round(open / work.length * 100) : 0;
+    const seg = (st) => work.filter((r) => r.status === st).length / (work.length || 1) * 100;      // the ring in the status colours
+    const a1 = seg("WAITING-ON-USER"), a2 = a1 + seg("IN-PROGRESS"), a3 = Math.max(a2, pct);
     const ringTip = work.length ? `${open} of ${work.length} tracked item${work.length === 1 ? "" : "s"} still to be completed` : "Nothing is being tracked on this side yet";
     const ip = sts.filter((s) => s === "IN-PROGRESS").length, w = sts.filter((s) => s === "WAITING-ON-USER").length;
     h += `<section class="pane ${d === DOMAINS[0] ? "personal" : "work"}" id="pane-${d}" data-domain="${d}"${flow ? ` data-flow="${flow}"` : ""}>` +
-      `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${esc(nice(d))}</span><span class="donut${work.length ? "" : " idle"}" style="--p:${pct}" title="${ringTip}"><b>${work.length ? pct + "%" : "–"}</b></span></button>` +
+      `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${esc(nice(d))}</span><span class="donut${work.length ? "" : " idle"}" style="--a1:${a1.toFixed(1)}%;--a2:${a2.toFixed(1)}%;--a3:${a3.toFixed(1)}%" title="${ringTip}"><b>${work.length ? pct + "%" : "–"}</b></span></button>` +
       `<div class="sum"><button class="fold" data-fold="${d}" data-to="open">Expand all</button> · <button class="fold" data-fold="${d}" data-to="close">Collapse all</button> · ${n} item${n === 1 ? "" : "s"}${work.length ? ` · <b class="od">${open} of ${work.length} outstanding</b>` : ""}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
       `<ul class="tree">` +
       (m.unfiled.length ? `<li class="d open tofile" data-flow="wait"><button class="dir" data-filing="1">${FOLDER}<span class="nm">To_File · needs your approval</span><small>${m.unfiled.length}</small></button><ul>${

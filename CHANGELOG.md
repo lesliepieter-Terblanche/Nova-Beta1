@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.27.2] — 2026-10-02
+### Changed — outstanding work is colour-coded everywhere
+- Every folder header shows what is still outstanding inside it, in the status colours: **red** = waiting on you,
+  **blue** = in progress, **grey dashed** = backlog — whether the folder is open or closed.
+- Inside a folder every outstanding item has its coloured border and pill; backlog items are clearer than before.
+- A project without a status is shown as **Backlog** (not started), so no project is without a status.
+- The ring on each side is split into the same colours instead of one amber arc.
+
 ## [2.27.1] — 2026-10-02
 ### Changed — the rings show what is still outstanding
 - The ring on Personal and Work now shows **how much tracked work is still to be completed**: projects, missions and

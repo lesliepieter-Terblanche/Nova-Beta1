@@ -223,6 +223,8 @@ class Dashboard:
         by_id = {n["id"]: n for n in nodes}
         for pid in org["projects"]:
             if pid in by_id:
+                if not by_id[pid].get("status"):         # no project without a status: not started yet = backlog
+                    by_id[pid]["status"] = "BACKLOG"
                 by_id[pid].update(isProject=True, short=org["short"].get(pid, ""), pcolor=org["color"].get(pid),
                                   parent=org["parents"].get(pid, ""), val=max(by_id[pid]["val"], 9))
         for child, parent in org["parents"].items():

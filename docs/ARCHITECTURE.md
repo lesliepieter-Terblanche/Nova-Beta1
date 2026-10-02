@@ -53,7 +53,7 @@ flowchart TB
   AG --> OUT[Reply]
   OUT --> TTS[ElevenLabs stream<br/>→ Piper → Windows voice] --> SPK[🔊]
   OUT --> TG
-  SQL --> DASH[3D dashboard<br/>nova/dashboard]
+  SQL --> DASH[Master Index dashboard<br/>nova/dashboard]
   SQL --> MCPS[Nova MCP server<br/>for Claude Desktop etc.]
 ```
 

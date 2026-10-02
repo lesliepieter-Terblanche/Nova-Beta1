@@ -561,11 +561,11 @@ function current(path) { const f = FIELDS()[path]; return path in changes.values
 function updatePreview() {
   const el = $("#preview"); if (!el) return;
   const a = current("dashboard.theme.accent"), a2 = current("dashboard.theme.accent2"), bg = current("dashboard.theme.background");
-  const bloom = Number(current("dashboard.theme.bloom")), labels = current("dashboard.theme.tags");
+  const bloom = 0.5, labels = true, light = current("dashboard.theme.style") !== "dark";
   const g = (c, s) => `box-shadow:0 0 ${8 + 18 * bloom}px ${2 + 6 * bloom}px ${c};background:${c};width:${s}px;height:${s}px`;
-  const stars = Array.from({ length: Math.min(160, Math.round(Number(current("dashboard.theme.stars")) / 40)) }, (_, i) =>
+  const stars = Array.from({ length: 0 }, (_, i) =>
     `<span class="orb" style="left:${(i * 37) % 100}%;top:${(i * 53) % 100}%;width:2px;height:2px;background:#c8d0ff;opacity:.6"></span>`).join("");
-  el.style.cssText = `--p-accent:${a};background:radial-gradient(ellipse at center, ${a}22, ${bg} 70%), ${bg}`;
+  el.style.cssText = `--p-accent:${a};background:${light ? "linear-gradient(160deg,#f1f7fb,#dcebf4)" : `radial-gradient(ellipse at center, ${a}22, ${bg} 70%), ${bg}`}`;
   el.innerHTML = stars + `<span class="orb" style="left:22%;top:30%;${g(a2, 12)}"></span><span class="orb" style="left:70%;top:24%;${g("#ffd166", 10)}"></span>
     <span class="orb" style="left:76%;top:68%;${g("#ff8a5c", 11)}"></span><span class="orb" style="left:30%;top:72%;${g(a, 9)}"></span>
     <span class="orb core" style="box-shadow:0 0 ${20 + 40 * bloom}px ${6 + 14 * bloom}px ${a}"></span><span class="ring"></span>

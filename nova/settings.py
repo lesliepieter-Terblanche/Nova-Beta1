@@ -320,15 +320,12 @@ SCHEMA = [
     {"id": "appearance", "title": "Appearance", "icon": "palette", "fields": [
         {"path": "dashboard.theme.accent", "label": "Accent colour", "type": "color", "default": "#8b7bff"},
         {"path": "dashboard.theme.accent2", "label": "Second accent", "type": "color", "default": "#4cc9f0"},
-        {"path": "dashboard.theme.background", "label": "Space background", "type": "color", "default": "#03040a"},
-        {"path": "dashboard.theme.bloom", "label": "Glow intensity", "type": "number", "min": 0, "max": 2.5, "step": 0.05, "default": 0.85},
-        {"path": "dashboard.theme.stars", "label": "Star density", "type": "number", "min": 0, "max": 12000, "step": 500, "default": 4500},
-        {"path": "dashboard.theme.orbit_speed", "label": "Cinematic orbit speed", "type": "number", "min": 0, "max": 5, "step": 0.1, "default": 1.0},
-        {"path": "dashboard.theme.tags", "label": "Show name tags on the brain", "type": "bool", "default": False,
-         "help": "Off = a clean sphere; colours are explained in the dashboard's colour key"},
-        {"path": "dashboard.theme.layout", "label": "Brain layout", "type": "select", "default": "projects",
-         "options": ["projects", "categories", "web"],
-         "help": "projects = everything clustered around the project it belongs to; categories = tidy sectors; web = free-flowing"},
+        {"path": "dashboard.theme.background", "label": "Background (dark look)", "type": "color", "default": "#03040a"},
+        {"path": "dashboard.theme.style", "label": "Dashboard look", "type": "select", "default": "light",
+         "options": ["light", "dark"],
+         "help": "light = the pale operational look; dark = the same master index on the space background colour above"},
+        {"path": "dashboard.theme.rows", "label": "Files shown per folder before “more”", "type": "number", "min": 3,
+         "max": 40, "step": 1, "default": 6},
     ]},
 ]
 PRESETS = {

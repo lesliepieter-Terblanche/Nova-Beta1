@@ -258,3 +258,35 @@ def test_status_boards_show_what_waits_on_you(nova):
     assert "[[Gym_Plan]]" in home[home.index("[LABEL: STATUS: IN-PROGRESS]"):]
     assert all(f"[LABEL: STATUS: {st}]" in work for st in tx.STATUSES)
     assert tx.audit() == []                                 # the boards themselves obey the rules
+
+
+# ── the dashboard's master index gets its data from here ──
+def test_index_data_has_domain_status_and_bottlenecks(nova):
+    from nova.dashboard.server import Dashboard
+    context.llm.complete = answer_with()
+    s = context.store
+    a = tx.place("Axiz renewal", "Juniper renewal for Axiz", dated=False)
+    a.write_text("# Axiz renewal\n")
+    s.index_note(a)
+    b = tx.place("Gym plan", "gym", dated=False)
+    b.write_text("# Gym plan\n")
+    s.index_note(b)
+    d = Dashboard(nova[0], None)
+    rev = d.graph_rev()
+    s.set_tracking(f"note:{a}", status="waiting", note="need the PO number")
+    assert d.graph_rev() != rev                                   # a status change makes the dashboard redraw
+    g = d.graph()
+    by = {n["id"]: n for n in g["nodes"]}
+    work, home = by[f"note:{a}"], by[f"note:{b}"]
+    assert work["domain"] == "02_Work" and work["status"] == "WAITING-ON-USER" and work["filed"]
+    assert work["folder"] == "02_Work/02_Clients_&_Partners/Active_Accounts"
+    assert home["domain"] == "01_Personal" and home["status"] == "COMPLETED"
+    assert list(g["tree"]) == ["01_Personal", "02_Work"] and g["tree"]["02_Work"][0] == "01_Role_&_Responsibilities"
+    assert all(n.get("domain") in g["tree"] for n in g["nodes"] if n["kind"] != "core")       # nothing without a domain
+    assert g["bottlenecks"] == [{"id": f"note:{a}", "text": "Axiz Renewal", "why": "need the PO number", "domain": "02_Work"}]
+    assert g["audit"]["moves"] == 0
+    assert d.topic("cat:02_Work/02_Clients_&_Partners")["total"] == 1
+    # the short form of the labels is understood too
+    b.write_text("[DOMAIN: PERSONAL]\n[STATUS: IN-PROGRESS]\n\n# Gym plan\n")
+    s.index_note(b)
+    assert s.get_tracking(f"note:{b}")["status"] == "doing" and b.read_text().startswith("[LABEL: DOMAIN: PERSONAL]\n[LABEL: STATUS: IN-PROGRESS]")

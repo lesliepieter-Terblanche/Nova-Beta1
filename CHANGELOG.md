@@ -4,6 +4,26 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.18.0] — 2026-10-02
+### Changed — the dashboard is now the Second Brain "Master Index" (the 3D sphere is gone)
+- **Folder tree instead of an orb:** *Second Brain* → `01_Personal` (left) | `02_Work` (right) → numbered categories →
+  sub-folders → files, in the pale operational look. It is plain HTML — no WebGL, no render loop — and the 1.5 MB 3D
+  library is no longer loaded, so it opens faster and uses far less browser memory (and battery on the phone).
+- **Status drives the look (CSS states):** `IN-PROGRESS` = pulsing blue border, `WAITING-ON-USER` = red alert border,
+  `COMPLETED` = green border, `BACKLOG` = dashed grey — each with its `[STATUS: …]` line. Projects and missions show
+  in their category with their status too.
+- **Dataflow lines:** the connector lines from *Second Brain* down to an item turn blue (pulsing) while it is in
+  progress and red while it waits on you, and change as soon as its status changes — also when you edit the label in
+  the file.
+- **Active bottlenecks** (top right, and a chip bottom right): everything waiting on you — notes, held actions, stuck
+  missions, filing questions; click one to open it. Counters for projects, memories, people, creations and missions.
+- Header shows `STATUS: ONLINE | DOMAIN AUDIT: COMPLETE` (or how many items await your review); the strip at the
+  bottom shows realignment and system status; colour legend key bottom left.
+- Notes still in the old layout appear under *To_File · needs your approval* until you approve the reorganisation.
+- Folders collapse on click; long folders show the first few files (active ones first) with "+ n more".
+  Settings → Appearance: *Dashboard look* (light / dark) and *Files shown per folder*.
+- The short label form `[DOMAIN: …]` / `[STATUS: …]` is read as well as `[LABEL: DOMAIN: …]`.
+
 ## [2.17.0] — 2026-10-02
 ### Added — 🗂 Brain filing rules (permanent) and DOMAIN / STATUS labels
 - **Two roots only:** everything in the 2nd brain lives under `01_Personal/` or `02_Work/`, in numbered categories,

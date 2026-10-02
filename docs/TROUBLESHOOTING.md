@@ -211,3 +211,7 @@ lines around the error. Remove keys and personal details first.
 - **I don't want the label lines or the rules** — `brain.structure: off` in `config.yaml`.
 - **A status is wrong** — change it with *Track this* on the dashboard, or edit the `[LABEL: STATUS: …]` line in the
   note; the status boards follow.
+- **The dashboard looks different / where is the sphere?** — since 2.18 the dashboard is the Master Index folder tree
+  (faster, far less memory). Prefer it dark? Settings → Appearance → *Dashboard look* → dark.
+- **A file isn't in the tree** — a folder shows its first few files; click "+ n more", or the number next to a
+  category to list everything in it. Memories, creations and actions open from the counters top right.

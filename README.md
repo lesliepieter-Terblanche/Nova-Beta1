@@ -6,13 +6,13 @@
 
 **A voice-first, local-first AI agent for your PC.**
 Talk to it, and it runs your inbox, calendar, files, browser, web research, websites, videos and ads.
-It remembers everything permanently and shows its whole second brain as an interactive 3D galaxy.
+It remembers everything permanently and shows its whole second brain as a live master index: Personal on the left, Work on the right.
 
 [Install](docs/INSTALL.md) · [Configure](docs/CONFIGURATION.md) · [Skills & plugins](docs/SKILLS.md) · [MCP](docs/MCP.md) · [All tools](docs/TOOLS.md) · [Roadmap](docs/ENHANCEMENTS.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 </div>
 
-![Nova's 3D second-brain dashboard](docs/images/dashboard.jpg)
+![Nova's second-brain master index](docs/images/dashboard-index.png)
 
 ## Why Nova
 
@@ -36,7 +36,7 @@ It remembers everything permanently and shows its whole second brain as an inter
 | 📝 **Meetings** | "Record this meeting" → mic + Teams/Zoom audio → transcript, summary, decisions, your action items (to Google Tasks) |
 | 🧠 **Memory & 2nd brain** | "Remember that…" · "What do you know about…?" · research saved as notes (Obsidian-compatible Markdown) |
 | 🗂 **Brain filing rules** | Everything under `01_Personal/` or `02_Work/`, numbered categories, three levels, clean names · every note labelled `[LABEL: DOMAIN: …]` `[LABEL: STATUS: …]` · status boards of what waits on you · reorganises your existing notes only after you approve (backup first, links kept) |
-| 🌌 **3D dashboard** | Everything sorted into project clusters (auto-linked, correctable) — or by category; every memory, note, creation and action as a star; click a topic to list and **track** items (status, pin, note), see where each came from and every step Nova took; projects & skills at a glance; live activity |
+| 🗃 **Master Index dashboard** | Your brain as a live folder tree: `01_Personal` \| `02_Work` → numbered categories → files · blue = in progress, red = waiting on you, green = completed · active bottlenecks list · light on memory (plain HTML, no 3D) · click anything to open, track or correct it |
 | 📱 **Remote control** | Private Telegram bot: text or voice notes in; text, voice notes and files out |
 | 📧 **Google Workspace** | Gmail search/read/draft/send/reply · Calendar · Drive · Docs · Sheets · Tasks |
 | 📁 **Files** | Find, read (PDF/Word/Excel), write, move, tidy folders, zip, send to phone |

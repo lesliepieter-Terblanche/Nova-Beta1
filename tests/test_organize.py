@@ -84,6 +84,6 @@ def test_dashboard_graph_clusters_and_manual_link(nova):
     assert d.item(calc)["project"]["why"] == "name 'truehome'"
 
 
-def test_layout_setting_defaults_to_projects(nova):
+def test_dashboard_look_setting(nova):
     from nova import settings
-    assert settings.theme()["layout"] in ("projects", "categories", "web")
+    assert settings.theme()["style"] in ("light", "dark")

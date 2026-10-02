@@ -113,7 +113,7 @@ Content:
 STATUSES = ["IN-PROGRESS", "WAITING-ON-USER", "COMPLETED", "BACKLOG"]
 TRACK_TO_STATUS = {"doing": "IN-PROGRESS", "waiting": "WAITING-ON-USER", "done": "COMPLETED", "todo": "BACKLOG"}
 STATUS_TO_TRACK = {v: k for k, v in TRACK_TO_STATUS.items()}
-LABEL_RE = re.compile(r"^\[LABEL: (DOMAIN|STATUS): ([A-Z\-]+)\]\s*$")
+LABEL_RE = re.compile(r"^\[(?:LABEL: )?(DOMAIN|STATUS): ([A-Z\-]+)\]\s*$")      # "[STATUS: …]" is read too
 
 
 def domain_label(domain: str) -> str:
@@ -174,8 +174,8 @@ def on_index(path: Path) -> None:
     """Called whenever a note is created, changed or indexed: keep its labels right, and if the user changed the
     status in the file itself, follow it."""
     path = Path(path)
-    if not enabled() or path.suffix.lower() != ".md" or problems_quick(path):
-        return
+    if not enabled() or path.suffix.lower() != ".md" or problems_quick(path) or path.name == "Status_Board.md":
+        return                                   # (the status board states the overall state; it isn't a task itself)
     s = context.store
     in_file = status_of(path)
     tracked = ""
@@ -184,7 +184,7 @@ def on_index(path: Path) -> None:
             tracked = TRACK_TO_STATUS.get(s.get_tracking(f"note:{path}")["status"], "")
         except Exception:
             tracked = ""
-    if in_file in STATUSES and tracked and in_file != tracked and s is not None:
+    if in_file in STATUSES and in_file != (tracked or "COMPLETED") and s is not None:
         s.set_tracking(f"note:{path}", status=STATUS_TO_TRACK[in_file], _from_file=True)   # edited by hand: the file wins
     set_labels(path, in_file if in_file in STATUSES else None)
 
@@ -864,6 +864,55 @@ def board_items() -> dict[str, dict[str, list[str]]]:
         out[c["domain"]]["WAITING-ON-USER"].append(f"Is “{Path(c['rel']).name}” in the right place? (dashboard 🗂)")
     if any(not i["question"] or i["answered"] for i in plan.get("items", [])):
         out[WORK]["WAITING-ON-USER"].append("Approve the brain reorganisation (dashboard 🗂)")
+    return out
+
+
+def bottlenecks() -> list[dict]:
+    """Everything that is waiting on the user right now: [{"id", "text", "domain", "why"}] — the dashboard's
+    'active bottlenecks' list. `id` opens the item on the map ('filing' opens the filing review)."""
+    out = []
+    s = context.store
+    if s is None:
+        return out
+    with s.lock:
+        rows = [dict(r) for r in s.db.execute("SELECT item, note FROM tracking WHERE status='waiting'")]
+    for t in rows:
+        if t["item"].startswith("note:"):
+            p = Path(t["item"][5:])
+            if p.exists():
+                out.append({"id": t["item"], "text": p.stem.replace("_", " "), "why": t["note"] or "",
+                            "domain": domain_of(p) if domain_of(p) in TREE else _guess_domain(p.stem)})
+        elif t["item"].startswith("memory:"):
+            with s.lock:
+                row = s.db.execute("SELECT text FROM memories WHERE id=?", (t["item"][7:],)).fetchone()
+            if row:
+                out.append({"id": t["item"], "text": row["text"][:110], "why": t["note"] or "",
+                            "domain": _guess_domain(row["text"])})
+    try:
+        from . import wellbeing
+        for h in wellbeing.held():
+            out.append({"id": "", "text": f"Held: {h['label']}", "why": f"say “send held #{h['id']}” or drop it",
+                        "domain": WORK})
+    except Exception:
+        pass
+    try:
+        with s.lock:
+            ms = [dict(r) for r in s.db.execute("SELECT id, title FROM missions WHERE status IN ('failed','stuck')")]
+        out += [{"id": f"mission:{m['id']}", "text": f"Mission: {m['title']}", "why": "it got stuck",
+                 "domain": _guess_domain(m["title"])} for m in ms]
+    except Exception:
+        pass
+    plan = load_plan()
+    open_q = [i for i in plan.get("items", []) if i["question"] and not i["answered"]]
+    if open_q:
+        out.append({"id": "filing", "text": f"{len(open_q)} filing question{'s' if len(open_q) != 1 else ''}",
+                    "why": "where should these notes go?", "domain": open_q[0]["domain"]})
+    elif plan.get("items"):
+        out.append({"id": "filing", "text": f"Brain reorganisation: {len(plan['items'])} moves ready",
+                    "why": "waiting for your approval", "domain": WORK})
+    if plan.get("checks"):
+        out.append({"id": "filing", "text": f"{len(plan['checks'])} note(s) filed on a best guess", "why": "is it right?",
+                    "domain": plan["checks"][0]["domain"]})
     return out
 
 

@@ -48,8 +48,8 @@ def test_validation_errors(cfgfiles):
 
 
 def test_theme_only_changes_need_no_restart(cfgfiles):
-    assert settings.apply({"values": {"dashboard.theme.bloom": 1.2}})["restart"] is False
-    assert settings.theme()["bloom"] == 1.2
+    assert settings.apply({"values": {"dashboard.theme.rows": 12}})["restart"] is False
+    assert settings.theme()["rows"] == 12
 
 
 def test_secrets_masked_and_written_in_place(cfgfiles, monkeypatch):
@@ -93,4 +93,4 @@ def test_dashboard_rejects_foreign_hosts_and_origins(nova, cfgfiles):
     assert call("/api/settings", {"Host": "evil.example"}) == 403
     assert call("/api/settings", {"Origin": "http://evil.example", "Content-Type": "application/json"}, {}) == 403
     assert call("/api/settings", {"Origin": "http://127.0.0.1:8799", "Content-Type": "application/json"},
-                {"values": {"dashboard.theme.bloom": 1.0}}) == 200
+                {"values": {"dashboard.theme.rows": 8}}) == 200

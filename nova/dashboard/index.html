@@ -24,8 +24,131 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--body); overflow: hidden; }
-  #graph { position: fixed; inset: 0; }
-  #graph canvas { display: block; }
+  /* ── master index (folder tree) ── */
+  #tree { position: fixed; left: 0; right: 0; top: 104px; bottom: 112px; overflow: auto; padding: 4px 276px 12px 276px; z-index: 1;
+    scrollbar-width: thin; }
+  .mtitle { flex: 1; min-width: 0; text-align: center; pointer-events: none; overflow: hidden; padding-top: 6px;
+    font-family: var(--display); color: var(--ink); line-height: 1.15; white-space: nowrap; }
+  .mtitle b { display: block; font-size: 26px; letter-spacing: .04em; font-weight: 600; }
+  .mtitle span { font-size: 14.5px; letter-spacing: .06em; }
+  @media (max-width: 1500px) { .mtitle { visibility: hidden; } }
+  .root-wrap { display: grid; justify-items: center; }
+  .rootb, .dom { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line-strong); cursor: pointer;
+    background: var(--glass-strong); color: #fff; font: 700 18px var(--display); padding: 7px 16px 7px 12px; border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(20,40,70,.25); position: relative; z-index: 1; }
+  .fi { width: 24px; height: 20px; flex: none; fill: var(--dc, #3f8fe0); stroke: rgba(255,255,255,.55); stroke-width: 1; }
+  .elbows { display: grid; grid-template-columns: 1fr 1fr; width: 50%; height: 24px; margin-top: 0; }
+  .elbows i { border-top: 2px solid var(--dc); margin-top: 12px; }
+  .elbows .l { --dc: var(--personal); border-left: 2px solid var(--dc); border-top-left-radius: 14px; }
+  .elbows .r { --dc: var(--work); border-right: 2px solid var(--dc); border-top-right-radius: 14px; }
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: stretch; min-height: calc(100% - 64px); }
+  .pane { --dc: var(--personal); background: var(--pane); border: 1px solid var(--line-strong); border-radius: 16px;
+    padding: 0 18px 16px; min-width: 0; box-shadow: 0 14px 40px rgba(30,50,80,.18); }
+  .pane.work { --dc: var(--work); }
+  .pane .dom { display: flex; width: max-content; margin: -1px auto 0; transform: translateY(18px); font-size: 19px; }
+  .pane .sum { text-align: center; margin: 26px 0 4px; font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+  .pane .sum .ip { color: var(--st-ip); } .pane .sum .wt { color: var(--st-wait); }
+  ul.tree { list-style: none; margin: 0; padding: 4px 0 0; columns: 2 270px; column-gap: 22px; }
+  ul.tree ul { list-style: none; margin: 0; padding: 0 0 0 26px; }
+  ul.tree > li { break-inside: avoid; margin: 0 0 12px; padding-left: 16px; }
+  ul.tree li { position: relative; --lc: var(--dc); }
+  /* connectors: one elbow per row, in the domain colour — or the status colour while something is active below it */
+  ul.tree li::before { content: ""; position: absolute; left: 0; top: 0; width: 13px; height: 16px;
+    border-left: 2px solid var(--lc); border-bottom: 2px solid var(--lc); border-bottom-left-radius: 7px; opacity: .85; }
+  ul.tree ul > li { padding-left: 18px; }
+  ul.tree ul > li::before { left: -14px; width: 26px; top: -8px; height: 21px; border-width: 1.5px; opacity: .6; }
+  ul.tree ul > li:not(:last-child)::after { content: ""; position: absolute; left: -14px; top: 12px; bottom: -2px; border-left: 1.5px solid var(--lc); opacity: .6; }
+  ul.tree li[data-flow="ip"] { --lc: var(--st-ip); } ul.tree li[data-flow="wait"] { --lc: var(--st-wait); }
+  ul.tree li[data-flow]::before, ul.tree li[data-flow]::after { opacity: 1; }
+  ul.tree li[data-flow="ip"]::before { animation: flowpulse 1.4s ease-in-out infinite; }
+  .elbows i[data-flow="ip"] { --dc: var(--st-ip); animation: flowpulse 1.4s ease-in-out infinite; }
+  .elbows i[data-flow="wait"] { --dc: var(--st-wait); }
+  @keyframes flowpulse { 50% { opacity: .35; } }
+  .dir { display: inline-flex; align-items: center; gap: 9px; background: none; border: 0; padding: 3px 8px 3px 2px; border-radius: 8px;
+    color: #fff; font: 700 16px var(--display); cursor: pointer; text-shadow: 0 1px 6px rgba(20,35,60,.55); max-width: 100%; }
+  .dir:hover { background: rgba(255,255,255,.12); }
+  .dir .nm { text-align: left; line-height: 1.15; min-width: 0; }
+  .dir small { font: 600 11px var(--body); color: var(--muted); background: rgba(255,255,255,.14); padding: 1px 7px; border-radius: 999px; text-shadow: none; }
+  li.d.sub > .dir { font-size: 14.5px; font-weight: 600; } li.d.sub > .dir .fi { width: 19px; height: 16px; }
+  li.d:not(.open) > .dir .fi { opacity: .7; }
+  li.tofile > .dir { color: #ffd9dd; }
+  .trow { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; background: none; border: 1.5px solid transparent;
+    border-radius: 7px; padding: 2px 9px 2px 5px; color: #f3f7fc; font: 500 14.5px var(--body); cursor: pointer; text-align: left;
+    text-shadow: 0 1px 5px rgba(20,35,60,.5); }
+  .trow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trow:hover { background: rgba(255,255,255,.12); }
+  .pi { width: 13px; height: 16px; flex: none; opacity: .85; } .pi.k { font-size: 11px; line-height: 16px; text-align: center; }
+  li.f .stl { font: 500 13.5px var(--body); padding: 0 0 2px 27px; letter-spacing: .01em; }
+  li.f.more .trow, li.f.none .trow { color: var(--muted); font-size: 12.5px; font-style: italic; }
+  li.f.none .trow { cursor: default; }
+  /* state-driven looks */
+  li.f[data-status="COMPLETED"] .stl { color: var(--st-done); }
+  li.f[data-status="COMPLETED"]:has(.stl) > .trow { border-color: var(--st-done); box-shadow: 0 0 10px color-mix(in srgb, var(--st-done) 55%, transparent); }
+  li.f[data-status="IN-PROGRESS"] > .trow { border-color: var(--st-ip); background: rgba(59,157,255,.14); animation: st-pulse 1.6s ease-out infinite; }
+  li.f[data-status="IN-PROGRESS"] .stl { color: var(--st-ip); }
+  li.f[data-status="WAITING-ON-USER"] > .trow { border-color: var(--st-wait); border-width: 2px; background: rgba(255,77,94,.14); box-shadow: 0 0 12px rgba(255,77,94,.55); }
+  li.f[data-status="WAITING-ON-USER"] .stl { color: var(--st-wait); text-shadow: 0 0 8px rgba(255,77,94,.45); }
+  li.f[data-status="BACKLOG"] > .trow { border-color: rgba(255,255,255,.3); border-style: dashed; }
+  li.f[data-status="BACKLOG"] .stl { color: var(--muted); }
+  @keyframes st-pulse { 0% { box-shadow: 0 0 0 0 rgba(59,157,255,.65); } 100% { box-shadow: 0 0 0 9px rgba(59,157,255,0); } }
+  li.f.sel > .trow { outline: 2px solid #fff; outline-offset: 1px; }
+  body.dimmed li.f.dim { opacity: .3; }
+  body.calm li.f[data-status="IN-PROGRESS"] > .trow, body.calm ul.tree li[data-flow="ip"]::before, body.calm .elbows i { animation: none; }
+  @media (prefers-reduced-motion: reduce) { li.f[data-status="IN-PROGRESS"] > .trow, ul.tree li[data-flow="ip"]::before, .elbows i { animation: none !important; } }
+  /* right column: bottlenecks and counters */
+  .rcol { position: fixed; right: 18px; top: 124px; width: 236px; z-index: 4; display: flex; flex-direction: column; gap: 9px; max-height: calc(100vh - 300px); }
+  .bneck { position: relative; padding: 38px 8px 8px 12px; max-height: 32vh; overflow-y: auto; flex: none; }
+  .bneck.has { border-color: var(--st-wait); box-shadow: 0 0 20px rgba(255,77,94,.3); }
+  .bneck .railhd { position: absolute; top: 13px; left: 14px; font: 600 11px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .bneck.has .railhd { color: #ffc2c8; }
+  #bneck-n { display: inline-block; min-width: 18px; text-align: center; padding: 1px 5px; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; letter-spacing: 0; margin-left: 4px; }
+  .bneck.has #bneck-n { background: var(--st-wait); }
+  .bneck ul { list-style: none; margin: 0; padding: 0; }
+  .bneck li { display: flex; gap: 8px; padding: 6px 4px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.35; }
+  .bneck li.link { cursor: pointer; } .bneck li.link:hover { background: rgba(255,255,255,.08); }
+  .bneck li.none { color: var(--muted); border: 0; }
+  .bneck li .dm { flex: none; font: 600 9.5px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 2px; width: 54px; }
+  .bneck li small { display: block; color: var(--muted); }
+  .bneck.min { padding: 10px 44px 10px 14px; overflow: hidden; } .bneck.min ul { display: none; } .bneck.min .railhd { position: static; }
+  #tiles { display: grid; gap: 9px; }
+  .tile { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 10px; padding: 10px 14px; cursor: pointer; color: var(--text);
+    border-radius: 14px; text-align: left; font: inherit; }
+  .tile:hover { border-color: var(--line-strong); }
+  .tile .tn { font: 700 15px var(--display); } .tile .tl { font: 600 11px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .tile b { font: 600 19px var(--display); color: #9ecbff; font-variant-numeric: tabular-nums; }
+  .legend .lk { font: 600 13px var(--body); padding: 2px 0; }
+  .lk.c { color: var(--st-done); } .lk.i { color: var(--st-ip); } .lk.w { color: var(--st-wait); } .lk.b { color: var(--muted); }
+  .bchip { position: fixed; right: 18px; bottom: 44px; z-index: 4; padding: 9px 16px; border-radius: 12px; color: var(--text); cursor: pointer;
+    font: 600 13px var(--display); letter-spacing: .03em; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bchip.has { border-color: var(--st-wait); color: #ffd3d7; }
+  .ticker { position: fixed; left: 0; right: 0; bottom: 0; height: 30px; z-index: 3; display: flex; justify-content: center; align-items: center; gap: 16px;
+    font: 500 13px var(--display); letter-spacing: .04em; color: var(--ink); pointer-events: none; padding: 0 12px; }
+  .ticker .tab { background: var(--glass-strong); color: #fff; padding: 6px 34px; height: 30px; display: grid; place-items: center; flex: none;
+    clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 100%, 0 100%); }
+  .ticker .msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ticker.warn .tab { background: #b23a48; }
+  .brand .status .aud b { color: var(--ok); } .brand .status .aud b.warn { color: #ffb347; }
+  /* the pale operational look (Settings → Appearance → Dashboard look) */
+  :root { --ink: #dfe6ff; --pane: rgba(14,18,36,.5); --personal: #4a9bea; --work: #3fbf7f; --st-ip: #4da3ff; --st-wait: #ff4d5e; --st-done: #46e08f; }
+  body.light { --st-ip: #9fd2ff; --st-done: #8dffbd; --st-wait: #ff5d6c; --personal: #3f8fe0; --work: #35c07a; }
+  body.light li.f .stl, body.light .legend .lk, body.light .pane .sum b { text-shadow: 0 1px 3px rgba(15,30,55,.75); }
+  body.light li.f[data-status="WAITING-ON-USER"] .stl, body.light .lk.w, body.light .pane .sum .wt { color: #ffb3ba; }
+  body.light { --bg: #e9f2f8; --ink: #17263a; --glass: rgba(104,124,150,.72); --glass-strong: rgba(84,104,130,.94); --pane: rgba(116,136,162,.62);
+    --line: rgba(255,255,255,.22); --line-strong: rgba(255,255,255,.4); --text: #f4f8fc; --muted: #d3dde9; --ok: #7dffb0;
+    background: radial-gradient(ellipse 70% 50% at 78% 62%, rgba(120,170,205,.45), transparent 70%),
+      radial-gradient(ellipse 60% 45% at 8% 70%, rgba(150,195,220,.4), transparent 70%), linear-gradient(160deg, #f1f7fb, #dcebf4 60%, #e9f3f8); }
+  body.light .vignette, body.light .grain { display: none; }
+  body.light .brand .status b { color: #7dffb0; }
+  body.light .empty { color: #4a5d75; }
+  @media (max-width: 1250px) { #tree { padding-right: 16px; padding-left: 16px; } .rcol { display: none; }
+    .rcol.show { display: flex; top: auto; bottom: 92px; max-height: 60vh; } .rcol.show #tiles { display: none; } }
+  @media (max-width: 900px) {
+    #tree { top: 118px; bottom: 106px; padding: 4px 10px 12px; }
+    .panes { grid-template-columns: 1fr; gap: 30px; } .elbows { width: 0; height: 10px; }
+    ul.tree { columns: 1; } .dir { font-size: 16px; } .trow { font-size: 14px; }
+    .bchip { display: none; } .ticker .msg { font-size: 10.5px; } .ticker .tab { padding: 6px 22px; font-size: 11.5px; }
+    .legend { display: none; } .brand .status .aud { display: none; }
+  }
 
   /* cinematic framing */
   .vignette { position: fixed; inset: 0; pointer-events: none;
@@ -162,7 +285,7 @@
   .gear { display: grid; place-items: center; width: 52px; height: 52px; color: var(--text); text-decoration: none; transition: transform .3s; }
   .gear:hover { transform: rotate(40deg); color: #fff; }
   .gear[href='/globe']:hover { transform: scale(1.08); }
-  .no-labels .proj-label, .no-labels .person-label { display: none !important; }
+  .no-labels .person-label { display: none !important; }
   .hub-label { font: 600 12.5px var(--display); letter-spacing: .06em; color: #fff; padding: 4px 10px; border-radius: 999px;
     background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); cursor: pointer;
     text-shadow: 0 0 12px var(--c); white-space: nowrap; pointer-events: auto; transform: translateY(-50%); }
@@ -173,7 +296,6 @@
   .proj-label:hover { background: rgba(20,24,50,.85); }
   .proj-label.sub { font-size: 10.5px; opacity: .85; }
   body.dimmed .proj-label.off, body.dimmed .hub-label.off { opacity: .15; }
-  .no-labels .proj-label.sub { display: none; }
   body.far .proj-label.sub { display: none; }
   body[data-layout="categories"] .proj-label, body[data-layout="web"] .proj-label.sub { display: none; }
   body[data-layout="projects"] .hub-label { opacity: .8; }
@@ -447,8 +569,8 @@
 
   /* calm & night */
   body.calm .grain { display: none; }
-  body.calm #graph canvas { filter: saturate(.6); }
-  body.night #graph canvas { filter: saturate(.5) brightness(.65) sepia(.25); }
+  body.calm #map-canvas { filter: saturate(.6); }
+  body.night #map-canvas { filter: saturate(.5) brightness(.65) sepia(.25); }
   body.night .glass { filter: brightness(.9); }
 
   /* people cards */
@@ -478,7 +600,7 @@
   /* centre window for weather, PC stats & other information — the 3D brain hides until it's closed */
   .stage { position: fixed; inset: 0; z-index: 8; display: none; place-items: center; padding: 84px 18px 96px; perspective: 1500px; }
   body.stage-on .stage { display: grid; }
-  body.stage-on #graph { visibility: hidden; }
+  body.stage-on #map { visibility: hidden; }
   body.stage-on .rail, body.stage-on .feed, body.stage-on .legend, body.stage-on .panel, body.stage-on .tl-bar { opacity: .12; pointer-events: none; transition: opacity .4s; }
   /* see-through frame: only a glowing edge and a light blur — your theme's colours show through */
   .stage-card { --rx: 0deg; --ry: 0deg; position: relative; width: min(1000px, 100%); max-height: 100%; overflow: auto; border-radius: 26px;
@@ -623,10 +745,17 @@
     .tl-bar input[type=range] { order: 9; flex-basis: 100%; }
     body.tl-on .rail { display: none; }
   }
+  /* master index: the key sits bottom-left, the ask bar clears the status strip */
+  .legend { right: auto; left: 18px; top: auto; bottom: 44px; width: auto; min-width: 200px; max-height: none; padding: 34px 16px 10px 14px; }
+  .legend.min { padding: 10px 44px 10px 14px; }
+  .ask { bottom: 40px; }
+  .feed { bottom: 96px; }
+  @media (min-width: 1251px) and (max-width: 1640px) { .bchip { display: none; } }
+  @media (max-width: 900px) { .ask { bottom: 36px; } .rail { bottom: 108px; } }
 </style>
 </head>
 <body>
-<div id="graph"></div>
+<main id="tree" aria-label="Second Brain master index"></main>
 <div class="vignette"></div>
 <div class="grain"></div>
 
@@ -635,9 +764,10 @@
     <div class="orb" id="orb"></div>
     <div>
       <h1 id="title">Nova · Second Brain</h1>
-      <div class="status">Status · <b id="status">connecting</b></div>
+      <div class="status">Status: <b id="status">connecting</b> <span class="aud">| Domain audit: <b id="audit">…</b></span></div>
     </div>
   </div>
+  <div class="mtitle" aria-hidden="true"><b>SECOND BRAIN</b><span>OPERATIONAL DASHBOARD · MASTER INDEX</span></div>
   <div class="right">
   <div class="stats glass">
     <div class="stat" data-open="project" title="Projects you haven't marked done — click to see and track them"><div class="n" id="s-proj">0</div><div class="l">Projects</div><div class="sub" id="s-proj-sub"></div></div>
@@ -665,21 +795,7 @@
     <kbd>/</kbd>
   </label>
   <div class="results" id="results"></div>
-  <h3>Layout</h3>
-  <div class="views" id="layouts">
-    <button id="l-projects" title="Everything clustered around the project it belongs to">Projects</button>
-    <button id="l-categories" title="Tidy sectors per category">Categories</button>
-    <button id="l-web" title="Free-flowing web of connections">Web</button>
-  </div>
-  <h3>View</h3>
-  <div class="views">
-    <button id="v-orbit" class="on">Cinematic</button>
-    <button id="v-free">Free</button>
-    <button id="v-fit">Fit all</button>
-  </div>
   <div class="views keep" style="margin-top:6px"><button id="v-time" title="Replay how your brain grew — or see one month">🕘 Timeline</button></div>
-  <h3>Layers</h3>
-  <div class="chips" id="chips"></div>
   <h3 class="keep">Track</h3>
   <div class="quick">
     <button data-open="doing">In progress</button>
@@ -707,11 +823,22 @@
   </div>
 </section>
 
-<section class="legend glass" id="legend" aria-label="Colour key">
-  <div class="railhd">🎨 Colour key</div>
-  <button class="minbtn" id="legend-min" title="Minimise" aria-label="Minimise colour key">▾</button>
-  <div id="legend-body"></div>
+<div class="rcol">
+<section class="bneck glass" id="bneck" aria-label="Active bottlenecks">
+  <div class="railhd">Active bottlenecks <span id="bneck-n">0</span></div>
+  <button class="minbtn" id="bneck-min" title="Minimise" aria-label="Minimise bottlenecks">▾</button>
+  <ul id="bneck-list"></ul>
 </section>
+<div id="tiles"></div>
+</div>
+
+<section class="legend glass" id="legend" aria-label="Colour legend key">
+  <div class="railhd">Colour legend key</div>
+  <button class="minbtn" id="legend-min" title="Minimise" aria-label="Minimise colour key">▾</button>
+  <div id="legend-body"><div class="lk c">Green = [COMPLETED]</div><div class="lk i">Blue = [IN-PROGRESS]</div><div class="lk w">Red = [WAITING-ON-USER]</div><div class="lk b">Grey = [BACKLOG]</div></div>
+</section>
+<button class="bchip glass" id="bneck-chip">ACTIVE BOTTLENECKS: 0</button>
+<div class="ticker" id="ticker"><span class="tab" id="ticker-state">System optimized</span><span class="msg" id="ticker-text">MONITORING ACTIVE.</span></div>
 
 <section class="feed glass" id="feed">
   <button class="minbtn" id="feed-min" title="Minimise" aria-label="Minimise live activity">▾</button>
@@ -758,126 +885,194 @@
   <h3>📱 Nova on your phone</h3>
   <div id="p-bodyr" class="muted">Checking Tailscale…</div>
 </div></div>
-<div class="empty" id="empty"><strong>The brain is waiting</strong>Talk to Nova — every memory, note and creation will appear here as a star.</div>
+<div class="empty" id="empty"><strong>The brain is waiting</strong>Talk to Nova or upload a file — it is filed into 01_Personal or 02_Work straight away.</div>
 <div class="intro" id="intro"><span>Nova</span></div>
 
 <script type="module">
-import { ForceGraph3D, THREE, UnrealBloomPass, CSS2DRenderer, CSS2DObject } from "./vendor/nova-vendor.js";
-
 const STATUS_COLORS = { idle: "#8b7bff", listening: "#4cc9f0", thinking: "#ffd166", speaking: "#ff5fa2", away: "#5b6280" };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const api = (p, body) => fetch(p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}).then((r) => r.json());
 
-let data = { nodes: [], links: [] };
+let data = { nodes: [], links: [], bottlenecks: [] };
 let hidden = new Set();
 let selected = null;
-let orbit = true;
 let status = "idle";
-let coreObj = null;
 const nodeById = new Map();
 
-// ── graph ─────────────────────────────────────────────
-const labelRenderer = new CSS2DRenderer();
-labelRenderer.domElement.style.pointerEvents = "none";
-const Graph = ForceGraph3D({ controlType: "orbit", extraRenderers: [labelRenderer] })($("graph"))
-  .backgroundColor("#03040a")
-  .showNavInfo(false)
-  .nodeRelSize(3.2)
-  .nodeVal((n) => n.val)
-  .nodeLabel(() => "")
-  .nodeVisibility((n) => visible(n))
-  .linkVisibility((l) => visible(l.source) && visible(l.target) && linkShown(l))
-  .linkColor(linkColorOf)
-  .linkWidth((l) => l.type === "core" ? 0.6 : l.type === "subproject" ? 0.9 : l.type === "project" ? (layout === "projects" ? 0.45 : 0.25)
-                  : l.type === "semantic" ? 0.25 : l.type === "mention" ? (focusSet ? 0.5 : 0.15) : 0)
-  .linkOpacity(0.4)
-  .linkDirectionalParticles((l) => (isHot(l.source) || isHot(l.target) || l.type === "core") ? 2 : 0)
-  .linkDirectionalParticleWidth((l) => l.type === "core" ? 1.6 : 1.2)
-  .linkDirectionalParticleSpeed(0.006)
-  .linkDirectionalParticleColor((l) => colorOf(typeof l.target === "object" ? l.target : nodeById.get(l.target)))
-  .nodeThreeObject(makeNode)
-  .onNodeHover(onHover)
-  .onNodeClick((n) => select(n))
-  .onBackgroundClick(() => closePanel())
-  .warmupTicks(40)
-  .cooldownTime(8000);
-
-window.novaGraph = Graph;
-// ── layouts: Projects (clusters) · Categories (sectors) · Web (free) ──
-let layout = "projects", focusSet = null;
+// ── the master index ──────────────────────────────────
+// The brain as a plain folder tree: "Second Brain" → 01_Personal | 02_Work → numbered categories → files.
+// It is ordinary HTML (no canvas, no WebGL, no render loop). Every row carries data-status, and CSS turns that into
+// the look: IN-PROGRESS = pulsing blue, WAITING-ON-USER = red, COMPLETED = green. The connector lines of every
+// folder that leads to an active item take the same colour, so the live dataflow path is visible at a glance.
+const DOMAINS = ["01_Personal", "02_Work"];
+const STRUCT = new Set(["core", "domain", "category", "hub"]);
+const MEMORY_KINDS = ["person", "project", "preference", "fact", "goal", "decision", "routine", "event"];
+const familyOf = (k) => MEMORY_KINDS.includes(k) ? "sphere" : k === "note" ? "diamond" : (k === "action" || k === "mission") ? "pyramid" : "cube";
+const treeEl = $("tree");
+let layout = "categories", focusSet = null, rowLimit = 6;
 const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 1000) / 1000; };
 const nodeOf = (x) => (typeof x === "object" ? x : nodeById.get(x));
-function linkShown(l) {
-  const t = nodeOf(l.target);
-  if (layout === "projects" && l.type === "hub" && t?.project) return false;      // it hangs off its project instead
-  if (layout === "categories" && l.type === "project") return false;
-  if (layout !== "web" && l.type === "semantic") return false;
-  if (l.type === "mention" && layout === "categories" && !focusSet) return false;
-  return true;
-}
-function rgba(hex, a) { const c = new THREE.Color(hex || "#8b7bff"); return `rgba(${c.r * 255 | 0},${c.g * 255 | 0},${c.b * 255 | 0},${a})`; }
-function linkColorOf(l) {
-  const s = nodeOf(l.source), t = nodeOf(l.target);
-  if (focusSet && !(focusSet.has(s?.id) && focusSet.has(t?.id))) return "rgba(120,130,200,0.03)";
-  if (l.type === "project" || l.type === "subproject") return rgba(l.color, l.type === "subproject" ? 0.55 : 0.32);
-  if (l.type === "mention") return rgba(s?.color || "#ff8a5c", focusSet ? 0.6 : 0.16);
-  return l.type === "semantic" ? "rgba(110,190,255,0.35)" : l.type === "wiki" ? "rgba(190,160,255,0.6)"
-    : l.type === "core" ? "rgba(200,205,255,0.28)" : "rgba(150,160,255,0.10)";
-}
-function linkStrength(l) {
-  const t = nodeOf(l.target), ty = l.type;
-  if (layout === "projects") return ty === "project" ? 0.9 : ty === "subproject" ? 0.6 : ty === "hub" ? (t?.project ? 0 : 0.8)
-    : ty === "core" ? 0 : ty === "mention" ? 0.015 : 0.02;
-  if (layout === "categories") return ty === "hub" ? 0.9 : ty === "core" ? 0 : ty === "subproject" ? 0.03 : 0.01;
-  return ty === "semantic" ? 0.05 : ty === "wiki" ? 0.2 : ty === "project" ? 0.15 : ty === "subproject" ? 0.3
-    : ty === "mention" ? 0.12 : 0.7;
-}
-function linkDistance(l) {
-  const k = hash(typeof l.target === "object" ? l.target.id : l.target);
-  if (layout === "projects") return l.type === "project" ? 20 + k * 34 : l.type === "subproject" ? 70 + k * 30 : l.type === "hub" ? 34 + k * 36 : 90;
-  if (layout === "categories") return l.type === "hub" ? 26 + k * 46 : 80;
-  return l.type === "core" ? 120 : l.type === "hub" ? 34 + k * 30 : l.type === "project" ? 50 : 60;
-}
-function chargeOf(n) {
-  if (layout === "web") return n.kind === "core" ? -420 : n.kind === "hub" ? -220 : n.isProject ? -60 : -26;
-  if (layout === "projects") return n.isProject ? -90 : n.kind === "hub" ? -40 : -16;
-  return n.kind === "hub" ? -60 : -18;
-}
-function pinRing(nodes, r, wave = 36) {
-  nodes.forEach((n, i) => {
-    const a = (i / Math.max(1, nodes.length)) * Math.PI * 2 + 0.3;
-    n.fx = r * Math.cos(a); n.fz = r * Math.sin(a); n.fy = Math.sin(a * 2) * wave;
-  });
-}
-function pinSphere(nodes, r) {
-  const N = nodes.length, g = Math.PI * (3 - Math.sqrt(5));
-  nodes.forEach((n, i) => {
-    const y = N === 1 ? 0 : 1 - (i / (N - 1)) * 2, rad = Math.sqrt(1 - y * y), th = g * i;
-    n.fx = r * Math.cos(th) * rad; n.fy = r * y * 0.55; n.fz = r * Math.sin(th) * rad;
-  });
-}
-function applyLayout(mode, { save = false, reheat = true } = {}) {
-  layout = mode || "projects";
-  document.body.dataset.layout = layout;
-  ["projects", "categories", "web"].forEach((m) => $("l-" + m).classList.toggle("on", m === layout));
-  for (const n of data.nodes) { delete n.fx; delete n.fy; delete n.fz; }
-  const core = nodeById.get("core"); if (core) { core.fx = 0; core.fy = 0; core.fz = 0; }
-  const hubs = data.nodes.filter((n) => n.kind === "hub").sort((a, b) => a.hubKind.localeCompare(b.hubKind));
-  const roots = data.nodes.filter((n) => n.isProject && !(n.parent && nodeById.has(n.parent)))
-                          .sort((a, b) => (a.short || a.label).localeCompare(b.short || b.label));
-  if (layout === "categories") pinSphere(hubs, 220 + hubs.length * 6);
-  if (layout === "projects") { pinRing(roots, Math.min(380, 150 + roots.length * 26), 60); pinSphere(hubs, 470); }
-  Graph.d3Force("link").distance(linkDistance).strength(linkStrength);
-  Graph.d3Force("charge").strength(chargeOf);
-  refreshLinks();
-  if (reheat) Graph.d3ReheatSimulation();
-  if (save) api("/api/settings", { values: { "dashboard.theme.layout": layout } }).catch(() => {});
-}
-function refreshLinks() { Graph.linkVisibility(Graph.linkVisibility()).linkColor(Graph.linkColor()).linkWidth(Graph.linkWidth()); }
-["projects", "categories", "web"].forEach((m) => { $("l-" + m).onclick = () => { applyLayout(m, { save: true }); setTimeout(() => Graph.zoomToFit(1400, 80), 1600); }; });
+function colorOf(n) { return n?.color || "#8b7bff"; }
+function visible(n) { if (typeof n !== "object") n = nodeById.get(n); return !!n; }
+function isHot(n) { if (typeof n !== "object") n = nodeById.get(n); return !!(n && n.hot); }
+const lsGet = (k) => { try { return JSON.parse(localStorage.getItem(k) || "[]"); } catch { return []; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify([...v])); } catch {} };
+const closed = new Set(lsGet("nova.tree.closed")), expanded = new Set();
+const FOLDER = `<svg class="fi" viewBox="0 0 24 20" aria-hidden="true"><path d="M1 3.5A2.5 2.5 0 0 1 3.5 1h5l2.4 2.6H20.5A2.5 2.5 0 0 1 23 6.1v10.4a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 1 16.5z"/></svg>`;
+const FILE = `<svg class="pi" viewBox="0 0 16 20" aria-hidden="true"><path d="M2 1h8l4 4v14H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 9h6M5 12h6M5 15h4" stroke="currentColor" stroke-width="1.2"/></svg>`;
+const ICON = { project: "◆", mission: "➤", person: "●", goal: "◎" };
+const ACTIVE = (st) => st === "IN-PROGRESS" || st === "WAITING-ON-USER";
+const worst = (list) => list.includes("WAITING-ON-USER") ? "wait" : list.includes("IN-PROGRESS") ? "ip" : "";
 
-// light up one project's whole cluster
+// what goes where: files by their folder; projects, missions and anything else being tracked in the matching category
+function treeModel() {
+  const cats = data.tree || {}, model = {};
+  const catOf = (dom, want) => (cats[dom] || []).find((c) => want.test(c)) || (cats[dom] || [])[0];
+  for (const d of DOMAINS) model[d] = { dirs: new Map((cats[d] || []).map((c) => [c, { name: c, id: `cat:${d}/${c}`, rows: [], subs: new Map() }])), unfiled: [] };
+  for (const n of data.nodes) {
+    if (STRUCT.has(n.kind) || !model[n.domain] || !inTime(n)) continue;
+    const m = model[n.domain];
+    if (n.kind === "note") {
+      const parts = String(n.folder || "").split("/");
+      const dir = n.filed && m.dirs.get(parts[1]);
+      if (!dir) { m.unfiled.push(n); continue; }
+      if (parts[2]) {
+        if (!dir.subs.has(parts[2])) dir.subs.set(parts[2], { name: parts[2], id: `${dir.id}/${parts[2]}`, rows: [], subs: new Map() });
+        dir.subs.get(parts[2]).rows.push(n);
+      } else dir.rows.push(n);
+      continue;
+    }
+    const tracked = n.isProject || n.kind === "project" || n.kind === "mission" || (n.status && n.kind !== "action") || (n.kind === "action" && n.status === "IN-PROGRESS");
+    if (!tracked) continue;
+    const c = n.kind === "mission" ? catOf(n.domain, /Meetings|Interests/) : catOf(n.domain, /Projects/);
+    if (m.dirs.get(c)) m.dirs.get(c).rows.push(n);
+  }
+  return model;
+}
+const fileName = (n) => n.kind === "note" ? n.label + ".md" : (n.short || n.label);
+function rowHtml(n) {
+  const st = n.status || "", name = fileName(n);
+  const explicit = ACTIVE(st) || (st && n.track);
+  return `<li class="f" data-id="${esc(n.id)}"${st ? ` data-status="${st}"` : ""}${ACTIVE(st) ? ` data-flow="${st === "IN-PROGRESS" ? "ip" : "wait"}"` : ""}>` +
+    `<button class="trow" title="${esc(n.label)}">${n.kind === "note" ? FILE : `<span class="pi k">${ICON[n.kind] || "◆"}</span>`}<span class="nm">${esc(name.length > 54 ? name.slice(0, 53) + "…" : name)}</span></button>` +
+    (explicit ? `<div class="stl">[STATUS: ${st}]</div>` : "") + `</li>`;
+}
+const order = (a, b) => (ACTIVE(b.status) - ACTIVE(a.status)) || ((b.status === "WAITING-ON-USER") - (a.status === "WAITING-ON-USER"))
+  || ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || String(b.created || "").localeCompare(String(a.created || ""));
+function dirHtml(dir, depth) {
+  const rows = [...dir.rows].sort(order), subs = [...dir.subs.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const all = [...rows.map((r) => r.status), ...subs.flatMap((s) => s.rows.map((r) => r.status))];
+  const total = rows.length + subs.reduce((a, s) => a + s.rows.length, 0), flow = worst(all);
+  const isOpen = !closed.has(dir.id) || !!flow;                       // a folder with something active never hides it
+  const more = expanded.has(dir.id), keep = Math.max(rowLimit, rows.filter((r) => ACTIVE(r.status)).length);
+  const shown = more ? rows : rows.slice(0, keep);
+  let h = `<li class="d${isOpen ? " open" : ""}${depth ? " sub" : ""}" data-dir="${esc(dir.id)}"${flow ? ` data-flow="${flow}"` : ""}>` +
+    `<button class="dir" aria-expanded="${isOpen}">${FOLDER}<span class="nm">${esc(dir.name).replace(/_/g, "_<wbr>")}</span><small>${total}</small></button>`;
+  if (isOpen) {
+    h += `<ul>${subs.map((s) => dirHtml(s, depth + 1)).join("")}${shown.map(rowHtml).join("")}`;
+    if (rows.length > shown.length) h += `<li class="f more"><button class="trow" data-more="${esc(dir.id)}">+ ${rows.length - shown.length} more…</button></li>`;
+    else if (more && rows.length > keep) h += `<li class="f more"><button class="trow" data-more="${esc(dir.id)}">show fewer</button></li>`;
+    if (!total) h += `<li class="f none"><span class="trow">empty</span></li>`;
+    h += `</ul>`;
+  }
+  return h + `</li>`;
+}
+let lastHtml = "";
+function renderTree() {
+  const model = treeModel(), flows = {};
+  let h = "";
+  for (const d of DOMAINS) {
+    const m = model[d], dirs = [...m.dirs.values()];
+    const sts = dirs.flatMap((x) => [...x.rows, ...[...x.subs.values()].flatMap((s) => s.rows)]).map((r) => r.status);
+    const flow = flows[d] = worst(sts), n = sts.length + m.unfiled.length;
+    const ip = sts.filter((s) => s === "IN-PROGRESS").length, w = sts.filter((s) => s === "WAITING-ON-USER").length;
+    h += `<section class="pane ${d === DOMAINS[0] ? "personal" : "work"}" id="pane-${d}" data-domain="${d}"${flow ? ` data-flow="${flow}"` : ""}>` +
+      `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${d}</span></button>` +
+      `<div class="sum">${n} item${n === 1 ? "" : "s"}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
+      `<ul class="tree">` +
+      (m.unfiled.length ? `<li class="d open tofile" data-flow="wait"><button class="dir" data-filing="1">${FOLDER}<span class="nm">To_File · needs your approval</span><small>${m.unfiled.length}</small></button><ul>${
+        m.unfiled.sort(order).slice(0, rowLimit).map(rowHtml).join("")}${m.unfiled.length > rowLimit ? `<li class="f more"><button class="trow" data-filing="1">+ ${m.unfiled.length - rowLimit} more — open the filing review</button></li>` : ""}</ul></li>` : "") +
+      dirs.map((x) => dirHtml(x, 0)).join("") + `</ul></section>`;
+  }
+  const root = `<div class="root-wrap"><button class="rootb" id="rootb">${FOLDER}<span>Second Brain</span></button>` +
+    `<div class="elbows"><i class="l"${flows[DOMAINS[0]] ? ` data-flow="${flows[DOMAINS[0]]}"` : ""}></i><i class="r"${flows[DOMAINS[1]] ? ` data-flow="${flows[DOMAINS[1]]}"` : ""}></i></div></div>`;
+  const html = root + `<div class="panes">${h}</div>`;
+  if (html !== lastHtml) {
+    const keep = [...treeEl.querySelectorAll(".pane")].map((p) => p.scrollTop), top = treeEl.scrollTop;
+    treeEl.innerHTML = lastHtml = html;
+    treeEl.querySelectorAll(".pane").forEach((p, i) => { p.scrollTop = keep[i] || 0; }); treeEl.scrollTop = top;
+  }
+  markRows();
+}
+function markRows() {
+  for (const li of treeEl.querySelectorAll("li.f[data-id]")) {
+    li.classList.toggle("sel", !!selected && li.dataset.id === selected.id);
+    li.classList.toggle("dim", !!focusSet && !focusSet.has(li.dataset.id));
+  }
+}
+let queued = false;
+function schedule() { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; renderTree(); }); }
+function buildBlocks() {}
+treeEl.addEventListener("click", (e) => {
+  const more = e.target.closest("[data-more]"), filing = e.target.closest("[data-filing]"), dom = e.target.closest("[data-dom]");
+  if (filing) return loadFiling(true);
+  if (more) { const id = more.dataset.more; expanded.has(id) ? expanded.delete(id) : expanded.add(id); return renderTree(); }
+  if (dom) { dom.closest(".pane").scrollTo({ top: 0, behavior: "smooth" }); return; }
+  if (e.target.closest("#rootb")) { closePanel(); treeEl.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  const dir = e.target.closest("button.dir");
+  if (dir) {
+    const id = dir.parentElement.dataset.dir;
+    if (e.target.closest("small") && id.split("/").length === 2) return openTopic(id);      // the count lists the folder
+    closed.has(id) ? closed.delete(id) : closed.add(id); lsSet("nova.tree.closed", closed); return renderTree();
+  }
+  const row = e.target.closest("li.f[data-id]");
+  if (row) { const n = nodeById.get(row.dataset.id); if (n) select(n); }
+});
+function applyLayout() { schedule(); }
+function fit() { treeEl.scrollTo({ top: 0, behavior: "smooth" }); }
+function flyTo(n) {
+  const li = n && treeEl.querySelector(`li.f[data-id="${CSS.escape(n.id)}"]`);
+  if (li) li.scrollIntoView({ block: "center", behavior: document.body.classList.contains("calm") ? "auto" : "smooth" });
+}
+
+// ── right column: what waits on you, and the counters ─
+function renderBottlenecks() {
+  const list = data.bottlenecks || [], el = $("bneck");
+  el.classList.toggle("has", list.length > 0);
+  const first = list[0] ? ` (${list[0].text.length > 26 ? list[0].text.slice(0, 25) + "…" : list[0].text})` : "";
+  $("bneck-n").textContent = list.length;
+  $("bneck-chip").textContent = `ACTIVE BOTTLENECKS: ${list.length}${first}`;
+  $("bneck-chip").classList.toggle("has", list.length > 0);
+  $("bneck-list").innerHTML = list.length ? list.map((b, i) =>
+    `<li data-i="${i}" class="${b.id ? "link" : ""}"><span class="dm">${b.domain === DOMAINS[0] ? "Personal" : "Work"}</span><span class="t">${esc(b.text)}${b.why ? `<small>${esc(b.why)}</small>` : ""}</span></li>`).join("")
+    : `<li class="none">Nothing is waiting on you.</li>`;
+  const a = data.audit || {}, pending = (a.moves || 0) + (a.checks || 0);
+  $("audit").textContent = a.building ? "RUNNING" : pending ? `${pending} TO REVIEW` : "COMPLETE";
+  $("audit").classList.toggle("warn", !!pending);
+  $("ticker-state").textContent = list.length ? "Waiting on you" : pending ? "Realignment pending" : "System optimized";
+  $("ticker-text").textContent = `${pending ? `REALIGNMENT PENDING: ${pending} ITEM${pending === 1 ? "" : "S"} AWAIT YOUR APPROVAL.` : "REALIGNMENT COMPLETE."} MONITORING ACTIVE. SYSTEM STATUS: ${list.length ? `${list.length} BOTTLENECK${list.length === 1 ? "" : "S"}` : "STABLE"}.`;
+  $("ticker").classList.toggle("warn", list.length > 0 || !!pending);
+  const count = (f) => data.nodes.filter(f).length;
+  const tiles = [["project", "Projects", count((n) => n.isProject || n.kind === "project")], ["memories", "Memories", count((n) => MEMORY_KINDS.includes(n.kind) && !n.isPerson)],
+    ["people", "People", count((n) => n.isPerson)], ["creations", "Creations", count((n) => familyOf(n.kind) === "cube")], ["missions", "Missions", count((n) => n.kind === "mission")]];
+  $("tiles").innerHTML = tiles.map(([k, label, n], i) => `<button class="tile glass" data-open="${k}"><span class="tn">0${i + 1}</span><span class="tl">${label}</span><b>${n}</b></button>`).join("");
+}
+function openBottleneck(i) {
+  const b = (data.bottlenecks || [])[i]; if (!b?.id) return;
+  if (b.id === "filing") return loadFiling(true);
+  const n = nodeById.get(b.id); if (n) { flyTo(n); select(n); } else openById(b.id);
+}
+$("bneck-list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) openBottleneck(+li.dataset.i); });
+$("bneck-chip").onclick = () => {
+  if ((data.bottlenecks || []).length === 1) return openBottleneck(0);
+  $("bneck").classList.remove("min"); document.querySelector(".rcol").classList.toggle("show");
+};
+$("bneck-min").onclick = (e) => { e.stopPropagation(); $("bneck").classList.toggle("min"); };
+$("tiles").addEventListener("click", (e) => { const b = e.target.closest("[data-open]"); if (b) openTopic(b.dataset.open); });
+window.novaTree = { data: () => data, render: renderTree };
+
+// light up everything that belongs to one project / person
 function clusterOf(pid) {
   const ids = new Set([pid]);
   let grew = true;
@@ -897,166 +1092,7 @@ function personCluster(pid) {
   }
   return ids;
 }
-function setFocus(ids) {
-  focusSet = ids;
-  document.body.classList.toggle("dimmed", !!ids);
-  for (const n of data.nodes) {
-    const o = n.__threeObj; if (!o) continue;
-    const on = !ids || ids.has(n.id) || n.kind === "core";
-    o.traverse((c) => {
-      if (c.material) { c.material.transparent = true; c.userData.base ??= c.material.opacity; c.material.opacity = c.userData.base * (on ? 1 : 0.12); }
-      if (c.element) c.element.classList.toggle("off", !on);
-    });
-  }
-  refreshLinks();
-}
-
-// cinematic bloom
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.45, 0.18);
-Graph.postProcessingComposer().addPass(bloom);
-
-// starfield + nebula dust
-const scene = Graph.scene();
-scene.fog = new THREE.FogExp2(0x03040a, 0.0011);
-const glowTex = (() => {
-  const c = document.createElement("canvas"); c.width = c.height = 128;
-  const g = c.getContext("2d"), grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grd.addColorStop(0, "rgba(255,255,255,1)"); grd.addColorStop(0.25, "rgba(255,255,255,.55)"); grd.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-})();
-function starfield(count, radius, size, color, opacity) {
-  const g = new THREE.BufferGeometry();
-  const pos = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const r = radius * (0.5 + Math.random() * 0.5), t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
-    pos[i * 3] = r * Math.sin(p) * Math.cos(t); pos[i * 3 + 1] = r * Math.sin(p) * Math.sin(t); pos[i * 3 + 2] = r * Math.cos(p);
-  }
-  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const m = new THREE.PointsMaterial({ color, size, map: glowTex, transparent: true, opacity, depthWrite: false, sizeAttenuation: true, fog: false, blending: THREE.AdditiveBlending });
-  const pts = new THREE.Points(g, m);
-  scene.add(pts);
-  return pts;
-}
-let stars = starfield(4500, 2600, 7, 0xc8d0ff, 0.9);
-let dust = starfield(1200, 700, 9, 0x7a6cff, 0.35);
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
-
-
-function htmlLabel(text, cls, dy) {
-  const el = document.createElement("div"); el.className = cls; el.textContent = text;
-  const obj = new CSS2DObject(el); obj.position.set(0, dy, 0); el._obj = obj; return obj;
-}
-// When the brain refreshes (a new memory, a chat from the phone…) every node is rebuilt. three.js only removes a
-// label's HTML when the label itself is removed, not its node, so old labels stayed frozen on screen while the
-// sphere turned. Sweep away any label whose node is no longer in the scene.
-function sweepLabels() {
-  const root = Graph.scene();
-  for (const el of [...labelRenderer.domElement.children]) {
-    let o = el._obj, live = false;
-    while (o) { if (o === root) { live = true; break; } o = o.parent; }
-    if (!live) el.remove();
-  }
-}
-setInterval(sweepLabels, 1000);
-function colorOf(n) { return n?.color || "#8b7bff"; }
-function visible(n) {
-  if (typeof n !== "object") n = nodeById.get(n);
-  return n && (n.kind === "core" || (!hidden.has(n.kind === "hub" ? n.hubKind : n.kind) && inTime(n)));
-}
-function isHot(n) { if (typeof n !== "object") n = nodeById.get(n); return !!(n && n.hot); }
-
-const MEMORY_KINDS = ["person", "project", "preference", "fact", "goal", "decision", "routine", "event"];
-const familyOf = (k) => MEMORY_KINDS.includes(k) ? "sphere" : k === "note" ? "diamond" : (k === "action" || k === "mission") ? "pyramid" : "cube";
-function shapeGeo(fam, r) {
-  if (fam === "diamond") return new THREE.OctahedronGeometry(r * 1.25);
-  if (fam === "cube") return new THREE.BoxGeometry(r * 1.55, r * 1.55, r * 1.55);
-  if (fam === "pyramid") return new THREE.TetrahedronGeometry(r * 1.45);
-  return new THREE.SphereGeometry(r, 18, 18);
-}
-const HIT_MAT = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
-function withHit(group, r) {
-  const hit = new THREE.Mesh(new THREE.SphereGeometry(Math.max(r, 5.5), 8, 8), HIT_MAT);   // easy to hover, never drawn
-  group.add(hit);
-  return group;
-}
-function makeNode(n) {
-  const group = makeNodeInner(n);
-  if (n.kind === "core") return group;
-  return withHit(group, n.kind === "hub" ? 9 : n.isProject ? 11 : (Math.cbrt(n.val || 4) * 1.35) * 3);
-}
-function makeNodeInner(n) {
-  const group = new THREE.Group();
-  const color = new THREE.Color(colorOf(n));
-  if (n.kind === "core") {
-    const inner = new THREE.Mesh(new THREE.SphereGeometry(7, 48, 48), new THREE.MeshBasicMaterial({ color: 0xd9d4ff }));
-    const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(15, 1),
-      new THREE.MeshBasicMaterial({ color: 0x8b7bff, wireframe: true, transparent: true, opacity: 0.45 }));
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(23, 0.3, 12, 140),
-      new THREE.MeshBasicMaterial({ color: 0x8b7bff, transparent: true, opacity: 0.6 }));
-    ring.rotation.x = Math.PI / 2.4;
-    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(30, 0.18, 8, 140),
-      new THREE.MeshBasicMaterial({ color: 0x4cc9f0, transparent: true, opacity: 0.35 }));
-    ring2.rotation.x = Math.PI / 1.7; ring2.rotation.y = 0.5;
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0x8b7bff, transparent: true, opacity: 0.45, depthWrite: false }));
-    halo.scale.set(60, 60, 1);
-    group.add(halo, inner, shell, ring, ring2);
-    group.add(htmlLabel(n.label.toUpperCase(), "core-label", 40));
-    coreObj = { group, shell, ring, ring2, halo, inner };
-    return group;
-  }
-  if (n.kind === "hub") {
-    const s = new THREE.Mesh(shapeGeo(familyOf(n.hubKind), 3.4), new THREE.MeshBasicMaterial({ color }));
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.4, depthWrite: false }));
-    halo.scale.set(24, 24, 1);
-    const lab = htmlLabel(n.label, "hub-label", 9);
-    lab.element.style.setProperty("--c", n.color);
-    lab.element.onclick = () => select(n);
-    group.add(halo, s, lab);
-    group.userData = { label: lab };
-    return group;
-  }
-  if (n.isProject) {
-    const pc = new THREE.Color(n.pcolor || colorOf(n));
-    const r = n.parent ? 3.2 : 4.4;
-    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 28), new THREE.MeshBasicMaterial({ color: pc }));
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 2.1, 0.22, 8, 64), new THREE.MeshBasicMaterial({ color: pc, transparent: true, opacity: 0.7 }));
-    ring.rotation.x = Math.PI / 2.2;
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: pc, transparent: true, opacity: n.hot ? 0.6 : 0.35, depthWrite: false }));
-    halo.scale.set(r * 7, r * 7, 1);
-    const lab = htmlLabel(n.short || n.label.slice(0, 32), "proj-label" + (n.parent ? " sub" : ""), r + 7);
-    lab.element.style.setProperty("--c", n.pcolor || colorOf(n));
-    lab.element.title = n.label;
-    lab.element.onclick = () => select(n);
-    group.add(halo, s, ring, lab);
-    group.userData = { label: lab, ring };
-    return group;
-  }
-  if (n.isPerson) {
-    const r = Math.cbrt(n.val || 5) * 1.3;
-    const s = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 20), new THREE.MeshBasicMaterial({ color }));
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.8, 0.14, 6, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75 }));
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.3, depthWrite: false }));
-    halo.scale.set(r * 5, r * 5, 1);
-    group.add(halo, s, ring);
-    if ((n.mentions || 0) >= 2) {
-      const lab = htmlLabel(n.label.split(" ").slice(0, 2).join(" "), "person-label", r + 5);
-      lab.element.style.setProperty("--c", n.color); lab.element.onclick = () => select(n);
-      lab.element.title = n.company ? `${n.label} · ${n.company}` : n.label;
-      group.add(lab); group.userData = { label: lab, ring };
-    } else group.userData = { ring };
-    return group;
-  }
-  const r = Math.cbrt(n.val || 4) * 1.35;
-  const s = new THREE.Mesh(shapeGeo(familyOf(n.kind), r), new THREE.MeshBasicMaterial({ color }));
-  if (familyOf(n.kind) !== "sphere") { s.rotation.set(hash(n.id) * 3, hash(n.id + "y") * 3, 0); }
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: n.hot ? 0.65 : 0.28, depthWrite: false }));
-  halo.scale.set(r * (n.hot ? 6.5 : 4.5), r * (n.hot ? 6.5 : 4.5), 1);
-  group.add(halo, s);
-  group.userData = { halo, hot: n.hot, base: r };
-  return group;
-}
+function setFocus(ids) { focusSet = ids; document.body.classList.toggle("dimmed", !!ids); markRows(); }
 
 // ── tooltip ───────────────────────────────────────────
 const tip = $("tip");
@@ -1064,11 +1100,10 @@ let mouse = { x: 0, y: 0 };
 addEventListener("mousemove", (e) => { mouse = { x: e.clientX, y: e.clientY }; if (tip.style.display === "block") placeTip(); });
 function placeTip() { tip.style.left = Math.min(mouse.x + 16, innerWidth - 340) + "px"; tip.style.top = (mouse.y + 16) + "px"; }
 function onHover(n) {
-  $("graph").style.cursor = n ? "pointer" : "grab";
   if (!n || n.kind === "core") { tip.style.display = "none"; return; }
   tip.style.setProperty("--c", n.color);
   const proj = n.project && nodeById.get(n.project);
-  const count = n.kind === "hub" ? data.nodes.filter((x) => x.kind === n.hubKind).length : 0;
+  const count = n.kind === "hub" ? (n.cluster?.kids.length || 0) : 0;
   const sub = n.kind === "hub" ? `${count} item${count === 1 ? "" : "s"} · click to list them`
     : n.isPerson ? [n.company, `${n.mentions || 0} mention${n.mentions === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
     : n.isProject ? "Project · click to light up everything in it"
@@ -1084,157 +1119,46 @@ const LABELS = { person: "Person", project: "Project", preference: "Preference",
 LABELS.person = "Person";
 const labelFor = (k) => LABELS[k] || k;
 
-// ── camera ────────────────────────────────────────────
-let angle = 0, userBusy = 0;
-const controls = Graph.controls();
-controls.addEventListener("start", () => {
-  userBusy = performance.now();
-  const c = Graph.camera().position; angle = Math.atan2(c.x, c.z);   // resume orbit from where the user left it
-});
-function flyTo(n, dist = 90) {
-  if (n.x === undefined) return;
-  const len = Math.hypot(n.x, n.y, n.z) || 1;
-  const ratio = 1 + dist / len;
-  Graph.cameraPosition({ x: n.x * ratio, y: n.y * ratio + 8, z: n.z * ratio }, n, 1800);
-  userBusy = performance.now() + 4000;
-}
-
-// animation loop: core breathing, hot pulses, slow cinematic orbit
-const t0 = performance.now();
-function animate() {
-  const t = (performance.now() - t0) / 1000;
-  if (coreObj && coreThemed !== themeRev) {
-    coreThemed = themeRev;
-    coreObj.ring2.material.color.set(STATUS_COLORS.listening);
-    coreObj.inner.material.color.set(new THREE.Color("#ffffff").lerp(new THREE.Color(STATUS_COLORS.idle), 0.25));
-  }
-  if (coreObj) {
-    const c = new THREE.Color(STATUS_COLORS[status] || STATUS_COLORS.idle);
-    const speed = status === "thinking" ? 2.2 : status === "listening" ? 1.4 : status === "speaking" ? 3.2 : status === "away" ? 0.25 : 0.6;
-    coreObj.shell.rotation.y += 0.004 * speed; coreObj.shell.rotation.x += 0.002 * speed;
-    coreObj.ring.rotation.z += 0.003 * speed;
-    const pulse = 1 + Math.sin(t * speed * 2) * (status === "idle" ? 0.04 : 0.12);
-    coreObj.inner.scale.setScalar(pulse); coreObj.halo.scale.setScalar(60 * pulse); coreObj.ring2.rotation.z -= 0.002 * speed;
-    coreObj.shell.material.color.lerp(c, 0.05); coreObj.ring.material.color.lerp(c, 0.05); coreObj.halo.material.color.lerp(c, 0.05); coreObj.ring2.material.color.lerp(c, 0.02);
-  }
-  for (const n of data.nodes) {
-    const u = n.__threeObj?.userData;
-    if (u?.label) u.label.visible = n.__threeObj.visible;
-    if (u?.ring) u.ring.rotation.z += 0.004;
-    if (u?.hot) { const k = 1 + Math.sin(t * 3 + (n.x || 0)) * 0.25; u.halo.scale.set(u.base * 6.5 * k, u.base * 6.5 * k, 1); }
-  }
-  stars.rotation.y += 0.00008; dust.rotation.y -= 0.0002;
-  if (!(Math.floor(t * 4) % 2)) {                      // hide small project labels when zoomed far out
-    const d = Graph.camera().position.length();
-    document.body.classList.toggle("far", d > 560 && !focusSet);
-  }
-  if (orbit && performance.now() - userBusy > 3500 && !selected) {
-    angle += 0.0012 * orbitSpeed;
-    const cam = Graph.camera(), r = Math.hypot(cam.position.x, cam.position.z) || 420;
-    const target = Math.max(420, Math.min(r, 1000));
-    const y = cam.position.y + (60 + Math.sin(t * 0.07) * 80 - cam.position.y) * 0.004;
-    Graph.cameraPosition({ x: target * Math.sin(angle), y, z: target * Math.cos(angle) }, { x: 0, y: 0, z: 0 });
-  }
-  requestAnimationFrame(animate);
-}
-
 // ── theme (Settings → Appearance; applies live) ──────
-let orbitSpeed = 1, themeRev = 0, coreThemed = -1;
-let baseTheme = { bloom: 0.85, orbit: 1 }, themeCalm = false, nightNow = false;
+let themeCalm = false, nightNow = false;
 function applyCalm() {
   const calm = themeCalm || nightNow || document.body.classList.contains("focus-on") || document.body.classList.contains("low-energy");
   document.body.classList.toggle("calm", calm);
   document.body.classList.toggle("night", nightNow);
-  bloom.strength = calm ? Math.min(0.3, baseTheme.bloom) : baseTheme.bloom;
-  orbitSpeed = calm ? 0 : baseTheme.orbit;
-  dust.visible = !calm;
-  Graph.linkDirectionalParticles(calm ? 0 : ((l) => (isHot(l.source) || isHot(l.target) || l.type === "core") ? 2 : 0));
 }
 async function applyTheme() {
   let t;
   try { t = await api("/api/theme"); } catch { return; }
-  const root = document.documentElement.style;
-  root.setProperty("--accent", t.accent); root.setProperty("--accent-2", t.accent2); root.setProperty("--bg", t.background);
-  document.body.style.background = t.background;
+  const root = document.documentElement.style, light = t.style !== "dark";
+  root.setProperty("--accent", t.accent); root.setProperty("--accent-2", t.accent2);
+  document.body.classList.toggle("light", light);
+  if (light) { root.removeProperty("--bg"); document.body.style.background = ""; }
+  else { root.setProperty("--bg", t.background); document.body.style.background = t.background; }
   STATUS_COLORS.idle = t.accent; STATUS_COLORS.listening = t.accent2;
-  Graph.backgroundColor(t.background);
-  scene.fog.color.set(t.background);
-  baseTheme = { bloom: Number(t.bloom), orbit: Number(t.orbit_speed) };
   themeCalm = !!t.calm;
   applyCalm();
-  document.body.classList.toggle("no-labels", !t.tags);
-  if (t.layout && t.layout !== layout) applyLayout(t.layout);
-  const want = Math.round(Number(t.stars));
-  if (stars.geometry.attributes.position.count !== want) {
-    scene.remove(stars); stars.geometry.dispose();
-    stars = starfield(Math.max(1, want), 2600, 7, 0xc8d0ff, want ? 0.9 : 0);
-  }
-  dust.material.color.set(t.accent);
-  themeRev++;
+  const rows = Math.max(3, Math.min(40, Number(t.rows) || 6));
+  if (rows !== rowLimit) { rowLimit = rows; schedule(); }
+  setStatus(status);
 }
 addEventListener("storage", (e) => { if (e.key === "nova-theme-rev") applyTheme(); });
 addEventListener("focus", applyTheme);
 
 // ── data ──────────────────────────────────────────────
+let graphRev = null;
 async function loadGraph() {
   const g = await api("/api/graph");
-  const old = new Map(data.nodes.map((n) => [n.id, n]));
-  g.nodes.forEach((n) => { const o = old.get(n.id); if (o) Object.assign(n, { x: o.x, y: o.y, z: o.z, vx: o.vx, vy: o.vy, vz: o.vz }); });
   data = g;
   nodeById.clear(); g.nodes.forEach((n) => nodeById.set(n.id, n));
-  Graph.graphData(g);
-  requestAnimationFrame(() => requestAnimationFrame(sweepLabels));   // once the new nodes are in the scene
-  applyLayout(layout, { reheat: false });
-  if (focusSet && selected?.isProject) setFocus(clusterOf(selected.id));
-  else if (focusSet && selected?.isPerson) setFocus(personCluster(selected.id));
-  if (timeline.on) timelineSetup(false);
-  buildChips(); buildLegend();
-  $("empty").classList.toggle("show", g.nodes.length <= 1);
+  if (selected?.id && nodeById.has(selected.id)) selected = nodeById.get(selected.id);
+  if (focusSet && selected?.isProject) focusSet = clusterOf(selected.id);
+  else if (focusSet && selected?.isPerson) focusSet = personCluster(selected.id);
+  renderTree(); renderBottlenecks();
+  $("empty").classList.toggle("show", !g.nodes.some((n) => !STRUCT.has(n.kind)));
 }
 
-const FAMILIES = [["sphere", "Memories"], ["diamond", "Notes"], ["cube", "Creations"], ["pyramid", "Activity"]];
-const famIcon = (fam) => `<span class="sw ${fam}" style="--c:#c8cdf0"></span>`;
-function buildLegend() {
-  const counts = {}, colors = {};
-  for (const n of data.nodes) if (n.kind === "hub") colors[n.hubKind] = n.color;
-  for (const n of data.nodes) if (!["core", "hub"].includes(n.kind)) counts[n.kind] = (counts[n.kind] || 0) + 1;
-  let h = "";
-  for (const [fam, title] of FAMILIES) {
-    const kinds = Object.keys(colors).filter((k) => familyOf(k) === fam).sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
-    if (!kinds.length) continue;
-    h += `<h5>${famIcon(fam)}${title}</h5><div class="keys">${kinds.map((k) =>
-      `<button data-lk="${k}" class="${hidden.has(k) ? "off" : ""}" title="Click: list them · Alt-click: hide/show" style="--c:${colors[k]}"><span class="sw ${k === "person" ? "ring" : fam}"></span><span>${esc(labelFor(k))}</span><small>${counts[k] || 0}</small></button>`).join("")}</div>`;
-  }
-  const roots = data.nodes.filter((n) => n.isProject && !(n.parent && nodeById.has(n.parent)))
-                          .sort((a, b) => (a.short || a.label).localeCompare(b.short || b.label));
-  if (roots.length) h += `<h5><span class="sw line" style="--c:#c8cdf0"></span>Projects (lines &amp; rings)</h5><div class="keys projects">${roots.map((p) =>
-      `<button data-lp="${esc(p.id)}" style="--c:${p.pcolor || p.color}" title="${esc(p.label)}"><span class="sw line"></span><span>${esc(p.short || p.label)}</span></button>`).join("")}</div>`;
-  h += `<p class="hint">Hover any shape for its name; click a colour to list those items. ${roots.length ? "Lines in a project's colour join everything that belongs to it. " : ""}Hide or show a category under Layers (left panel).</p>`;
-  $("legend-body").innerHTML = h || `<p class="hint">Nothing in the brain yet.</p>`;
-}
-$("legend-body").addEventListener("click", (e) => {
-  const k = e.target.closest("[data-lk]"), p = e.target.closest("[data-lp]");
-  if (k && e.altKey) {
-    const kind = k.dataset.lk; hidden.has(kind) ? hidden.delete(kind) : hidden.add(kind);
-    Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility()); buildChips(); buildLegend(); return;
-  }
-  if (k) return openTopic(k.dataset.lk);
-  if (p) { const n = nodeById.get(p.dataset.lp); if (n) select(n); }
-});
-function buildChips() {
-  const counts = {};
-  const colors = {};
-  for (const n of data.nodes) if (n.kind === "hub") colors[n.hubKind] = n.color;
-  for (const n of data.nodes) if (!["core", "hub"].includes(n.kind)) counts[n.kind] = (counts[n.kind] || 0) + 1;
-  $("chips").innerHTML = Object.keys(colors).sort((a, b) => (counts[b] || 0) - (counts[a] || 0)).map((k) =>
-    `<span class="chip ${hidden.has(k) ? "off" : ""}" data-k="${k}" style="--c:${colors[k]}"><i></i>${esc(labelFor(k))}<small>${counts[k] || 0}</small></span>`).join("");
-}
-$("chips").addEventListener("click", (e) => {
-  const c = e.target.closest(".chip"); if (!c) return;
-  const k = c.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
-  c.classList.toggle("off");
-  Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility()); buildLegend();
-});
+function buildLegend() {}
+function buildChips() {}
 
 async function loadStats() {
   const s = await api("/api/stats");
@@ -1253,7 +1177,7 @@ function countTo(el, v) {
 }
 function setStatus(s) {
   status = s || "idle";
-  $("status").textContent = status;
+  $("status").textContent = status === "idle" ? "online" : status; document.body.dataset.nova = status;
   document.documentElement.style.setProperty("--orb", STATUS_COLORS[status] || STATUS_COLORS.idle);
 }
 
@@ -1440,11 +1364,11 @@ function timelineApply() {
   const label = timeline.mode === "month" ? d.toLocaleDateString(undefined, { month: "long", year: "numeric" })
     : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
   $("tl-when").innerHTML = `${timeline.mode === "week" ? "Week to " : ""}${esc(label)}<small>${shown} item${shown === 1 ? "" : "s"}${timeline.mode === "upto" ? " so far" : ""}</small>`;
-  Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility());
+  buildBlocks(); schedule();
 }
 function timelineToggle(on) {
   timeline.on = on; document.body.classList.toggle("tl-on", on); $("v-time").classList.toggle("on", on);
-  if (!on) { timelineStop(); timeline.cut = null; Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility()); return; }
+  if (!on) { timelineStop(); timeline.cut = null; buildBlocks(); schedule(); return; }
   timelineSetup(true);
 }
 function timelineStop() { clearInterval(timeline.playing); timeline.playing = null; $("tl-play").textContent = "▶"; }
@@ -1479,7 +1403,7 @@ for (const id of ["rail", "feed", "legend"]) {
   $(id + "-min").onclick = (e) => { e.stopPropagation(); setMin(id, !$(id).classList.contains("min")); };
   $(id).addEventListener("click", () => { if ($(id).classList.contains("min")) setMin(id, false); });
   const saved = store_.get("nova.min." + id);
-  if (saved === "1" || (saved == null && id === "legend" && innerWidth < 900)) setMin(id, true);
+  if (saved === "1" || (saved == null && (id !== "legend" || innerWidth < 900))) setMin(id, true);    // the index gets the room
 }
 document.addEventListener("keydown", (e) => {
   if ((e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
@@ -1587,13 +1511,11 @@ function showCard(c) {
     body.innerHTML = infoHtml(d.text);
   }
   document.body.classList.add("stage-on");
-  try { Graph.pauseAnimation(); } catch {}
 }
 function closeStage(quiet = false) {
   clearInterval(stage.timer); stage.timer = null;
   if (!document.body.classList.contains("stage-on")) return;
   document.body.classList.remove("stage-on"); $("stage-body").innerHTML = ""; stage.kind = "";
-  try { Graph.resumeAnimation(); } catch {}
 }
 // ── brain filing review: Nova proposes where things go, you answer the questions and approve ──
 let RG = null;
@@ -1633,7 +1555,6 @@ function renderFiling() {
     ${RG.backup ? `<p class="lead" style="margin-top:10px">Last backup: ${esc(RG.backup)}</p>` : ""}</div>`;
   body.innerHTML = h;
   document.body.classList.add("stage-on");
-  try { Graph.pauseAnimation(); } catch {}
 }
 $("stage-body").addEventListener("change", (e) => {         // category list follows the chosen domain
   if (stage.kind !== "reorg" || e.target.dataset.f !== "domain") return;
@@ -1697,7 +1618,8 @@ async function poll() {
         feedNew += r.events.length;
         $("feed-new").textContent = feedNew > 99 ? "99+" : feedNew; $("feed-new").classList.add("show");
       }
-      if (!first && r.events.some((e) => ["memory", "artifact", "user", "mission"].includes(e.kind))) { await loadGraph(); loadStats(); }
+      const changed = graphRev !== null && r.rev !== graphRev; graphRev = r.rev;
+      if (!first && (changed || r.events.some((e) => ["memory", "artifact", "user", "mission"].includes(e.kind)))) { await loadGraph(); loadStats(); }
       else if (!first) loadStats();
       if (!first) { loadNow(); if (view && view.type !== "skills" && $("panel").classList.contains("open")) refreshSoon(); }
     }
@@ -2013,31 +1935,32 @@ $("p-body").addEventListener("click", (e) => {
 });
 function openItem(id, fromPanel = false) {
   const n = nodeById.get(id);
-  if (n && !fromPanel) { selected = n; flyTo(n, 120); }
+  if (n && !fromPanel) { selected = n; markRows(); flyTo(n); }
   openView({ type: "item", id, n }, fromPanel);
 }
 function openTopic(kind, fromPanel = false) {
   tip.style.display = "none";
   if (kind === "skills") return openView({ type: "skills" }, fromPanel);
-  const hub = nodeById.get(`hub:${kind}`); if (hub && !fromPanel) flyTo(hub, 180);
+  const hub = String(kind).startsWith("cat:") ? nodeById.get(kind) : data.nodes.find((n) => n.kind === "hub" && n.hubKind === kind);
   selected = hub || { id: "topic" };
   openView({ type: "topic", kind }, fromPanel);
 }
 function openById(id) { openItem(id); }
 async function select(n) {
-  if (n.kind === "core") { closePanel(); flyTo(n, 260); return; }
+  if (n.kind === "core") { closePanel(); fit(); return; }
+  if (n.kind === "domain") { $("pane-" + n.domain)?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); return; }
+  if (n.kind === "category") return openTopic(n.id);
   if (n.kind === "hub") return openTopic(n.hubKind);
   tip.style.display = "none";
   setFocus(n.isProject ? clusterOf(n.id) : n.isPerson ? personCluster(n.id) : null);
-  if (n.isProject) { selected = n; flyTo(n, 230); openView({ type: "item", id: n.id, n }); return; }
+  if (n.isProject) { selected = n; markRows(); openView({ type: "item", id: n.id, n }); return; }
   openItem(n.id);
 }
 let refreshT;
 function refreshSoon() { clearTimeout(refreshT); refreshT = setTimeout(() => { if ($("panel").classList.contains("open") && !document.activeElement.closest?.("#panel textarea, #panel input")) renderView(); loadGraph(); loadStats(); }, 700); }
 function closePanel() {
   $("panel").classList.remove("open"); selected = null; view = null; navStack.length = 0;
-  if (focusSet) setFocus(null);
-  const c = Graph.camera().position; angle = Math.atan2(c.x, c.z);
+  if (focusSet) setFocus(null); else markRows();
 }
 $("close").onclick = closePanel;
 document.addEventListener("click", (e) => { const b = e.target.closest(".stat[data-open], .quick button[data-open]"); if (b) openTopic(b.dataset.open); });
@@ -2069,10 +1992,8 @@ function onGesture(e) {
   t.classList.add("show"); clearTimeout(onGesture.t); onGesture.t = setTimeout(() => t.classList.remove("show"), 1600);
   $("gchip").classList.add("pop"); setTimeout(() => $("gchip").classList.remove("pop"), 300);
   if (e.action === "dashboard" && e.gesture.startsWith("swipe")) {
-    const dir = e.gesture === "swipe_right" ? 1 : -1, start = angle, t0 = performance.now();
-    userBusy = 0; orbit = true;
-    const spin = (now) => { const k = Math.min(1, (now - t0) / 900); angle = start + dir * 1.1 * (1 - Math.pow(1 - k, 3)); if (k < 1) requestAnimationFrame(spin); };
-    requestAnimationFrame(spin);
+    const dir = e.gesture === "swipe_right" ? 1 : -1;          // swipe = look at the other half of the brain
+    $("pane-" + DOMAINS[dir > 0 ? 0 : 1])?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }
   if (e.action === "stop" && $("panel").classList.contains("open")) closePanel();
 }
@@ -2177,11 +2098,6 @@ addEventListener("keydown", (e) => {
 });
 
 // ── views ─────────────────────────────────────────────
-const setView = (id) => ["v-orbit", "v-free"].forEach((v) => $(v).classList.toggle("on", v === id));
-$("v-orbit").onclick = () => { orbit = true; setView("v-orbit"); };
-$("v-free").onclick = () => { orbit = false; setView("v-free"); };
-$("v-fit").onclick = () => { userBusy = performance.now() + 3000; Graph.zoomToFit(1200, 60); };
-
 // ── ask Nova ──────────────────────────────────────────
 $("brainmode").onchange = () => { $("ask-in").placeholder = $("brainmode").checked ? "Ask your brain — e.g. What do I know about the Axiz Mist deal?" : "Ask Nova or tell it something to remember…"; };
 $("ask").addEventListener("submit", async (e) => {
@@ -2330,21 +2246,15 @@ $("mic").onclick = () => {
   mic.conversation = true; listen();
 };
 
-addEventListener("resize", () => { Graph.width(innerWidth).height(innerHeight); bloom.setSize(innerWidth, innerHeight); });
 
 // ── start ─────────────────────────────────────────────
-Graph.cameraPosition({ x: 0, y: 120, z: 1400 });
 poll.n = 0;
 pollGestures();
-await Promise.all([loadGraph(), loadStats(), applyTheme(), loadNow(), loadFocus()]);
+await Promise.all([applyTheme(), loadStats(), loadNow(), loadFocus()]);
+await loadGraph();
 { let saved = null; try { saved = localStorage.getItem(FOCUS_KEY); } catch {}
   if (saved === "1" || (saved == null && F?.wb?.focus_default)) setFocusMode(true); }
-requestAnimationFrame(animate);
-setTimeout(() => {
-  $("intro").classList.add("gone");
-  Graph.cameraPosition({ x: 0, y: 80, z: 620 }, { x: 0, y: 0, z: 0 }, 3200);
-  userBusy = performance.now() + 3200;
-}, 500);
+setTimeout(() => $("intro").classList.add("gone"), 300);
 poll();
 </script>
 </body>

@@ -110,49 +110,68 @@ class Dashboard:
                                  "ORDER BY id DESC LIMIT 40").fetchall()
             track = {r["item"]: dict(r) for r in s.db.execute("SELECT * FROM tracking")}
 
+        from .. import taxonomy as tx
+        strict = tx.enabled()
         nodes = [{"id": "core", "label": self.cfg.assistant.name, "kind": "core", "val": 30, "color": "#ffffff"}]
-        links, vecs = [], []
-        used_hubs = set()
+        links = []
+        used_hubs = set()                      # (domain, kind)
+        vault = resolve(self.cfg.brain.vault_dir)
+        guessed = self.__dict__.setdefault("_domain_cache", {})
 
-        def add(nid, label, kind, val, created, vec, extra=None):
-            hub = f"hub:{kind}"
-            used_hubs.add(kind)
+        def domain_for(nid, text):
+            """Which side of the brain: Personal (left) or Work (right). Keyword-only, so it costs nothing."""
+            key = (nid, text[:80])
+            if key not in guessed:
+                if len(guessed) > 6000:
+                    guessed.clear()
+                guessed[key] = tx._guess_domain(text)
+            return guessed[key]
+
+        def add(nid, label, kind, val, created, vec=None, extra=None, domain=None, parent=None, status=None):
             t = track.get(nid) or {}
+            domain = domain or domain_for(nid, label)
             n = {"id": nid, "label": label[:120], "kind": kind, "val": val * (1.3 if t.get("pinned") else 1),
                  "color": HUBS[kind][1], "created": created, "hot": (nid in recent and kind != "action") or t.get("status") == "doing",
-                 "track": t.get("status", ""), "pinned": bool(t.get("pinned"))}
+                 "track": t.get("status", ""), "pinned": bool(t.get("pinned")), "domain": domain,
+                 "status": tx.TRACK_TO_STATUS.get(t.get("status", ""), "") or status or ""}
             if extra:
                 n.update(extra)
+            if not parent:
+                parent = f"hub:{domain}:{kind}"
+                used_hubs.add((domain, kind))
+            n["parent_hub"] = parent
             nodes.append(n)
-            links.append({"source": hub, "target": nid, "type": "hub"})
-            if vec is not None:
-                vecs.append((nid, np.frombuffer(vec, dtype=np.float32)))
+            links.append({"source": parent, "target": nid, "type": "hub"})
 
         for m in mems:
             add(f"memory:{m['id']}", m["text"], m["kind"] if m["kind"] in HUBS else "fact",
-                2 + 2 * m["importance"] + min(m["uses"], 10) * 0.4, m["created"], m["embedding"])
-        vault = resolve(self.cfg.brain.vault_dir)
+                2 + 2 * m["importance"] + min(m["uses"], 10) * 0.4, m["created"])
         titles = {}
         for n in notes:
             p = Path(n["path"])
             titles[p.stem.lower()] = f"note:{n['path']}"
             import datetime as _dt
+            rel = p.relative_to(vault).parts if vault in p.parents else ()
+            filed = strict and len(rel) >= 3 and rel[0] in tx.TREE and rel[1] in tx.TREE[rel[0]]
             add(f"note:{n['path']}", p.stem, "note", 5,
-                _dt.datetime.fromtimestamp(n["m"]).isoformat(timespec="seconds") if n["m"] else "", n["e"],
-                {"folder": str(p.parent.relative_to(vault)) if vault in p.parents else ""})
+                _dt.datetime.fromtimestamp(n["m"]).isoformat(timespec="seconds") if n["m"] else "", None,
+                {"folder": "/".join(rel[:-1]), "filed": bool(filed)},
+                domain=rel[0] if filed else None, parent=f"cat:{rel[0]}/{rel[1]}" if filed else None,
+                status="COMPLETED" if filed else "")
         for a in arts:
-            add(f"artifact:{a['id']}", a["title"] or Path(a["location"]).name, _kind_of_artifact(a["kind"]), 4,
-                a["ts"], a["embedding"])
+            add(f"artifact:{a['id']}", a["title"] or Path(a["location"]).name, _kind_of_artifact(a["kind"]), 4, a["ts"])
 
         from ..missions import missions as _missions
+        m_status = {"running": "IN-PROGRESS", "failed": "WAITING-ON-USER", "stuck": "WAITING-ON-USER",
+                    "scheduled": "BACKLOG", "paused": "BACKLOG", "done": "COMPLETED"}
         for ms in _missions().all():
             add(f"mission:{ms['id']}", ms["title"], "mission", 7, ms["created"], None,
-                {"status": ms["status"], "progress": ms.get("progress", 0)})
+                {"status": m_status.get(ms["status"], ""), "mstatus": ms["status"], "progress": ms.get("progress", 0)})
             if ms["status"] == "running":
                 nodes[-1]["hot"] = True
         for t in turns:
             add(f"turn:{t['id']}", t["title"], "action", 3.2, t["ts"], None,
-                {"status": t["status"] or "done", "session": t["session"]})
+                {"status": "IN-PROGRESS" if t["status"] == "running" else "", "session": t["session"]})
             if t["status"] == "running":
                 nodes[-1]["hot"] = True
 
@@ -162,7 +181,8 @@ class Dashboard:
         for pr in _people.all_people():
             ms = _people.mentions(pr, limit=60)
             add(f"person:{pr['id']}", pr["name"], "person", 5 + min(len(ms), 20) * 0.35, pr["created"], None,
-                {"isPerson": True, "company": pr["company"], "mentions": len(ms)})
+                {"isPerson": True, "company": pr["company"], "mentions": len(ms)},
+                domain=tx.WORK if pr["company"] else domain_for(f"person:{pr['id']}", f"{pr['name']} {pr['role']} {pr['notes']}"))
             for m in ms:
                 if m["id"] in ids_now:
                     links.append({"source": f"person:{pr['id']}", "target": m["id"], "type": "mention"})
@@ -174,32 +194,21 @@ class Dashboard:
                 if t:
                     links.append({"source": f"note:{n['path']}", "target": t, "type": "wiki"})
 
-        # semantic links: each node to its 2 closest neighbours
-        if len(vecs) > 2:
-            dims = {}
-            for nid, v in vecs:
-                dims.setdefault(len(v), []).append((nid, v))
-            for group in dims.values():
-                if len(group) < 3:
-                    continue
-                ids = [g[0] for g in group]
-                mat = np.stack([g[1] for g in group])
-                mat = mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-9)
-                sim = mat @ mat.T
-                np.fill_diagonal(sim, 0)
-                seen = set()
-                for i, row in enumerate(sim):
-                    for j in np.argsort(row)[-2:]:
-                        if row[j] > 0.62:
-                            key = tuple(sorted((i, int(j))))
-                            if key not in seen:
-                                seen.add(key)
-                                links.append({"source": ids[i], "target": ids[int(j)], "type": "semantic",
-                                              "strength": float(row[j])})
-        for k in used_hubs:
+        # the two halves of the brain, their numbered categories, and a hub per kind of thing on each side
+        for d in (tx.PERSONAL, tx.WORK):
+            nodes.append({"id": f"dom:{d}", "label": d, "kind": "domain", "domain": d, "val": 20,
+                          "color": "#f0a6ff" if d == tx.PERSONAL else "#7cc4ff"})
+            links.append({"source": "core", "target": f"dom:{d}", "type": "core"})
+            if strict:
+                for c in tx.TREE[d]:
+                    nodes.append({"id": f"cat:{d}/{c}", "label": c, "kind": "category", "domain": d, "val": 12,
+                                  "color": HUBS["note"][1]})
+                    links.append({"source": f"dom:{d}", "target": f"cat:{d}/{c}", "type": "branch"})
+        for d, k in sorted(used_hubs):
             label, color = HUBS[k]
-            nodes.append({"id": f"hub:{k}", "label": label, "kind": "hub", "hubKind": k, "val": 14, "color": color})
-            links.append({"source": "core", "target": f"hub:{k}", "type": "core"})
+            nodes.append({"id": f"hub:{d}:{k}", "label": label if (k != "note" or not strict) else "Notes to file",
+                          "kind": "hub", "hubKind": k, "domain": d, "val": 14, "color": color})
+            links.append({"source": f"dom:{d}", "target": f"hub:{d}:{k}", "type": "branch"})
 
         # projects: each project is the centre of a cluster of everything that belongs to it
         org = self.organized()
@@ -217,7 +226,30 @@ class Dashboard:
             if item in ids and pid in ids and item != pid:
                 by_id[item]["project"] = pid
                 links.append({"source": pid, "target": item, "type": "project", "color": org["color"].get(pid)})
-        return {"nodes": nodes, "links": links}
+        try:
+            waiting = tx.bottlenecks()
+        except Exception as e:
+            print(f"[dashboard] bottlenecks: {e}")
+            waiting = []
+        seen = {w["id"] for w in waiting}
+        for n in nodes:                                  # anything on the map that waits on you is listed too
+            if n.get("status") == "WAITING-ON-USER" and n["id"] not in seen:
+                waiting.append({"id": n["id"], "text": n["label"], "domain": n["domain"], "why": ""})
+        try:
+            audit = tx.plan_summary()
+        except Exception:
+            audit = {}
+        return {"nodes": nodes, "links": links, "bottlenecks": waiting, "strict": strict, "audit": audit,
+                "tree": {d: list(tx.TREE[d]) for d in tx.TREE}}
+
+    def graph_rev(self) -> str:
+        """Changes whenever a status, pin or note changes — the dashboard redraws the map when it does."""
+        s = context.store
+        with s.lock:
+            t = s.db.execute("SELECT COUNT(*) c, COALESCE(MAX(updated), '') u, COALESCE(SUM(LENGTH(status) * 7 + pinned), 0) x "
+                             "FROM tracking").fetchone()
+            c = s.db.execute("SELECT COUNT(DISTINCT path) c, COALESCE(MAX(mtime), 0) m FROM chunks").fetchone()
+        return f"{t['c']}.{t['u']}.{t['x']}.{c['c']}.{int(c['m'])}"
 
     # ── projects: what belongs together ───────────────────
     def organized(self, force: bool = False) -> dict:
@@ -558,10 +590,15 @@ class Dashboard:
                                       (*kinds, limit)):
                     push(f"memory:{m['id']}", m["text"], m["kind"], m["created"],
                          {"sub": f"{m['source']} · importance {m['importance']}"})
-            if kind in ("note", "notes", "tracked", "doing"):
+            folder = ""
+            if kind.startswith("cat:"):                     # one numbered category of the brain, e.g. cat:02_Work/02_Clients_&_Partners
+                folder = str(resolve(self.cfg.brain.vault_dir) / kind[4:]) + os.sep
+            if kind in ("note", "notes", "tracked", "doing") or folder:
                 for n in s.db.execute("SELECT path, MAX(mtime) m FROM chunks GROUP BY path ORDER BY m DESC LIMIT ?",
-                                      (limit,)):
+                                      (limit if not folder else 5000,)):
                     import datetime as _dt
+                    if folder and not str(Path(n["path"])).startswith(folder):
+                        continue
                     push(f"note:{n['path']}", Path(n["path"]).stem, "note",
                          _dt.datetime.fromtimestamp(n["m"]).isoformat(timespec="seconds"))
             art_kinds = [k for k in HUBS if k not in MEMORY_HUBS and k not in ("note", "action")]
@@ -600,6 +637,8 @@ class Dashboard:
         items.sort(key=lambda i: i["last"] or "", reverse=True)
         items.sort(key=lambda i: not i["pinned"])
         label = HUBS[kind][0] if kind in HUBS else GROUPS.get(kind, kind.title())
+        if kind.startswith("cat:"):
+            label = kind[4:].replace("/", " › ")
         color = HUBS[kind][1] if kind in HUBS else "#8b7bff"
         counts = {st: sum(1 for i in items if i["track"] == st) for st in ("todo", "doing", "waiting", "done")}
         counts["pinned"] = sum(1 for i in items if i["pinned"])
@@ -949,7 +988,7 @@ class Dashboard:
                         return self._json({"events": context.store.activity(int(q.get("since", 0))),
                                            "status": context.store.status,
                                            "cards": cards.recent(int(q.get("cards", 0))) if "cards" in q else [],
-                                           "card_seq": cards.latest_id()})
+                                           "card_seq": cards.latest_id(), "rev": dash.graph_rev()})
                     if u.path == "/api/brain/plan":
                         from .. import taxonomy
                         plan = taxonomy.load_plan()

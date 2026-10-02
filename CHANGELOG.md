@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.27.0] — 2026-10-02
+### Changed — the weather page looks like the weather
+- The whole page takes on the day: **sunshine** (bright sky, sun and turning rays), **rain / drizzle / showers**
+  (grey-blue sky, rain falling across the page), **thunderstorm** (dark violet, heavy rain, lightning flashes),
+  **overcast / fog** (drifting cloud, fog bands), **snow** (falling flakes), a **frost** edge when it is 8° or colder
+  and a warm **heat** glow from 30°, and a moonlit sky at **night**. Buttons and the chart follow the same colours.
+- A small label next to the description says it in words: "Warm · sunshine", "Cold · overcast"…
+- Click another day in the forecast and the page changes to that day's weather.
+
 ## [2.26.0] — 2026-10-02
 ### Added — colour themes
 - **Five colour themes** for the dashboard: Aurora (purple · pink · teal), Ocean (blues and greens), Sunset (coral ·

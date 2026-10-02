@@ -83,6 +83,31 @@
     form.search input { width: 130px; }
     header .upd { display: none; }
   }
+  /* the whole page takes on the day's weather: sky colours, sunshine, clouds, rain, snow, lightning, frost, heat */
+  body { background: radial-gradient(900px 620px at 82% -6%, var(--glow, transparent), transparent 62%), linear-gradient(180deg, var(--sky1), var(--sky2) 55%, var(--sky3, var(--bg))) fixed; }
+  .glass { background: var(--card, var(--glass)); }
+  .fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .wrap { z-index: 1; }
+  .fx .sun { position: absolute; right: 6%; top: -90px; width: 360px; height: 360px; border-radius: 50%;
+    background: radial-gradient(circle, #fff7c2 0 22%, #ffd166 34%, rgba(255,190,70,.45) 48%, transparent 70%); filter: blur(2px); animation: sunpulse 7s ease-in-out infinite; }
+  .fx .rays { position: absolute; right: calc(6% - 320px); top: -410px; width: 1000px; height: 1000px; border-radius: 50%; opacity: .5; animation: spin 90s linear infinite;
+    background: repeating-conic-gradient(from 0deg, rgba(255,225,140,.22) 0 5deg, transparent 5deg 18deg); -webkit-mask: radial-gradient(circle, transparent 0 17%, #000 22%, transparent 68%); mask: radial-gradient(circle, transparent 0 17%, #000 22%, transparent 68%); }
+  .fx .moon { position: absolute; right: 9%; top: 60px; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #cfd6ff 60%, #9aa6e0); box-shadow: 0 0 90px 30px rgba(170,185,255,.35); }
+  .fx .cl { position: absolute; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,255,255,var(--ca,.55)), transparent 70%); filter: blur(14px); animation: sail linear infinite; }
+  .fx .rd { position: absolute; top: -12vh; width: 2px; height: 78px; border-radius: 2px; background: linear-gradient(180deg, transparent, rgba(190,225,255,.85)); transform: rotate(12deg); animation: rainfall linear infinite; }
+  .fx .sf { position: absolute; top: -4vh; border-radius: 50%; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.8); animation: snowfall linear infinite; }
+  .fx .bolt { position: absolute; inset: 0; background: radial-gradient(900px 500px at 70% 0, rgba(210,200,255,.85), transparent 70%); opacity: 0; animation: lightning 7s infinite; }
+  .fx .fogband { position: absolute; left: -20%; width: 140%; height: 150px; background: linear-gradient(90deg, transparent, rgba(225,232,240,.34), transparent); filter: blur(22px); animation: sail 60s linear infinite alternate; }
+  .fx .frost { position: absolute; inset: 0; box-shadow: inset 0 0 160px 50px rgba(200,235,255,.4); }
+  .fx .heat { position: absolute; left: 0; right: 0; bottom: 0; height: 46vh; background: linear-gradient(0deg, rgba(255,120,40,.4), transparent); animation: sunpulse 5s ease-in-out infinite; }
+  @keyframes sunpulse { 50% { transform: scale(1.06); opacity: .88; } }
+  @keyframes sail { from { transform: translateX(-12vw); } to { transform: translateX(22vw); } }
+  @keyframes rainfall { to { transform: translate(-22vh, 125vh) rotate(12deg); } }
+  @keyframes snowfall { to { transform: translate(8vw, 112vh); } }
+  @keyframes lightning { 0%, 91%, 94%, 100% { opacity: 0; } 92%, 95% { opacity: 1; } }
+  .mood { display: inline-block; margin-left: 10px; padding: 3px 10px; border-radius: 999px; font: 600 11.5px var(--body); letter-spacing: .04em; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); vertical-align: middle; }
+  @media (prefers-reduced-motion: reduce) { .fx * { animation: none !important; } }
+  html.embed .fx { display: none; }
   /* shown inside the dashboard's centre window: no page background, no navigation */
   html.embed, html.embed body { background: transparent !important; }
   html.embed .stars, html.embed header a, html.embed header form.search { display: none; }
@@ -92,6 +117,7 @@
 </head>
 <body>
 <div class="stars"></div>
+<div class="fx" id="fx" aria-hidden="true"></div>
 <div class="wrap">
   <header>
     <a href="/">← Brain</a>
@@ -106,11 +132,45 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let data = null, sel = +(new URLSearchParams(location.search).get("day") || 0);
 
-const SKIES = {
-  clear: ["#0d3b7a", "#3a8fd9"], partly: ["#16305e", "#4a78b8"], cloud: ["#1a2233", "#4a5874"], fog: ["#232a36", "#5b6677"],
-  drizzle: ["#152235", "#3c5575"], rain: ["#0e1827", "#2f4a6b"], showers: ["#111d2e", "#35557c"], snow: ["#27354a", "#7f93b3"],
-  storm: ["#0b0f1a", "#3a3160"],
+// the look of the day: [sky top, sky middle, sky bottom, glow, accent, accent 2, card tint]
+const MOODS = {
+  clear:   ["#1e7fd6", "#56b6f0", "#ffd38a", "rgba(255,214,120,.75)", "#ffb938", "#ff7b54", "rgba(20,60,110,.42)"],
+  partly:  ["#2a74c4", "#6aaee6", "#cfe3f5", "rgba(255,225,150,.5)", "#ffc857", "#4cc9f0", "rgba(22,52,100,.45)"],
+  cloud:   ["#56657e", "#8493a8", "#b4bfcc", "transparent", "#9fb4d4", "#cfd8e6", "rgba(40,50,68,.5)"],
+  fog:     ["#6c7783", "#98a2ac", "#c3cad0", "transparent", "#b9c6cf", "#e2e8ec", "rgba(55,62,70,.5)"],
+  drizzle: ["#33506e", "#5b7c9c", "#8ea7bd", "transparent", "#7cc8ff", "#a8dcff", "rgba(18,34,54,.52)"],
+  rain:    ["#182a40", "#345272", "#55738f", "transparent", "#5bb2ff", "#8fd3ff", "rgba(10,22,38,.58)"],
+  showers: ["#2a4a72", "#4f7aa8", "#9fc0dc", "rgba(255,225,150,.3)", "#6cc0ff", "#ffd166", "rgba(16,32,56,.52)"],
+  snow:    ["#7f97b6", "#b4c6dc", "#eef4fa", "rgba(255,255,255,.5)", "#bfe3ff", "#ffffff", "rgba(38,56,92,.62)"],
+  storm:   ["#0c0f1f", "#2a2450", "#4a3f73", "rgba(150,130,255,.3)", "#b79cff", "#7ce0ff", "rgba(14,12,34,.62)"],
 };
+const NIGHT = { clear: ["#040818", "#101c46", "#1c2d5e"], partly: ["#060a1a", "#162248", "#26365e"], snow: ["#101a2c", "#2a3a56", "#56688a"] };
+const rnd = (i, s) => { const x = Math.sin(i * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
+function ambience(kind, isDay, temp) {
+  const many = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join("");
+  const clouds = (n, a) => many(n, (i) => `<i class="cl" style="left:${-10 + rnd(i, 1) * 95}%;top:${-6 + rnd(i, 2) * 46}%;width:${340 + rnd(i, 3) * 380}px;height:${130 + rnd(i, 4) * 120}px;--ca:${a};animation-duration:${70 + rnd(i, 5) * 80}s;animation-delay:-${rnd(i, 6) * 60}s"></i>`);
+  const rain = (n, speed) => many(n, (i) => `<i class="rd" style="left:${rnd(i, 7) * 125}%;opacity:${.35 + rnd(i, 8) * .55};animation-duration:${speed + rnd(i, 9) * .5}s;animation-delay:-${rnd(i, 10) * 2}s"></i>`);
+  const snow = (n) => many(n, (i) => { const z = 3 + rnd(i, 11) * 6; return `<i class="sf" style="left:${rnd(i, 12) * 100}%;width:${z}px;height:${z}px;opacity:${.5 + rnd(i, 13) * .5};animation-duration:${7 + rnd(i, 14) * 9}s;animation-delay:-${rnd(i, 15) * 12}s"></i>`; });
+  let h = "";
+  if (kind === "clear" || kind === "partly" || kind === "showers") h += isDay ? `<i class="rays"></i><i class="sun"></i>` : `<i class="moon"></i>`;
+  if (kind === "partly") h += clouds(4, .5);
+  if (kind === "cloud") h += clouds(8, .6);
+  if (kind === "fog") h += clouds(4, .45) + many(4, (i) => `<i class="fogband" style="top:${18 + i * 20}%;animation-delay:-${i * 14}s"></i>`);
+  if (kind === "drizzle") h += clouds(5, .4) + rain(34, 1.5);
+  if (kind === "rain") h += clouds(6, .35) + rain(80, .85);
+  if (kind === "showers") h += clouds(4, .45) + rain(50, 1);
+  if (kind === "storm") h += clouds(7, .28) + rain(100, .7) + `<i class="bolt"></i>`;
+  if (kind === "snow") h += clouds(5, .5) + snow(70);
+  if (temp != null && temp <= 8 && kind !== "snow") h += `<i class="frost"></i>`;
+  if (temp != null && temp >= 30 && isDay) h += `<i class="heat"></i>`;
+  return h;
+}
+function feel(kind, temp, isDay = true) {
+  const t = temp == null ? "" : temp <= 5 ? "Freezing" : temp <= 12 ? "Cold" : temp <= 18 ? "Cool" : temp <= 25 ? "Mild" : temp <= 30 ? "Warm" : "Hot";
+  const k = { clear: isDay ? "sunshine" : "clear night", partly: isDay ? "sun and cloud" : "some cloud", cloud: "overcast", fog: "foggy", drizzle: "drizzle", rain: "rain", showers: "showers", snow: "snow", storm: "thunderstorm" }[kind] || "";
+  return [t, k].filter(Boolean).join(" · ");
+}
+let fxKey = "";
 
 function icon(kind, day = true) {
   const sun = `<g class="sun-rays">${Array.from({ length: 8 }, (_, i) => `<rect x="48.5" y="8" width="3" height="11" rx="1.5" fill="#ffd166" transform="rotate(${i * 45} 50 50)"/>`).join("")}</g>
@@ -165,10 +225,15 @@ function sentence(d, i) {
 function render() {
   const d = data, c = d.current, day = d.days[sel] || d.days[0];
   const kind = sel === 0 ? c.icon : day.icon, isDay = sel === 0 ? c.day : true;
-  const [s1, s2] = SKIES[kind] || SKIES.partly;
-  document.documentElement.style.setProperty("--sky1", isDay ? s1 : "#050914");
-  document.documentElement.style.setProperty("--sky2", isDay ? s2 : "#1a2350");
+  const temp = sel === 0 ? c.temp : day.max, m = MOODS[kind] || MOODS.partly, root = document.documentElement.style;
+  const sky = isDay ? m.slice(0, 3) : (NIGHT[kind] || ["#05070f", m[0], m[1]]);
+  root.setProperty("--sky1", sky[0]); root.setProperty("--sky2", sky[1]); root.setProperty("--sky3", sky[2]);
+  root.setProperty("--glow", isDay ? m[3] : "rgba(150,165,255,.22)");
+  root.setProperty("--accent", m[4]); root.setProperty("--accent-2", m[5]); root.setProperty("--card", isDay ? m[6] : "rgba(10,14,32,.6)");
+  root.setProperty("--muted", isDay && ["clear", "partly", "snow", "cloud", "fog"].includes(kind) ? "#dbe6f5" : "#a9b6d8");
   document.body.classList.toggle("night", !isDay);
+  const key = `${kind}|${isDay}|${temp <= 8}|${temp >= 30}`;                 // rebuild the sky only when the weather changes
+  if (key !== fxKey) { fxKey = key; $("#fx").innerHTML = ambience(kind, isDay, temp); }
   const lo = Math.min(...d.days.map((x) => x.min)), hi = Math.max(...d.days.map((x) => x.max));
   $("#upd").textContent = "Updated " + d.updated.replace("T", " ");
   $("#app").innerHTML = `
@@ -176,7 +241,7 @@ function render() {
       <div>
         <div class="place">📍 ${esc(d.place)}</div>
         <div class="temp">${sel === 0 ? c.temp : day.max}<sup>°C</sup></div>
-        <div class="desc">${esc(sel === 0 ? c.desc : day.desc)}</div>
+        <div class="desc">${esc(sel === 0 ? c.desc : day.desc)}<span class="mood">${esc(feel(kind, temp, isDay))}</span></div>
         <div class="say"><b>Nova</b>${esc(sentence(d, sel))}</div>
       </div>
       <div class="iconbig">${icon(kind, isDay)}</div>
@@ -215,9 +280,6 @@ async function load(place) {
     data = j; if (typeof place === "string") sel = 0; render();
   } catch (e) { $("#app").innerHTML = `<div class="glass err">Couldn't load the weather: ${esc(e.message)}</div>`; }
 }
-fetch("/api/theme").then((r) => r.json()).then((t) => {
-  const s = document.documentElement.style; s.setProperty("--accent", t.accent); s.setProperty("--accent-2", t.accent2);
-}).catch(() => {});
 load();
 setInterval(() => load(true), 10 * 60 * 1000);
 </script>

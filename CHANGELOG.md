@@ -4,6 +4,19 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.30.0] — 2026-10-02
+### Added
+- **The phone connection restores itself after a phone restart.** A restart switches the network connection off.
+  When Nova can't reach the phone she now looks for its Wireless debugging — by name on the home network, and by
+  searching its Tailscale address anywhere else — and switches the connection back on through it, then tells you.
+  It needs Wireless debugging to be on again after the restart: say **"set up phone self-repair"** and Nova gives an
+  automation app on the phone (MacroDroid, Tasker or Automate) the permission it needs and tells you the one rule to
+  create in it. Works on any Wi-Fi; not on mobile data alone (Android doesn't allow Wireless debugging there).
+- Nova tells the phone to keep trusting this PC (Android otherwise forgets it after a week without use).
+- **Family phones** — with that person's agreement. Plug their phone in and say "add a family phone, Sam"; then
+  "where is Sam?" and "ring Sam's phone". Nova does nothing else on a family phone: no messages, no screen, no
+  alerts. Listed under Settings → Phone → Family phones.
+
 ## [2.29.1] — 2026-10-02
 ### Added
 - **📱 button in the dashboard header** (next to God's Eye View and Settings) opens the phone card as a pop-up:

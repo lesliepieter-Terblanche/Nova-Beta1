@@ -883,3 +883,77 @@ def test_one_time_code_is_never_put_in_the_reply_and_bank_codes_are_left_alone(c
     assert "bank or payment" in out and "771204" not in out and clip.copied == ["482913"] and len(spoken) == 1
     adb.notif = NOTIF
     assert "don't see a one-time code" in REGISTRY["phone_code"].run({})
+
+
+def test_connection_restores_itself_after_a_phone_restart(rich, nova, monkeypatch):
+    """Port 5555 is gone after a restart. With Wireless debugging on, Nova finds its port and re-arms 5555."""
+    p, adb, _ = rich
+    from nova import phone_watch
+    nova[0]["phone"] = {"address": "100.101.102.103", "alerts": False}
+    adb.devs.clear()
+    real, tls, state = adb.__call__, "100.101.102.103:41877", {"armed": False}
+
+    def run(args, timeout=25, binary=False):
+        if args[0] == "connect":
+            adb.calls.append(args)
+            if args[1] == tls or (args[1].endswith(":5555") and state["armed"]):
+                adb.devs[args[1]] = "device"
+                return 0, f"connected to {args[1]}"
+            return 0, f"failed to connect to {args[1]}"
+        if "tcpip" in args:
+            state["armed"] = True
+        return real(args, timeout, binary)
+    p._run = run
+    assert "can't reach" in p.connect()
+    assert "Wireless debugging isn't on" in p.rearm(scan=lambda ip: [])              # nothing to find: says why
+    assert p.rearm(scan=lambda ip: [41877, 44001]) == "" and p.serial == "100.101.102.103:5555"
+    assert ["-s", tls, "tcpip", "5555"] in adb.calls and ["disconnect", tls] in adb.calls
+    # the watcher does it by herself and says so
+    adb.devs.clear()
+    state["armed"] = False
+    monkeypatch.setattr(ph, "scan_ports", lambda ip, **k: [41877])
+    monkeypatch.setattr(p, "rearm", lambda scan=None, _r=p.rearm: _r(scan=lambda ip: [41877]))
+    monkeypatch.setattr(phone_watch, "_background", lambda job: job())
+    phone_watch.tick(p)
+    phone_watch.tick(p)                                                              # second miss: repair
+    assert phone_watch.state["online"] and p.serial == "100.101.102.103:5555"
+    assert any("restored the connection" in e["title"] for e in context.store.activity(0) if e["kind"] == "notice")
+
+
+def test_self_repair_setup_grants_the_automation_app_its_permission(rich):
+    p, adb, _ = rich
+    real = adb.__call__
+    out = REGISTRY["phone_self_repair_setup"].run({})
+    assert "install MacroDroid" in out and "settings put global adb_allowed_connection_time 0" in adb.shell
+    p._run = lambda args, timeout=25, binary=False: (0, "package:com.whatsapp\npackage:com.arlosoft.macrodroid") \
+        if args[-1] == "pm list packages" else real(args, timeout, binary)
+    out = REGISTRY["phone_self_repair_setup"].run({})
+    assert "pm grant com.arlosoft.macrodroid android.permission.WRITE_SECURE_SETTINGS" in adb.shell
+    assert "MacroDroid now has the permission" in out and "adb_wifi_enabled, value 1" in out
+
+
+def test_family_phone_is_located_and_rung_only_when_listed(rich, nova, monkeypatch):
+    p, adb, _ = rich
+    out = REGISTRY["phone_locate"].run({"who": "Sam"})
+    assert "don't have a phone set up for 'Sam'" in out and "add a family phone" in out
+    # her phone on the cable → added under her name, not as the main phone
+    adb.devs.clear()
+    adb.devs["R9FAMILY1"] = "device"
+    saved = {}
+    from nova import settings
+    monkeypatch.setattr(settings, "apply", lambda payload: saved.update(payload["values"]) or {"saved": []})
+    out = REGISTRY["phone_add_family"].run({"name": "sam's"})
+    assert out.startswith("Added Sam's SM-S926B") and "only use it to show where it is and to make it ring" in out
+    assert saved == {"phone.family": ["Sam = 100.101.102.103"]} and "address" not in nova[0]["phone"]
+    assert ph.family() == {"Sam": "100.101.102.103"}
+    name, fp = ph.family_phone("Sam's phone")
+    assert name == "Sam" and fp.address() == "100.101.102.103:5555" and ph.family_phone("Thabo") == ("", None)
+    dump = "  last location=Location[fused -26.107600,28.056800 hAcc=14 et=+3d2h]"
+    monkeypatch.setattr(ph.Phone, "where", lambda self: {"lat": -26.1076, "lon": 28.0568, "accuracy": 14, "source": "fused"} if self.fixed else None)
+    out = REGISTRY["phone_locate"].run({"who": "Sam"})
+    assert out.startswith("Sam's phone was last at -26.10760, 28.05680, accurate to about 14 metres.") and dump
+    assert "Sam's phone is ringing at full volume" in REGISTRY["phone_ring"].run({"who": "Sam"})
+    adb.devs.clear()                                                                # her phone is off / out of reach
+    real = adb.__call__
+    p._run = lambda args, timeout=25, binary=False: (0, "failed to connect") if args[0] == "connect" else real(args, timeout, binary)
+    assert "can't reach Sam's phone" in REGISTRY["phone_locate"].run({"who": "Sam"})

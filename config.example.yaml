@@ -107,6 +107,8 @@ phone:
   name: ""
   adb_path: ""               # "" = Nova's own copy of Google's Android platform-tools
   watch: true                # keep the phone connected (reconnects by herself) and its dashboard card fresh
+  family: []                 # other phones Nova may locate / ring, with their owner's agreement: ["Sam = 100.x.y.z"]
+  self_repair: true          # after a phone restart: find Wireless debugging and switch the connection back on
   alerts: true               # tell me about new messages and missed calls (read locally, not sent to a model)
   alerts_speak: true         # ...out loud too (false = dashboard banner only)
   alert_apps: []             # e.g. [whatsapp, messages, phone] — empty = every messaging app

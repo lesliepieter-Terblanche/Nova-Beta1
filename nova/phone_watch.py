@@ -99,6 +99,14 @@ def tick(p: ph.Phone | None = None) -> None:
             state["told_lost"] = True
             tell("I can't reach your phone. I'll keep trying — check that Tailscale is on on the phone. If the phone "
                  "was restarted, plug it into the PC and say 'set up my phone'.", speak=False)
+        if opt("self_repair", True) and (state["fails"] == 2 or time.time() - state.get("repair_at", 0) >= 300):
+            state["repair_at"] = time.time()            # the phone may have restarted: try to restore the link myself
+
+            def repair():
+                if not p.rearm():
+                    state.update(online=True, fails=0, told_lost=False)
+                    tell("Your phone had restarted — I've restored the connection to it myself.", speak=False)
+            _background(repair)
         try:                                            # a message that is due still gets its "couldn't send" report
             from . import phone_schedule
             if phone_schedule.due():

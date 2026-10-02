@@ -282,6 +282,12 @@ SCHEMA = [
          "help": "Blank = Nova downloads Google's Android tools herself (7 MB)"},
         {"path": "phone.watch", "label": "Keep the phone connected", "type": "bool", "default": True,
          "help": "Reconnects by herself when the link drops and keeps the dashboard's phone card fresh"},
+        {"path": "phone.self_repair", "label": "Restore the connection after the phone restarts", "type": "bool",
+         "default": True, "help": "Needs Wireless debugging switched back on by an automation app — say 'set up "
+                                  "phone self-repair'. Works on any Wi-Fi, not on mobile data alone"},
+        {"path": "phone.family", "label": "Family phones (location and ring only)", "type": "list",
+         "help": "One per line: Name = Tailscale address. Filled in by 'add a family phone' with their phone on the "
+                 "cable. Only with that person's agreement."},
         {"path": "phone.alerts", "label": "Tell me about new messages and missed calls", "type": "bool", "default": True,
          "help": "Read from the phone's notifications by Nova herself — not sent to an AI model, not kept in the brain"},
         {"path": "phone.alerts_speak", "label": "…and say them out loud", "type": "bool", "default": True,

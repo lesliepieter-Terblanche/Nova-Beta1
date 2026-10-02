@@ -132,12 +132,35 @@ def install_adb() -> Path:
     return p
 
 
+TLS_PORTS = range(30000, 50000)          # where Android puts Wireless debugging (a different port every time)
+AUTOMATION_APPS = {"com.arlosoft.macrodroid": "MacroDroid", "net.dinglisch.android.taskerm": "Tasker",
+                   "com.llamalab.automate": "Automate"}
+
+
+def scan_ports(ip: str, ports=TLS_PORTS, timeout: float = 0.8, workers: int = 256) -> list[int]:
+    """The open TCP ports on the phone in this range (about half a minute over Tailscale)."""
+    import socket
+    from concurrent.futures import ThreadPoolExecutor
+
+    def probe(port: int) -> int:
+        try:
+            with socket.create_connection((ip, port), timeout=timeout):
+                return port
+        except OSError:
+            return 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return sorted(p for p in pool.map(probe, ports) if p)
+
+
 class Phone:
     """One Android phone over adb. `run` can be replaced in tests."""
 
-    def __init__(self, run=None):
+    def __init__(self, run=None, fixed: str = ""):
+        """fixed: this phone's own network address (a family member's phone) instead of the one in Settings."""
         self._run = run or self._real_run
         self.serial = ""
+        self.fixed = fixed
+        self.last_setup: tuple[str, str] = ("", "")
         self.lock = threading.Lock()
 
     @staticmethod
@@ -155,7 +178,7 @@ class Phone:
         return [tuple(line.split()[:2]) for line in out.splitlines()[1:] if "\t" in line or len(line.split()) == 2]
 
     def address(self) -> str:
-        a = str(cfg().get("address", "")).strip()
+        a = self.fixed or str(cfg().get("address", "")).strip()
         return a if not a or ":" in a else f"{a}:{PORT}"
 
     def connect(self) -> str:
@@ -174,7 +197,7 @@ class Phone:
                     self.serial = addr
                     return ""
         usb = [s for s, st in devs.items() if st == "device" and ":" not in s]
-        if usb:
+        if usb and not self.fixed:                      # a family phone is only ever reached at its own address
             self.serial = usb[0]
             return ""
         if any(st == "unauthorized" for st in devs.values()):
@@ -185,12 +208,52 @@ class Phone:
                     "it into the PC for a moment and say 'set up my phone'.")
         return "The phone isn't set up yet — plug it into the PC with the cable and say 'set up my phone'."
 
+    def rearm(self, scan=scan_ports) -> str:
+        """After a phone restart the network connection (port 5555) is gone. If Wireless debugging is on, find it —
+        on the home network by name, anywhere else by looking for its port on the phone's Tailscale address — and
+        switch port 5555 back on through it. Returns '' when the phone is connected again, else why not."""
+        addr = self.address()
+        if not addr:
+            return "The phone isn't set up yet."
+        ip = addr.rsplit(":", 1)[0]
+        found = []
+        _, mdns = self._run(["mdns", "services"], timeout=10)
+        found += re.findall(r"_adb-tls-connect\S*\s+(\d+\.\d+\.\d+\.\d+:\d+)", mdns)
+        try:
+            found += [f"{ip}:{port}" for port in scan(ip)][:8]
+        except Exception as e:
+            print(f"[phone] port search failed: {e}")
+        for target in dict.fromkeys(found):
+            _, out = self._run(["connect", target], timeout=12)
+            if "connected" not in out.lower() or dict(self.devices()).get(target) != "device":
+                self._run(["disconnect", target], timeout=8)
+                continue
+            self._run(["-s", target, "tcpip", str(PORT)], timeout=15)
+            time.sleep(2.5)
+            self._run(["disconnect", target], timeout=8)
+            if not self.connect():
+                return ""
+        if not found:
+            return ("Wireless debugging isn't on on the phone (it needs Wi-Fi), so I can't restore the connection "
+                    "from here.")
+        return "I found the phone but it didn't accept the connection — it may be asking to allow this computer."
+
+    def keep_trust(self) -> None:
+        """Stop Android from forgetting this PC after a week without use."""
+        self.sh("settings put global adb_allowed_connection_time 0")
+
+    def automation_app(self) -> tuple[str, str]:
+        """(package, name) of an automation app on the phone that can switch Wireless debugging on after a restart."""
+        pkgs = self.packages()
+        return next(((p, n) for p, n in AUTOMATION_APPS.items() if p in pkgs), ("", ""))
+
     def sh(self, command: str, timeout: float = 25) -> str:
         code, out = self._run(["-s", self.serial, "shell", command], timeout=timeout)
         return out
 
-    def setup(self) -> str:
-        """Cable (or home Wi-Fi wireless debugging) → listen on port 5555 → remember the Tailscale address."""
+    def setup(self, save: bool = True) -> str:
+        """Cable (or home Wi-Fi wireless debugging) → listen on port 5555 → remember the Tailscale address.
+        save=False: don't store it as the main phone (a family phone: the caller reads .last_setup instead)."""
         devs = self.devices()
         if any(st == "unauthorized" for _, st in devs):
             return ("The phone is asking 'Allow USB debugging?' — unlock it, tick 'Always allow from this computer', "
@@ -202,7 +265,7 @@ class Phone:
             if m:
                 self._run(["connect", m.group(1)], timeout=12)
                 ready = [s for s, st in self.devices() if st == "device"]
-        if not ready and self.address() and not self.connect():   # already set up: the link had only dropped
+        if save and not ready and self.address() and not self.connect():   # already set up: the link had only dropped
             return f"Your {cfg().get('name') or 'phone'} is connected again at {self.serial}."
         if not ready:
             return ("I can't see the phone. Plug it into the PC with the cable (use a data cable, pick 'File transfer' "
@@ -225,6 +288,10 @@ class Phone:
         addr = f"{ip}:{PORT}"
         _, out = self._run(["connect", addr], timeout=12)
         ok = "connected" in out.lower()
+        self.last_setup = (ip, model)
+        if not save:
+            return (f"{model} is connected at {addr}.{note}" if ok else
+                    f"{model} is set to listen, but I couldn't connect to {addr} yet ({out[:80]}).")
         try:
             from . import settings
             settings.apply({"values": {"phone.address": ip, "phone.name": model}})
@@ -235,6 +302,10 @@ class Phone:
             context.cfg["phone"]["address"], context.cfg["phone"]["name"] = ip, model
         if ok:
             self.serial = addr
+            try:
+                self.keep_trust()
+            except Exception:
+                pass
             return f"Your {model} is connected at {addr}. You can unplug the cable.{note}"
         return (f"Your {model} is set to listen, but I couldn't connect to {addr} yet ({out[:80]}). Keep it plugged in "
                 "and try 'phone status' in a few seconds.")
@@ -603,6 +674,26 @@ def phone() -> Phone:
     if _phone is None:
         _phone = Phone()
     return _phone
+
+
+# ── family phones: located (and rung) with their owner's agreement — nothing else is done on them ──
+def family() -> dict[str, str]:
+    """{name: address} from Settings → Phone → Family phones (one per line: 'Sam = 100.x.y.z')."""
+    out = {}
+    for line in cfg().get("family") or []:
+        name, _, addr = str(line).partition("=")
+        if name.strip() and addr.strip():
+            out[name.strip()] = addr.strip()
+    return out
+
+
+def family_phone(who: str) -> tuple[str, Phone | None]:
+    """(their name, their phone) for "Sam", "Sam's phone", "my wife Sam" — ('', None) when it's nobody listed."""
+    w = re.sub(r"('s|s')? (cell ?)?phone$", "", who.lower().strip())
+    for name, addr in family().items():
+        if name.lower() in w.split() or name.lower() == w:
+            return name, Phone(run=_phone._run if _phone else None, fixed=addr)
+    return "", None
 
 
 def out_dir() -> Path:

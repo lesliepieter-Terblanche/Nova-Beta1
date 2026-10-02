@@ -18,7 +18,8 @@ register_group("phone", ["my phone", "the phone", "on my phone", "phone's", "gal
                          "torch", "answer the", "hang up", "decline the", "on speaker", "phone screen", "take a photo",
                          "take a picture", "selfie", "navigate to", "directions to", "clipboard to", "to my phone",
                          "code from", "verification code", "one-time", "otp", "what's playing", "whats playing",
-                         "next song", "next track", "scheduled message", "missed on", "starts by itself"])
+                         "next song", "next track", "scheduled message", "missed on", "starts by itself", "self repair",
+                         "self-repair", "after a restart", "where is", "where's", "'s phone", "family phone", "wife's", "husband's", "after a reboot", "phone restarts", "phone reboots"])
 
 
 def _ready() -> str:
@@ -557,40 +558,108 @@ def phone_set_level(what: str, percent: int) -> str:
 
 
 @tool(group="phone")
-def phone_ring() -> str:
-    """Find my phone: make it ring loudly, even when it is on silent."""
-    if err := _ready():
+def phone_ring(who: str = "") -> str:
+    """Find a phone: make it ring loudly, even when it is on silent — the user's own, or a family member's.
+    Args:
+        who: empty = the user's own phone; otherwise the family member's name
+    """
+    label, p, err = _whose(who)
+    if err:
         return err
-    how = ph.phone().ring()
+    how = p.ring()
     if how == "timer":
-        return "Your phone is ringing at full volume — it keeps going until you dismiss it on the phone."
+        return f"{label} is ringing at full volume — it keeps going until it is dismissed on the phone."
     if how == "ringtone":
-        return "Your phone is playing a ringtone at full volume."
+        return f"{label} is playing a ringtone at full volume."
     return "ERROR: I couldn't make the phone ring — its clock and music apps both refused."
 
 
-@tool(group="phone")
-def phone_locate() -> str:
-    """Where the phone is right now: its position on the map (track / locate my phone)."""
+def _whose(who: str):
+    """(label, phone, error) — the user's own phone, or a family phone when `who` names someone listed."""
+    if who.strip() and who.strip().lower() not in ("me", "my", "mine", "my phone", "phone"):
+        name, fp = ph.family_phone(who)
+        if not fp:
+            have = ", ".join(ph.family()) or "none yet"
+            return "", None, (f"I don't have a phone set up for '{who}'. Family phones: {have}. Plug theirs into the PC "
+                              "and say 'add a family phone' with their name.")
+        try:
+            err = fp.connect()
+        except Exception as e:
+            err = str(e)
+        if err:
+            return name, None, (f"I can't reach {name}'s phone right now — Tailscale must be on on it, and after a "
+                                "restart it needs the cable once more.")
+        return f"{name}'s phone", fp, ""
     if err := _ready():
+        return "", None, err
+    return "Your phone", ph.phone(), ""
+
+
+@tool(group="phone")
+def phone_locate(who: str = "") -> str:
+    """Where a phone is right now on the map: the user's own, or a family member's phone that was added with
+    their agreement ("where is Sam?").
+    Args:
+        who: empty = the user's own phone; otherwise the family member's name
+    """
+    label, p, err = _whose(who)
+    if err:
         return err
     try:
-        loc = ph.phone().where()
+        loc = p.where()
     except Exception as e:
         return f"ERROR: {e}"
     if not loc:
-        return ("Your phone hasn't got a position yet — Location may be off. Say 'turn on location on my phone', open "
-                "Maps on it once, and ask again.")
+        return (f"{label} hasn't got a position yet — Location may be off on it. Switch Location on, open Maps on "
+                "it once, and ask again.")
     link = f"https://www.google.com/maps?q={loc['lat']:.6f},{loc['lon']:.6f}"
     try:
         from .. import cards, phone_watch
-        phone_watch.state["where"] = {**loc, "url": link}
-        cards.show("info", "Where your phone is", {"text": f"{loc['lat']:.5f}, {loc['lon']:.5f}\n{link}"})
+        if not who.strip():
+            phone_watch.state["where"] = {**loc, "url": link}
+        cards.show("info", f"Where {label[0].lower() + label[1:]} is", {"text": f"{loc['lat']:.5f}, {loc['lon']:.5f}\n{link}"})
     except Exception:
         pass
     near = f", accurate to about {loc['accuracy']} metres" if loc["accuracy"] is not None else ""
-    return (f"Your phone's last position is {loc['lat']:.5f}, {loc['lon']:.5f}{near}. Map: {link} — it's on the "
-            "dashboard too. Say 'ring my phone' to make it ring.")
+    return f"{label} was last at {loc['lat']:.5f}, {loc['lon']:.5f}{near}. Map: {link} — it's on the dashboard too."
+
+
+@tool(group="phone")
+def phone_add_family(name: str) -> str:
+    """Add a family member's phone so it can be located and rung. Their phone must be plugged into the PC with USB
+    debugging allowed and Tailscale on, and they must have agreed to it.
+    Args:
+        name: the person's first name, e.g. "Sam"
+    """
+    name = name.strip().split("'")[0].title()
+    if not name:
+        return "Whose phone is it? Give me their first name."
+    p = ph.Phone(run=ph.phone()._run)
+    try:
+        out = p.setup(save=False)
+    except Exception as e:
+        return f"ERROR: {e}"
+    ip, model = p.last_setup
+    if not ip:
+        return out
+    if ip == str(ph.cfg().get("address", "")).strip():
+        return "That is your own phone on the cable — unplug it and plug in theirs."
+    entries = [e for e in (ph.cfg().get("family") or []) if not str(e).lower().startswith(name.lower() + " =")]
+    entries.append(f"{name} = {ip}")
+    try:
+        from .. import settings
+        settings.apply({"values": {"phone.family": entries}})
+    except Exception as e:
+        print(f"[phone] couldn't save the family phone: {e}")
+    if context.cfg is not None:
+        context.cfg.setdefault("phone", {})
+        context.cfg["phone"]["family"] = entries
+    try:
+        p.keep_trust()
+    except Exception:
+        pass
+    return (f"Added {name}'s {model} ({out}) I only use it to show where it is and to make it ring — say 'where is "
+            f"{name}' or 'ring {name}'s phone'.")
 
 
 @tool(group="phone")
@@ -601,8 +670,36 @@ def phone_reconnect() -> str:
     if addr:
         p._run(["disconnect", addr], timeout=8)
     if err := _ready():
+        try:
+            if not p.rearm():                    # the phone restarted: restore the link through Wireless debugging
+                return f"Your phone had restarted — I've restored the connection ({p.serial})."
+        except Exception:
+            pass
         return err
     return f"Connected to your phone again ({p.serial})."
+
+
+@tool(group="phone")
+def phone_self_repair_setup() -> str:
+    """Prepare the phone so the connection restores itself after the phone restarts (no cable): gives an automation
+    app on the phone the one permission it needs and explains the single rule to create in it."""
+    if err := _ready():
+        return err
+    p = ph.phone()
+    p.keep_trust()
+    pkg, name = p.automation_app()
+    if not pkg:
+        return ("I've told the phone to keep trusting this PC. For the rest, install MacroDroid (free) from the Play "
+                "Store on the phone and ask me again — it is what switches Wireless debugging back on after a restart.")
+    out = p.sh(f"pm grant {pkg} android.permission.WRITE_SECURE_SETTINGS")
+    if ph.SHELL_FAIL.search(out or ""):
+        return (f"ERROR: the phone refused to give {name} the permission ({out[:120]}). On a Samsung, switch on "
+                "'Disable permission monitoring' in Developer options if it is there, and ask me again.")
+    return (f"Done: the phone will keep trusting this PC, and {name} now has the permission it needs. One rule to "
+            f"create in {name} on the phone — Trigger: Device Boot. Action: System Setting, type Global, key "
+            "adb_wifi_enabled, value 1. Save it and allow the app to run in the background (battery: Unrestricted). "
+            "After a restart, unlock the phone once; when it is on Wi-Fi I find it and reconnect by myself within a "
+            "few minutes.")
 
 
 # ── messages: read, reply, any app ────────────────────────

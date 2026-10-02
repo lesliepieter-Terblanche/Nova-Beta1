@@ -89,7 +89,7 @@ class Agent:
         store = context.store
         with self.lock:
             self._on_delta = on_delta
-            context.begin_turn()
+            context.begin_turn(session)
             self._tools_used = []
             self._model_ms = 0
             self._rounds = 0

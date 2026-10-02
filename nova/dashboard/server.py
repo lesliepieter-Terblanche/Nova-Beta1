@@ -1194,6 +1194,13 @@ class Dashboard:
                     if self.path == "/api/globe/install":
                         from ..skills import globe
                         return self._json({"message": globe.install()})
+                    if self.path == "/api/send_file":            # "Send to Telegram" under a picture on the dashboard
+                        loc = dash.location_of(str(body.get("id", "")))
+                        if not loc or not Path(loc).is_file():
+                            return self._json({"error": "That file isn't there any more."}, 404)
+                        from ..tools import REGISTRY
+                        context.begin_turn("dashboard")
+                        return self._json({"message": REGISTRY["send_to_phone"].run({"path": loc})})
                     if self.path in ("/api/brain/move", "/api/brain/delete"):
                         from .. import taxonomy
                         nid = str(body.get("id", ""))

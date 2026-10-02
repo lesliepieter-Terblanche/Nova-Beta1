@@ -910,6 +910,12 @@
   li.f[data-status="BACKLOG"] .stl { background: rgba(170,180,200,.28); color: #fff; border: 1px dashed #aab4c8; }
   .pane .sum .od, .hero .k.od b { color: #fff; }
   .lk.b { color: #cfd8e8; }
+  .shot { display: grid; place-items: center; }
+  .shot img { max-width: 100%; max-height: 62vh; border-radius: 14px; border: 1px solid var(--line-strong); }
+  .stage-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .stage-foot > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+  .shot-btn { border: 1px solid var(--line-strong); background: rgba(255,255,255,.1); color: var(--text); border-radius: 999px; padding: 7px 14px; font: 600 12.5px var(--body); cursor: pointer; text-decoration: none; }
+  .shot-btn:hover { background: rgba(255,255,255,.2); }
 </style>
 </head>
 <body>
@@ -1732,13 +1738,21 @@ function showCard(c) {
   closeStage(true);
   const d = c.data || {}, body = $("stage-body");
   stage.kind = c.kind; $("stage-title").textContent = c.title || "Nova"; $("stage-sub").textContent = "";
-  $("stage-kind").textContent = { weather: "⛅", pc: "🖥", screen_time: "🧭", news: "📰", loadshedding: "⚡" }[c.kind] || "✦";
+  $("stage-kind").textContent = { weather: "⛅", pc: "🖥", screen_time: "🧭", news: "📰", loadshedding: "⚡", image: "🖼" }[c.kind] || "✦";
   const PAL = palette();
   if (c.kind === "weather") {
     body.innerHTML = `<iframe title="Weather" src="/weather?embed=1&day=${+d.day || 0}" allowtransparency="true" class="lift"></iframe>`;
     body.querySelector("iframe").onload = (e) => {            // the weather page wears your theme's colours too
       try { const r = e.target.contentDocument.documentElement.style;
         for (const v of ["--accent", "--accent-2", "--text", "--muted", "--line", "--glass", "--display", "--body"]) { const x = cssVar(v); if (x) r.setProperty(v, x); } } catch {}
+    };
+  } else if (c.kind === "image") {                           // a picture Nova just made (e.g. a phone screenshot)
+    $("stage-sub").textContent = d.name || "";
+    body.innerHTML = `<div class="shot"><img class="lift" src="/media?id=${encodeURIComponent(d.id)}" alt="${esc(c.title || "")}"></div>
+      <div class="stage-foot"><span title="${esc(d.path || "")}">Saved on the PC: ${esc(d.path || "")}</span><span style="flex:1"></span>
+      <button class="shot-btn" data-send="${esc(d.id)}">Send to Telegram</button><a class="shot-btn" href="/media?id=${encodeURIComponent(d.id)}" download="${esc(d.name || "image.png")}">Download</a></div>`;
+    body.querySelector("[data-send]").onclick = async (e) => {
+      e.target.disabled = true; const r = await api("/api/send_file", { id: d.id }); flash(r.message || r.error); e.target.disabled = false;
     };
   } else if (c.kind === "news") {
     const items = d.items || [];

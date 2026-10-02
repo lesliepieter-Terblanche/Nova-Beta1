@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.27.5] — 2026-10-02
+### Fixed
+- **"Send it to my Telegram" now really sends the file.** Asked by voice or on the dashboard, the file used to go
+  back to the place you asked from and never reached Telegram. It is now pushed to Telegram, and "send the screenshot"
+  works without naming the file (the newest thing Nova made). If Telegram isn't connected she says so.
+- **Phone screenshots show on the dashboard** in the centre window, with where the file was saved on the PC, a
+  *Send to Telegram* button and *Download*. Nova's answer also says where it was saved.
+
 ## [2.27.4] — 2026-10-02
 ### Fixed
 - **"Set up my phone" no longer depends on the model.** Nova once answered it with a made-up PowerShell command

@@ -244,6 +244,7 @@ def main() -> None:
             tg.push(text, files)
 
     context.notify = notify
+    context.telegram_on = tg is not None
     from nova.presence import presence
 
     def say(text):

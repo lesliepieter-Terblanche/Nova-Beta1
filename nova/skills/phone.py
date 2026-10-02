@@ -59,9 +59,16 @@ def phone_screenshot() -> str:
         p.screenshot(out)
     except Exception as e:
         return f"ERROR: {e}"
-    context.record("image", "Phone screenshot", out, "phone")
+    aid = context.record("image", "Phone screenshot", out, "phone")
     context.attach(out)
-    return f"Screenshot saved: {out}"
+    try:                                        # show it on the dashboard straight away
+        from .. import cards
+        if aid:
+            cards.show("image", "Phone screenshot", {"id": f"artifact:{aid}", "name": out.name, "path": str(out)})
+    except Exception:
+        pass
+    return (f"Screenshot taken and saved on the PC: {out}. It is showing on the dashboard. "
+            "(To send it to Telegram use send_to_phone.)")
 
 
 @tool(group="phone")

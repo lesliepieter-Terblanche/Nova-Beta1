@@ -19,11 +19,19 @@ announce: Callable[[str], None] | None = None
 # notify(text, files) pushes a message to the owner (Telegram and/or speaker).
 notify: Callable[[str, list[str]], None] | None = None
 
+telegram_on = False      # True when the Telegram bot is running (set by main.py)
+
 _local = threading.local()
 
 
-def begin_turn() -> None:
+def begin_turn(session: str = "") -> None:
     _local.files = []
+    _local.session = session
+
+
+def session() -> str:
+    """Where the request being handled came from: voice, dashboard, telegram, phone…"""
+    return getattr(_local, "session", "")
 
 
 def attach(path: str | Path) -> None:
@@ -33,13 +41,14 @@ def attach(path: str | Path) -> None:
     _local.files.append(str(path))
 
 
-def record(kind: str, title: str, location: str | Path, detail: str = "") -> None:
-    """Register something Nova made/touched so it shows up in the 2nd-brain dashboard."""
+def record(kind: str, title: str, location: str | Path, detail: str = "") -> int | None:
+    """Register something Nova made/touched so it shows up in the 2nd-brain dashboard. Returns its id."""
     if store:
         try:
-            store.add_artifact(kind, title, str(location), detail)
+            return store.add_artifact(kind, title, str(location), detail)
         except Exception as e:
             print(f"[store] could not record artifact: {e}")
+    return None
 
 
 def attachments() -> list[str]:

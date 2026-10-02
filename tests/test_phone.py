@@ -131,7 +131,7 @@ def test_read_screen_tap_type_open_app(fone):
 def test_screenshot_notifications_and_files(fone, nova):
     p, adb, _ = fone
     out = REGISTRY["phone_screenshot"].run({})
-    assert "Screenshot saved" in out and context.attachments()
+    assert "saved on the PC" in out and context.attachments()
     n = REGISTRY["phone_notifications"].run({})
     assert "- Whatsapp: Sam Dlamini — Can you send the Mist quote today?" in n and "Gmail: Northwind PO — PO attached" in n
     assert "Copied 2 file(s)" in REGISTRY["phone_get_photos"].run({"count": 2})
@@ -185,3 +185,50 @@ def test_set_up_my_phone_goes_straight_to_the_tool(nova, monkeypatch):
     for other in ("call my phone provider about the bill", "set up my phone plan comparison", "what's on my phone screen"):
         assert not any(p.match(other) for p, _ in DIRECT), other
     assert "Never give" in agent._system_prompt("voice", "hi")
+
+
+def test_send_the_screenshot_to_telegram(nova, monkeypatch, tmp_path):
+    """Asked by voice or on the dashboard, the file must really go to Telegram (it used to go nowhere)."""
+    from nova import context
+    from nova.tools import REGISTRY
+    shot = tmp_path / "files" / "phone_20261002_162700.png"
+    shot.write_bytes(b"PNG")
+    context.record("image", "Phone screenshot", shot, "phone")
+    sent = []
+    monkeypatch.setattr(context, "notify", lambda text, files: sent.append((text, files)))
+    monkeypatch.setattr(context, "telegram_on", True)
+    context.begin_turn("dashboard")
+    out = REGISTRY["send_to_phone"].run({})                       # "send it to my telegram": the file just made
+    assert out == f"Sent {shot.name} to your Telegram." and sent == [(f"📎 {shot.name}", [str(shot)])]
+    assert context.attachments() == []
+    # asked on Telegram itself: it comes back with the answer, once
+    context.begin_turn("telegram")
+    assert REGISTRY["send_to_phone"].run({"path": str(shot)}) == f"Sending {shot.name}."
+    assert context.attachments() == [str(shot)] and len(sent) == 1
+    # Telegram not connected: she says so instead of pretending
+    monkeypatch.setattr(context, "telegram_on", False)
+    context.begin_turn("voice")
+    assert "Telegram isn't connected" in REGISTRY["send_to_phone"].run({"path": str(shot)}) and len(sent) == 1
+    from nova.tools import select_tools
+    assert "send_to_phone" in {t.name for t in select_tools("send the screenshot to my telegram")}
+
+
+def test_screenshot_shows_on_the_dashboard(nova, monkeypatch):
+    from nova import cards, context
+    from nova.skills import phone as skill
+    from nova.tools import REGISTRY
+
+    class P:
+        def connect(self): return ""
+        def wake(self): pass
+        def screenshot(self, out):
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(b"\x89PNG fake")
+            return out
+    monkeypatch.setattr(skill.ph, "phone", lambda: P())
+    monkeypatch.setattr(skill.ph, "out_dir", lambda: nova[1] / "files")
+    before = cards.latest_id()
+    context.begin_turn("dashboard")
+    out = REGISTRY["phone_screenshot"].run({})
+    card = [c for c in cards.recent(before) if c["kind"] == "image"][-1]
+    assert card["data"]["id"].startswith("artifact:") and card["data"]["path"] in out and "saved on the PC" in out

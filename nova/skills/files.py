@@ -15,7 +15,8 @@ from ..tools import register_group, tool
 register_group("files", ["file", "folder", "document", "desktop", "download", "pdf", "docx", "pptx", "powerpoint",
                          "slides", "table", "markdown", "convert", "move", "copy",
                          "delete", "rename", "organi", "tidy", "clean up", "find my", "where is", "open the",
-                         "read the", "save", "spreadsheet", "zip", "send me", "phone"])
+                         "read the", "save", "spreadsheet", "zip", "send me", "phone", "telegram", "send it", "send that",
+                         "send the", "send this"])
 
 TYPES = {
     "Images": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".bmp", ".svg"},
@@ -218,16 +219,51 @@ def open_path(path: str) -> str:
 
 
 @tool(group="files")
-def send_to_phone(path: str) -> str:
-    """Send a file from the PC to the user's phone (Telegram).
+def send_to_phone(path: str = "") -> str:
+    """Send a file to the user's Telegram (on their phone). Use for "send it / the screenshot / that file to my
+    Telegram / phone" and "send me the file".
     Args:
-        path: file path
+        path: file path; leave empty for the file that was just made (a screenshot, photo, video, document…)
     """
+    if not path.strip():
+        path = _latest_file()
+        if not path:
+            return "I don't have a recent file to send — tell me which file."
     p = safe(path)
+    if not p.is_file():
+        return f"I can't find {p.name}."
     if p.stat().st_size > 49e6:
         return "That file is over Telegram's 50 MB bot limit. I can zip it or upload it to Google Drive instead."
-    context.attach(p)
-    return f"Sending {p.name}."
+    if context.session() == "telegram":
+        context.attach(p)                      # asked on Telegram: it comes back with the answer
+        return f"Sending {p.name}."
+    if not context.telegram_on:
+        context.attach(p)
+        return (f"Telegram isn't connected, so I can't send {p.name} there. It's at {p}. "
+                "Connect Telegram in Settings → Telegram and ask again.")
+    context.push(f"📎 {p.name}", [str(p)])      # asked by voice or on the dashboard: push it to Telegram now
+    return f"Sent {p.name} to your Telegram."
+
+
+def _latest_file() -> str:
+    """The newest thing Nova made that is still on disk (within the last hour)."""
+    files = context.attachments()
+    if files:
+        return files[-1]
+    s = context.store
+    if s is None:
+        return ""
+    import time as _time
+    with s.lock:
+        rows = s.db.execute("SELECT location FROM artifacts ORDER BY id DESC LIMIT 15").fetchall()
+    for r in rows:
+        f = Path(r["location"] or "")
+        try:
+            if f.is_file() and _time.time() - f.stat().st_mtime < 3600:
+                return str(f)
+        except OSError:
+            continue
+    return ""
 
 
 @tool(group="files")

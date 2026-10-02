@@ -62,7 +62,7 @@ Offered to the model when you say things like: _file, folder, document, desktop,
 | `organize_folder` 🔒 | Tidy a folder by sorting loose files into subfolders (Images, Documents, Videos, …). | `path`? |
 | `zip_path` | Zip a folder or file. | `path` |
 | `open_path` | Open a file or folder on the PC with its default app. | `path` |
-| `send_to_phone` | Send a file from the PC to the user's phone (Telegram). | `path` |
+| `send_to_phone` | Send a file to the user's Telegram (on their phone). Use for "send it / the screenshot / that file to my Telegram / phone" and "send me the file". | `path`? |
 | `document_to_markdown` | Convert a document (PDF, Word, PowerPoint, Excel, Outlook .msg, EPUB, HTML…) to a Markdown file. | `path` |
 | `extract_tables` | Pull every table out of a PDF / Word / PowerPoint file into an Excel workbook (one sheet per table). | `path` |
 

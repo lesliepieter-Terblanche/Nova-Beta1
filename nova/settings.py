@@ -56,6 +56,31 @@ SECRET_KEYS = {s["key"] for s in SECRETS}
 
 # ── config fields ─────────────────────────────────────────
 # type: text | number | bool | select | list | color | tags(int list)
+# Colour themes for the dashboard's vivid look. Colours are "r,g,b": blobs = the four glows behind the panels,
+# personal / work = the header gradient of each side, deep = solid surfaces (menus, the side panel).
+PALETTES = {
+    "aurora": {"label": "Aurora", "bg": ["#1a1446", "#0f2147", "#0b2c3d"],
+               "blobs": ["150,110,255", "255,90,170", "40,220,200", "70,150,255"],
+               "personal": ["124,92,255", "192,92,255", "255,95,162"], "work": ["20,184,166", "34,211,238", "96,165,250"],
+               "deep": "30,24,70", "accent": "#8b7bff", "accent2": "#4cc9f0"},
+    "ocean": {"label": "Ocean", "bg": ["#0a1740", "#0a2a52", "#063440"],
+              "blobs": ["56,130,255", "0,200,255", "20,220,190", "90,110,255"],
+              "personal": ["59,130,246", "56,189,248", "34,211,238"], "work": ["16,185,129", "52,211,153", "163,230,53"],
+              "deep": "12,28,66", "accent": "#3b9dff", "accent2": "#22d3ee"},
+    "sunset": {"label": "Sunset", "bg": ["#2a1030", "#3a1436", "#1f1440"],
+               "blobs": ["255,120,60", "255,70,130", "170,90,255", "255,180,60"],
+               "personal": ["255,94,98", "255,125,70", "255,184,60"], "work": ["168,85,247", "217,70,239", "244,114,182"],
+               "deep": "52,20,56", "accent": "#ff7a59", "accent2": "#ffb84d"},
+    "forest": {"label": "Forest", "bg": ["#0b2a22", "#0f3328", "#0a2633"],
+               "blobs": ["40,190,120", "250,200,70", "30,170,190", "120,200,80"],
+               "personal": ["34,197,94", "132,204,22", "250,204,21"], "work": ["13,148,136", "6,182,212", "59,130,246"],
+               "deep": "12,44,36", "accent": "#34d399", "accent2": "#facc15"},
+    "midnight": {"label": "Midnight (calm)", "bg": ["#0e1220", "#111a2c", "#0d1c26"],
+                 "blobs": ["70,84,140", "90,70,130", "40,100,120", "60,70,110"],
+                 "personal": ["79,91,160", "99,102,241", "129,140,248"], "work": ["30,110,120", "20,140,150", "56,160,190"],
+                 "deep": "18,24,42", "accent": "#818cf8", "accent2": "#5eb6c9"},
+}
+
 SCHEMA = [
     {"id": "general", "title": "General", "icon": "user", "fields": [
         {"path": "assistant.name", "label": "Assistant name", "type": "text"},
@@ -327,19 +352,15 @@ SCHEMA = [
          "options": ["vivid", "light", "dark"],
          "help": "vivid = colourful night look (indigo to teal); light = navy panels on a pale page; "
                  "dark = the same index on the background colour above"},
+        {"path": "dashboard.theme.palette", "label": "Colour theme", "type": "select", "default": "aurora",
+         "options": list(PALETTES), "help": "The colours of the vivid look — or click one of the themes above"},
         {"path": "dashboard.theme.tilt", "label": "Tilt the panels (3D)", "type": "bool", "default": True,
          "help": "Vivid look: Personal and Work lean towards each other. Off = flat panels, the raised cards stay"},
         {"path": "dashboard.theme.rows", "label": "Files shown per folder before “more”", "type": "number", "min": 3,
          "max": 40, "step": 1, "default": 6},
     ]},
 ]
-PRESETS = {
-    "Nebula (default)": {"accent": "#8b7bff", "accent2": "#4cc9f0", "background": "#03040a"},
-    "Aurora": {"accent": "#52ffa8", "accent2": "#4cc9f0", "background": "#020a0a"},
-    "Solar": {"accent": "#ffb347", "accent2": "#ff5f6d", "background": "#0a0503"},
-    "Westcon blue": {"accent": "#1f8fff", "accent2": "#00c2ff", "background": "#02060f"},
-    "Monochrome": {"accent": "#e6e6e6", "accent2": "#9aa0b4", "background": "#050505"},
-}
+PRESETS = {p["label"]: {"palette": k, "swatch": p} for k, p in PALETTES.items()}
 
 FIELD_BY_PATH = {f["path"]: f for s in SCHEMA for f in s["fields"]}
 
@@ -703,7 +724,9 @@ def theme() -> dict:
     except Exception:
         t = {}
     defaults = {f["path"].split(".")[-1]: f.get("default") for f in SCHEMA[-1]["fields"]}
-    return {**defaults, **{k: v for k, v in t.items() if v is not None}}
+    out = {**defaults, **{k: v for k, v in t.items() if v is not None}}
+    out["colors"] = PALETTES.get(str(out.get("palette")), PALETTES["aurora"])
+    return out
 
 
 def disabled(kind: str, cfg=None) -> set[str]:

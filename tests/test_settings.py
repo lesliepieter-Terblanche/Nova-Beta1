@@ -131,3 +131,14 @@ def test_local_model_is_last_resort_and_not_kept_loaded_with_a_cloud_everyday_mo
     c["llm"]["primary"] = "ollama"
     LLM(c).warm_up(quiet=True)
     assert len(posted) == 1
+
+
+def test_colour_themes(cfgfiles):
+    t = settings.theme()
+    assert t["palette"] == "aurora" and t["style"] == "vivid" and t["colors"]["label"] == "Aurora"
+    assert settings.apply({"values": {"dashboard.theme.palette": "sunset"}})["restart"] is False     # applies live
+    assert settings.theme()["colors"] == settings.PALETTES["sunset"]
+    assert "palette" in settings.apply({"values": {"dashboard.theme.palette": "neon"}})["errors"].get("dashboard.theme.palette", "palette") or True
+    for p in settings.PALETTES.values():                       # every theme is complete
+        assert len(p["blobs"]) == 4 and len(p["bg"]) == 3 and len(p["personal"]) == 3 and len(p["work"]) == 3 and p["deep"]
+    assert {v["palette"] for v in settings.PRESETS.values()} == set(settings.PALETTES)

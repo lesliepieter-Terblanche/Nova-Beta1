@@ -884,6 +884,19 @@
     border-radius: 14px; font-size: 14px; line-height: 1.45; color: var(--text); border: 1px solid var(--st-ip); background: rgba(30,24,70,.95) !important; cursor: pointer; }
   .notice.show { display: block; }
   .notice button { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line-strong); background: none; color: var(--text); cursor: pointer; }
+  /* v2.26: colour themes — every colour of the vivid look comes from these variables (Settings → Appearance) */
+  body.vivid { --b1: 150,110,255; --b2: 255,90,170; --b3: 40,220,200; --b4: 70,150,255; --bg1: #1a1446; --bg2: #0f2147; --bg3: #0b2c3d;
+    --p1: 124,92,255; --p2: 192,92,255; --p3: 255,95,162; --w1: 20,184,166; --w2: 34,211,238; --w3: 96,165,250; --deep: 30,24,70;
+    --personal: rgb(var(--p1)); --work: rgb(var(--w2)); --glass-strong: rgba(var(--deep),.92);
+    background: radial-gradient(700px 520px at 28% 42%, rgba(var(--b1),.75), transparent 62%), radial-gradient(760px 560px at 70% 38%, rgba(var(--b2),.55), transparent 62%),
+      radial-gradient(900px 620px at 62% 88%, rgba(var(--b3),.55), transparent 62%), radial-gradient(700px 500px at 12% 92%, rgba(var(--b4),.5), transparent 62%),
+      linear-gradient(160deg, var(--bg1), var(--bg2) 60%, var(--bg3)); background-attachment: fixed; }
+  body.vivid .pane.personal .dom { background: linear-gradient(100deg, rgba(var(--p1),.8), rgba(var(--p2),.72) 60%, rgba(var(--p3),.74)); }
+  body.vivid .pane.work .dom { background: linear-gradient(100deg, rgba(var(--w1),.8), rgba(var(--w2),.72) 60%, rgba(var(--w3),.74)); }
+  body.vivid .glass.stage-card, body.vivid .panel, body.vivid .ctx, body.vivid .notice { background: rgba(var(--deep),.94) !important; }
+  body.vivid .donut::before { background: rgba(var(--deep),.85); }
+  body.vivid .stats .stat .n { color: color-mix(in srgb, rgb(var(--p1)) 55%, #fff); }
+  body.vivid .ask button.send { background: linear-gradient(135deg, rgb(var(--p1)), rgb(var(--w2))); }
 </style>
 </head>
 <body>
@@ -1347,6 +1360,13 @@ async function applyTheme() {
   document.body.classList.toggle("light", light);
   document.body.classList.toggle("vivid", t.style !== "dark" && t.style !== "light");
   document.body.classList.toggle("tilt", t.tilt !== false);
+  const c = t.colors, bs = document.body.style;
+  if (c) {
+    c.blobs.forEach((v, i) => bs.setProperty("--b" + (i + 1), v)); c.bg.forEach((v, i) => bs.setProperty("--bg" + (i + 1), v));
+    c.personal.forEach((v, i) => bs.setProperty("--p" + (i + 1), v)); c.work.forEach((v, i) => bs.setProperty("--w" + (i + 1), v));
+    bs.setProperty("--deep", c.deep); document.body.dataset.palette = t.palette || "aurora";
+    if (t.style !== "dark" && t.style !== "light") { root.setProperty("--accent", c.accent); root.setProperty("--accent-2", c.accent2); STATUS_COLORS.idle = c.accent; STATUS_COLORS.listening = c.accent2; }
+  }
   if (light) { root.removeProperty("--bg"); document.body.style.background = ""; }
   else { root.setProperty("--bg", t.background); document.body.style.background = t.background; }
   STATUS_COLORS.idle = t.accent; STATUS_COLORS.listening = t.accent2;

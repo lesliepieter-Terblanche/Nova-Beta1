@@ -172,6 +172,19 @@
     .routine { grid-template-columns: 1fr 1fr; }
     header h1 small { display: none; }
   }
+  /* the same colour theme as the dashboard (Appearance → Colour themes) */
+  body.vivid { --b1: 150,110,255; --b2: 255,90,170; --b3: 40,220,200; --b4: 70,150,255; --bg1: #1a1446; --bg2: #0f2147; --bg3: #0b2c3d; --p1: 124,92,255; --w2: 34,211,238; --deep: 30,24,70;
+    --bg: var(--bg1); --glass: rgba(255,255,255,.07); --glass-2: rgba(255,255,255,.06); --line: rgba(255,255,255,.15); --line-strong: rgba(255,255,255,.3); --text: #f4f2ff; --muted: #bcb6e2;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2) 60%, var(--bg3)) fixed; }
+  body.vivid::before { background: radial-gradient(760px 560px at 22% 30%, rgba(var(--b1),.6), transparent 62%), radial-gradient(800px 600px at 82% 20%, rgba(var(--b2),.42), transparent 62%),
+      radial-gradient(900px 640px at 66% 96%, rgba(var(--b3),.42), transparent 62%), radial-gradient(700px 520px at 6% 96%, rgba(var(--b4),.4), transparent 62%); }
+  body.vivid .glass { box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 22px 40px -16px rgba(5,0,30,.65); backdrop-filter: blur(20px) saturate(160%); }
+  body.vivid header { background: rgba(var(--deep),.55); }
+  body.vivid nav button.on { background: linear-gradient(100deg, rgba(var(--p1),.55), rgba(var(--w2),.35)); border-color: rgba(255,255,255,.3); }
+  body.vivid input, body.vivid select, body.vivid textarea { background-color: rgba(var(--deep),.55); border-color: rgba(255,255,255,.2); color: var(--text); }
+  body.vivid select option { background: rgb(var(--deep)); }
+  body.vivid .btn.primary { background: linear-gradient(135deg, rgb(var(--p1)), rgb(var(--w2))); color: #fff; }
+  body.vivid .banner, body.vivid .restarting { background: rgba(var(--deep),.95); }
 </style>
 </head>
 <body>
@@ -236,6 +249,7 @@ async function load() {
   S = await api("/api/settings");
   routines = JSON.parse(JSON.stringify(S.routines || []));
   applyThemeVars(S.values);
+  applyPalette(S.values["dashboard.theme.style"] ?? "vivid", S.values["dashboard.theme.palette"] ?? "aurora");
   const tabs = [
     { id: "keys", title: "API keys", icon: "key" },
     ...S.schema.filter((s) => s.id !== "appearance").map((s) => ({ id: s.id, title: s.title, icon: s.icon })),
@@ -283,7 +297,7 @@ const INTRO = {
   presence: "Nova notices when you sit down (welcome back, morning briefing) and when you walk away (stops talking, keeps messages for you, can lock the PC). Face detection runs on your PC; no pictures are kept. Typing also counts as being here.",
   gestures: "Control your PC with your hand through the webcam. HAND MODE (default): 🖐 move your hand left / right / up / down = the cursor follows, and a label pops up saying what's under it (📁 folder, 📄 file, 🔗 link, 🔘 button) · ✊ close your hand = click (close twice quickly = open) · ✊ keep it closed and move = drag · 👈 swipe left = back · 👉 swipe right = the Nova dashboard · 🔍 push your hand towards the camera = zoom in, pull it back = zoom out · 👍 hold = Enter · 👎 hold = Delete (when Nova is asking you something, 👍 = yes and 👎 = no) · ✌️ held = listen, ✌️ moving up/down = scroll. Tip: sit about an arm's length away with light on your hand; make 'Hand area' smaller if you have to stretch. Runs on your PC only.",
   globe: "A live 3D globe with real planes, ships, satellites, earthquakes and weather. Say “show me Cape Town on the globe” or “what planes are overhead?”. Needs Node.js 24 (nodejs.org).",
-  appearance: "Colours and motion of the 3D brain. These apply instantly — no restart needed.",
+  appearance: "The look of the dashboard and of this page. Pick a colour theme — it applies instantly, no restart needed.",
 };
 const TESTS = { voice: [["voice", "Test voice"], ["elevenlabs", "Check ElevenLabs credits"]],
   brain: [["ollama", "Test local model"], ["gemini", "Test Gemini"], ["groq", "Test Groq"], ["xai", "Test Grok"]],
@@ -544,15 +558,17 @@ $("#main").addEventListener("click", (e) => {
 });
 
 // ── appearance ────────────────────────────────────────
+const swatch = (c) => `background:radial-gradient(60px 44px at 25% 40%, rgba(${c.blobs[0]},.8), transparent 70%),radial-gradient(60px 44px at 78% 35%, rgba(${c.blobs[1]},.6), transparent 70%),radial-gradient(70px 50px at 60% 95%, rgba(${c.blobs[2]},.6), transparent 70%),linear-gradient(160deg, ${c.bg[0]}, ${c.bg[2]})`;
+const band = (g) => `linear-gradient(100deg, rgb(${g[0]}), rgb(${g[1]}) 60%, rgb(${g[2]}))`;
 function appearanceExtras() {
-  return `<div class="card glass"><h3>Presets</h3><div class="presets">${Object.entries(S.presets).map(([n, p]) =>
-    `<button class="preset" data-preset="${esc(n)}"><span class="sw" style="background:radial-gradient(circle at 30% 40%, ${p.accent} 0 8%, transparent 9%),radial-gradient(circle at 70% 60%, ${p.accent2} 0 6%, transparent 7%),radial-gradient(ellipse at 50% 50%, ${p.accent}55, ${p.background} 70%)"></span>${esc(n)}</button>`).join("")}</div></div>
+  return `<div class="card glass"><h3>Colour themes</h3><div class="presets">${Object.entries(S.presets).map(([n, p]) =>
+    `<button class="preset" data-preset="${esc(n)}"><span class="sw" style="${swatch(p.swatch)}"><i style="position:absolute;left:8px;right:52%;top:10px;height:9px;border-radius:4px;background:${band(p.swatch.personal)}"></i><i style="position:absolute;left:52%;right:8px;top:10px;height:9px;border-radius:4px;background:${band(p.swatch.work)}"></i></span>${esc(n)}</button>`).join("")}</div></div>
     <div class="card glass"><h3>Preview</h3><div class="preview" id="preview"></div></div>`;
 }
 $("#main").addEventListener("click", (e) => {
   const b = e.target.closest("[data-preset]"); if (!b) return;
   const p = S.presets[b.dataset.preset];
-  for (const [k, v] of Object.entries(p)) {
+  for (const [k, v] of Object.entries({ palette: p.palette, style: "vivid" })) {
     const id = "f-dashboard-theme-" + k; const el = document.getElementById(id); if (!el) continue;
     el.value = v; const m = el.parentElement.querySelector(`[data-mirror="${id}"]`); if (m) m.value = v; onFieldChange(el.closest(".field"));
   }
@@ -561,16 +577,27 @@ function current(path) { const f = FIELDS()[path]; return path in changes.values
 function updatePreview() {
   const el = $("#preview"); if (!el) return;
   const a = current("dashboard.theme.accent"), a2 = current("dashboard.theme.accent2"), bg = current("dashboard.theme.background");
-  const bloom = 0.5, labels = true, light = current("dashboard.theme.style") !== "dark";
-  const g = (c, s) => `box-shadow:0 0 ${8 + 18 * bloom}px ${2 + 6 * bloom}px ${c};background:${c};width:${s}px;height:${s}px`;
-  const stars = Array.from({ length: 0 }, (_, i) =>
-    `<span class="orb" style="left:${(i * 37) % 100}%;top:${(i * 53) % 100}%;width:2px;height:2px;background:#c8d0ff;opacity:.6"></span>`).join("");
-  el.style.cssText = `--p-accent:${a};background:${light ? "linear-gradient(160deg,#f1f7fb,#dcebf4)" : `radial-gradient(ellipse at center, ${a}22, ${bg} 70%), ${bg}`}`;
-  el.innerHTML = stars + `<span class="orb" style="left:22%;top:30%;${g(a2, 12)}"></span><span class="orb" style="left:70%;top:24%;${g("#ffd166", 10)}"></span>
-    <span class="orb" style="left:76%;top:68%;${g("#ff8a5c", 11)}"></span><span class="orb" style="left:30%;top:72%;${g(a, 9)}"></span>
-    <span class="orb core" style="box-shadow:0 0 ${20 + 40 * bloom}px ${6 + 14 * bloom}px ${a}"></span><span class="ring"></span>
-    ${labels ? `<span class="lbl" style="left:14%;top:18%;border:1px solid ${a2}">Websites</span><span class="lbl" style="left:64%;top:78%;border:1px solid #ff8a5c">People</span>` : ""}`;
-  applyThemeVars({ "dashboard.theme.accent": a, "dashboard.theme.accent2": a2, "dashboard.theme.background": bg });
+  const style = current("dashboard.theme.style"), pal = current("dashboard.theme.palette");
+  const c = (Object.values(S.presets).find((p) => p.palette === pal) || Object.values(S.presets)[0]).swatch;
+  const vivid = style !== "dark" && style !== "light";
+  const page = vivid ? swatch(c).replace(/60px 44px/g, "320px 200px").replace("70px 50px", "380px 220px") : style === "light" ? "background:linear-gradient(160deg,#f1f7fb,#dcebf4)" : `background:${bg}`;
+  const pane = (g, x) => `<div style="position:absolute;top:44px;bottom:16px;${x};border-radius:12px;border:1px solid rgba(255,255,255,.25);background:${vivid ? "rgba(255,255,255,.07)" : "#121e33"};overflow:hidden">
+    <div style="height:30px;background:${vivid ? band(g) : "#1c2c48"}"></div>${[0, 1, 2].map((i) => `<div style="margin:10px 12px 0;height:26px;border-radius:8px;background:rgba(255,255,255,.1);border-left:4px solid rgb(${c.blobs[(i + (x.includes("left:4") ? 0 : 1)) % 4]})"></div>`).join("")}</div>`;
+  el.style.cssText = `--p-accent:${a};${page}`;
+  el.innerHTML = `<div style="position:absolute;left:4%;right:4%;top:10px;height:24px;border-radius:9px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)"></div>`
+    + pane(c.personal, "left:4%;right:52%") + pane(c.work, "left:52%;right:4%");
+  applyPalette(style, pal);
+  applyThemeVars({ "dashboard.theme.accent": vivid ? c.accent : a, "dashboard.theme.accent2": vivid ? c.accent2 : a2, "dashboard.theme.background": bg });
+}
+function applyPalette(style, pal) {                 // this page wears the theme you pick
+  const p = Object.values(S.presets || {}).find((x) => x.palette === pal) || Object.values(S.presets || {})[0];
+  const vivid = style !== "dark" && style !== "light" && !!p;
+  document.body.classList.toggle("vivid", vivid);
+  if (!vivid) return;
+  const c = p.swatch, b = document.body.style;
+  c.blobs.forEach((v, i) => b.setProperty("--b" + (i + 1), v)); c.bg.forEach((v, i) => b.setProperty("--bg" + (i + 1), v));
+  b.setProperty("--p1", c.personal[0]); b.setProperty("--w2", c.work[1]); b.setProperty("--deep", c.deep);
+  b.setProperty("--accent", c.accent); b.setProperty("--accent-2", c.accent2);
 }
 function applyThemeVars(v) {
   const r = document.documentElement.style;

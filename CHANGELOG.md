@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.26.0] — 2026-10-02
+### Added — colour themes
+- **Five colour themes** for the dashboard: Aurora (purple · pink · teal), Ocean (blues and greens), Sunset (coral ·
+  orange · violet), Forest (greens and gold) and Midnight (calm, low colour for late hours).
+  Settings → Appearance → *Colour themes*: click one, see it in the preview, Save — it applies at once, no restart.
+- **The Settings page wears the same theme** (background, cards, buttons), and so do the side panel, menus and the
+  answers window on the dashboard.
+- The old orb presets are gone; the accent and background colour fields remain for the *light* and *dark* looks.
+
 ## [2.25.1] — 2026-10-02
 ### Fixed
 - Messages from Nova (the reorganisation plan is ready, the everyday model was switched…) now also appear as a banner

@@ -30,7 +30,8 @@ PORT = 5555
 TOOLS_URL = "https://dl.google.com/android/repository/platform-tools-latest-{os}.zip"
 KEYS = {"home": 3, "back": 4, "enter": 66, "recents": 187, "apps": 187, "power": 26, "wake": 224, "sleep": 223,
         "volume_up": 24, "volume_down": 25, "mute": 164, "play_pause": 85, "next": 87, "previous": 88, "delete": 67,
-        "tab": 61, "escape": 111, "menu": 82, "camera": 27, "search": 84, "notifications": 83}
+        "tab": 61, "escape": 111, "menu": 82, "answer": 5, "hang_up": 6, "end_call": 6, "stop": 86, "play": 126,
+        "pause": 127, "camera": 27, "search": 84, "notifications": 83}
 APPS = {"whatsapp": "com.whatsapp", "whatsapp business": "com.whatsapp.w4b", "chrome": "com.android.chrome",
         "gmail": "com.google.android.gm", "maps": "com.google.android.apps.maps", "youtube": "com.google.android.youtube",
         "camera": "com.sec.android.app.camera", "gallery": "com.sec.android.gallery3d", "settings": "com.android.settings",
@@ -351,6 +352,86 @@ class Phone:
                                    "accuracy": round(float(acc.group(1).replace(",", "."))) if acc else None})
         return next((found[k] for k in ("fused", "gps", "network") if k in found), None) or next(iter(found.values()), None)
 
+    # ── calls, contacts, media, camera ─────────────────────
+    def contacts(self) -> list[tuple[str, str]]:
+        """(name, number) for every phone number in the phone's contacts."""
+        out = self.sh("content query --uri content://com.android.contacts/data/phones "
+                      "--projection display_name:data1", timeout=40)
+        rows = []
+        for line in out.splitlines():
+            m = re.search(r"display_name=(.*?), data1=(.+)$", line.strip())
+            if m and m.group(1) not in ("NULL", ""):
+                rows.append((m.group(1).strip(), re.sub(r"[^\d+]", "", m.group(2))))
+        return [r for r in dict.fromkeys(rows) if len(r[1]) >= 3]
+
+    def find_contact(self, name: str) -> list[tuple[str, str]]:
+        """Contacts matching a name: an exact name wins, else every word must be in the name."""
+        want = name.lower().strip()
+        words = [w for w in re.split(r"\W+", want) if w]
+        people = self.contacts()
+        exact = [c for c in people if c[0].lower() == want]
+        return exact or [c for c in people if words and all(w in re.split(r"\W+", c[0].lower()) for w in words)]
+
+    def call_state(self) -> str:
+        """idle | ringing | in_call"""
+        out = self.sh("dumpsys telephony.registry | grep -m 3 mCallState")
+        states = [int(x) for x in re.findall(r"mCallState=(\d)", out)]
+        return "ringing" if 1 in states else "in_call" if 2 in states else "idle"
+
+    def caller(self) -> str:
+        """Who is ringing, from the phone app's own notification ('' when it doesn't say)."""
+        for n in self.notifications():
+            if MESSAGING.get(n["app"]) == "Phone" and n["title"] and not NOISE.match(n["title"]):
+                t = n["title"]
+                if re.search(r"incoming|call from", t, re.I) and n["text"]:
+                    t = n["text"]
+                return re.sub(r"^(incoming (voice |video )?call( from)?:?\s*)", "", t, flags=re.I).strip()
+        return ""
+
+    def tap_text(self, *labels: str) -> str:
+        """Tap the first button on screen whose text is one of these (no model involved). Returns its text or ''."""
+        want = [x.lower() for x in labels]
+        for e in self.screen():
+            if e["tap"] and e["text"].strip().lower() in want:
+                self.tap(e["x"], e["y"])
+                return e["text"]
+        return ""
+
+    def now_playing(self) -> str:
+        out = self.sh("dumpsys media_session", timeout=30)
+        best = ""
+        for block in re.split(r"\n(?=\s{2,4}\S+ \S+/\S+ \(userId=)", out):
+            m = re.search(r"metadata:.*?description=(.+)", block)
+            if m and "null, null" not in m.group(1):
+                title = ", ".join(x.strip() for x in m.group(1).split(",")[:2] if x.strip() and x.strip() != "null")
+                if re.search(r"state=PlaybackState \{state=(3|PLAYING)", block):
+                    return title
+                best = best or title
+        return best
+
+    def bluetooth_connected(self) -> list[str]:
+        """Names of Bluetooth devices connected right now (best effort: Android prints this differently per version)."""
+        out = self.sh("dumpsys bluetooth_manager", timeout=30)
+        names = dict(re.findall(r"((?:[0-9A-FX]{2}:){5}[0-9A-FX]{2})\s*\[[^\]]*\]\s*(.+)", out))
+        live = set(re.findall(r"(?:mActiveDevice|mCurrentDevice|Connected device|ActiveDevice)[:=]\s*((?:[0-9A-FX]{2}:){5}[0-9A-FX]{2})", out))
+        live |= set(re.findall(r"((?:[0-9A-FX]{2}:){5}[0-9A-FX]{2})[^\n]*\b(?:STATE_CONNECTED|state=Connected|: Connected)\b", out))
+        return sorted({names.get(a, a).strip() for a in live})
+
+    def take_photo(self, dest_dir: Path, wait: float = 3.0) -> Path | None:
+        """Open the camera, press the shutter and bring the new picture to the PC."""
+        before = set(self.latest_photos(3))
+        self.wake()
+        self.sh("am start -a android.media.action.STILL_IMAGE_CAMERA")
+        time.sleep(wait)
+        self.sh("input keyevent 27")
+        time.sleep(wait)
+        new = [x for x in self.latest_photos(3) if x not in before]
+        if not new:                                   # some cameras use the volume key as the shutter
+            self.sh("input keyevent 24")
+            time.sleep(wait)
+            new = [x for x in self.latest_photos(3) if x not in before]
+        return self.pull(new[0], dest_dir / new[0].rsplit("/", 1)[-1]) if new else None
+
     def messages(self, app: str = "", sender: str = "") -> list[dict]:
         """Messages waiting on the phone (from its notifications): WhatsApp, SMS, Telegram, email, missed calls…"""
         want = MESSAGE_APPS.get(app.lower().strip(), app.strip()).lower()
@@ -474,7 +555,7 @@ class Phone:
         out = self.sh("dumpsys notification --noredact", timeout=40)
         items, cur = [], None
         for line in out.splitlines():
-            m = re.search(r"NotificationRecord\(\S+: pkg=(\S+)", line)
+            m = re.search(r"NotificationRecord\(\S+: pkg=([^\s)]+)", line)
             if m:
                 cur = {"app": m.group(1), "title": "", "text": ""}
                 items.append(cur)

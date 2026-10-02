@@ -1203,6 +1203,8 @@ class Dashboard:
                         calls = {"ring": ("phone_ring", {}), "reconnect": ("phone_reconnect", {}),
                                  "screenshot": ("phone_screenshot", {}), "health": ("phone_health", {}),
                                  "locate": ("phone_locate", {}),
+                                 "mirror": ("phone_show_screen", {}), "unmirror": ("phone_hide_screen", {}),
+                                 "photo": ("phone_take_photo", {}),
                                  "routine": ("phone_run_routine", {"name": str(body.get("name", ""))})}
                         if what not in calls or calls[what][0] not in REGISTRY:
                             return self._json({"error": "I don't know that phone action."}, 400)

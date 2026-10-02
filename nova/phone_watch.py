@@ -17,6 +17,10 @@ _seen: set | None = None            # notifications already there / already anno
 _health_at = 0.0
 _started = False
 last_message: dict = {}             # the newest message that came in — "reply to that" answers this one
+missed: list[dict] = []             # what came in since you last asked (names and apps only, kept in memory)
+_prev: dict | None = None           # charging / Wi-Fi / Bluetooth at the last look, for routines that start themselves
+_call = "idle"
+_jobs = threading.Lock()            # one scheduled message / self-starting routine at a time
 
 
 def opt(name: str, default):
@@ -62,6 +66,8 @@ def announce(fresh: list[dict]) -> str:
         return ""
     last_message.clear()
     last_message.update(fresh[-1])
+    missed.extend({"app": m["app"], "from": m["from"], "t": time.time()} for m in fresh)
+    del missed[:-200]
     if len(fresh) <= 2:
         text = " ".join(f"📱 {m['app']} from {m['from']}: {m['text'][:220]}".rstrip(": ") + ("" if m["text"][-1:] in ".!?" else ".")
                         for m in fresh)
@@ -93,6 +99,12 @@ def tick(p: ph.Phone | None = None) -> None:
             state["told_lost"] = True
             tell("I can't reach your phone. I'll keep trying — check that Tailscale is on on the phone. If the phone "
                  "was restarted, plug it into the PC and say 'set up my phone'.", speak=False)
+        try:                                            # a message that is due still gets its "couldn't send" report
+            from . import phone_schedule
+            if phone_schedule.due():
+                _background(lambda: phone_schedule.run_due(lambda text: tell(text, speak=False), p=p))
+        except Exception:
+            pass
         return
     if state["told_lost"]:
         tell("Your phone is connected again.", speak=False)
@@ -109,6 +121,14 @@ def tick(p: ph.Phone | None = None) -> None:
                     tell(f"Your phone's battery is at {level} percent — time to charge it.")
             elif level is not None and (level > int(opt("low_battery", 15)) + 5 or h.get("charging")):
                 state["low"] = False
+            target = int(opt("charged_alert", 80) or 0)
+            if target and h.get("charging") and level is not None and level >= target:
+                if not state.get("charged"):
+                    state["charged"] = True
+                    tell(f"Your phone has charged to {level} percent — you can unplug it.")
+            elif not h.get("charging") or (level is not None and level < target - 5):
+                state["charged"] = False
+            _automatic(p, h)
         except Exception as e:
             print(f"[phone] health check failed: {e}")
     if opt("alerts", True):
@@ -116,6 +136,77 @@ def tick(p: ph.Phone | None = None) -> None:
             announce(new_messages(p))
         except Exception as e:
             print(f"[phone] couldn't read notifications: {e}")
+
+
+def _background(job) -> None:
+    def go():
+        if not _jobs.acquire(blocking=False):
+            return
+        try:
+            job()
+        except Exception as e:
+            print(f"[phone] {e}")
+        finally:
+            _jobs.release()
+    threading.Thread(target=go, daemon=True, name="phone-job").start()
+
+
+def _automatic(p: ph.Phone, h: dict, wait: bool = False) -> None:
+    """Scheduled messages that are due, and routines whose time or event has come."""
+    global _prev
+    from . import phone_routines, phone_schedule
+    cur = {"charging": bool(h.get("charging")), "battery": h.get("battery"), "wifi": h.get("wifi") or ""}
+    if phone_routines.needs_bluetooth():
+        try:
+            cur["bluetooth"] = p.bluetooth_connected()
+        except Exception:
+            cur["bluetooth"] = (_prev or {}).get("bluetooth", [])
+    names = phone_routines.due(_prev, cur)
+    _prev = cur
+
+    def work():
+        for name in names:
+            tell(f"📱 Starting '{name}' on your phone.", speak=False)
+            tell(phone_routines.run(name, p), speak=False)
+        phone_schedule.run_due(lambda text: tell(text, speak=False), p=p)
+    if names or phone_schedule.due():
+        work() if wait else _background(work)
+
+
+def check_call(p: ph.Phone | None = None) -> str:
+    """A quick look for an incoming call (every few seconds): says who is calling, once per call."""
+    global _call
+    p = p or ph.phone()
+    now = p.call_state()
+    if now == "ringing" and _call != "ringing":
+        who = ""
+        try:
+            who = p.caller()
+        except Exception:
+            pass
+        missed.append({"app": "Phone", "from": who or "someone", "t": time.time()})
+        tell(f"📞 {who or 'Someone'} is calling your phone. Say 'answer the call' or 'decline the call'.",
+             speak=bool(opt("alerts_speak", True)))
+    _call = now
+    return now
+
+
+def missed_summary(clear: bool = True) -> str:
+    """'On your phone: 3 WhatsApp messages (Karen 2, Sam), 1 call (Fritz).' — '' when nothing came in."""
+    if not missed:
+        return ""
+    groups: dict[str, dict[str, int]] = {}
+    for m in missed:
+        groups.setdefault(m["app"], {}).setdefault(m["from"], 0)
+        groups[m["app"]][m["from"]] += 1
+    parts = []
+    for app, who in groups.items():
+        n = sum(who.values())
+        kind = "call" if app == "Phone" else f"{app} message"
+        parts.append(f"{n} {kind}{'s' if n != 1 else ''} (" + ", ".join(f"{k} {c}" if c > 1 else k for k, c in list(who.items())[:5]) + ")")
+    if clear:
+        missed.clear()
+    return "On your phone: " + ", ".join(parts) + "."
 
 
 def snapshot() -> dict:
@@ -127,18 +218,40 @@ def snapshot() -> dict:
             "online": bool(state["online"]), "checked": state["checked"], **{k: h.get(k) for k in (
                 "battery", "charging", "temperature", "storage_free_gb", "storage_total_gb", "storage_used_pct",
                 "memory_free_pct", "wifi", "signal")},
-            "busy": ph._busy.locked(), "alerts": bool(opt("alerts", True)), "routines": list(phone_routines.load())}
+            "busy": ph._busy.locked(), "alerts": bool(opt("alerts", True)), "routines": list(phone_routines.load()),
+            "scheduled": len(_scheduled()), "mirror": _mirroring(), "call": _call}
+
+
+def _scheduled() -> list:
+    try:
+        from . import phone_schedule
+        return phone_schedule.load()
+    except Exception:
+        return []
+
+
+def _mirroring() -> bool:
+    try:
+        from . import phone_mirror
+        return phone_mirror.running()
+    except Exception:
+        return False
 
 
 def worker() -> None:
     time.sleep(20)                                      # let Nova finish starting
+    last = 0.0
     while True:
         try:
             if opt("watch", True):
-                tick()
+                if time.time() - last >= max(10, float(opt("check_seconds", 30))):
+                    last = time.time()
+                    tick()
+                elif state["online"] and opt("call_alerts", True) and ph.phone().address():
+                    check_call()
         except Exception as e:
             print(f"[phone] watcher: {e}")
-        time.sleep(max(10, float(opt("check_seconds", 30))))
+        time.sleep(5)
 
 
 def start() -> None:

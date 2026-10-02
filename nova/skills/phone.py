@@ -15,7 +15,10 @@ register_group("phone", ["my phone", "the phone", "on my phone", "phone's", "gal
                          "dark mode", "mobile data", "telegram message", "message to", "messages from", "reply to",
                          "what did", "any messages", "new messages", "missed call", "phone routine", "routine",
                          " mode", "signal message", "teams message", "phone health", "phone storage", "flashlight",
-                         "torch"])
+                         "torch", "answer the", "hang up", "decline the", "on speaker", "phone screen", "take a photo",
+                         "take a picture", "selfie", "navigate to", "directions to", "clipboard to", "to my phone",
+                         "code from", "verification code", "one-time", "otp", "what's playing", "whats playing",
+                         "next song", "next track", "scheduled message", "missed on", "starts by itself"])
 
 
 def _ready() -> str:
@@ -198,20 +201,278 @@ def phone_open_link(url: str) -> str:
 
 @tool(group="phone", confirm=True)
 def phone_call(number: str) -> str:
-    """Start a phone call from the user's phone.
+    """Start a phone call from the user's phone — to a number or to someone in the phone's contacts by name.
     Args:
-        number: the number to call, digits with optional +
+        number: the number (digits with optional +) OR the contact's name, e.g. "Sam Dlamini"
     """
     if err := _ready():
         return err
     import re
-    num = re.sub(r"[^\d+]", "", number)
+    p = ph.phone()
+    who = number.strip()
+    num = re.sub(r"[^\d+]", "", who)
+    if re.search(r"[A-Za-z]", who):
+        try:
+            found = p.find_contact(who)
+        except Exception as e:
+            return f"ERROR: I couldn't read the phone's contacts ({e})."
+        numbers = list(dict.fromkeys(n for _, n in found))
+        if not found:
+            return f"I couldn't find '{who}' in your phone's contacts. Say the name as it is saved, or give me the number."
+        if len(numbers) > 1:
+            return ("Which one? " + "; ".join(f"{n} on {x}" for n, x in found[:6]) +
+                    ". Tell me the full name or the number.")
+        who, num = found[0][0], numbers[0]
+    else:
+        who = num
     if len(num) < 3:
         return "That doesn't look like a phone number."
-    p = ph.phone()
     p.wake()
     p.sh(f"am start -a android.intent.action.CALL -d tel:{num}")
-    return f"Calling {num} from your phone."
+    return f"Calling {who} from your phone." if who == num else f"Calling {who} ({num}) from your phone."
+
+
+@tool(group="phone")
+def phone_call_control(action: str) -> str:
+    """Handle a call on the phone: answer, decline, hang_up, speaker or mute.
+    Args:
+        action: answer | decline | hang_up | speaker | mute
+    """
+    if err := _ready():
+        return err
+    p = ph.phone()
+    a = action.lower().strip().replace(" ", "_")
+    if a == "answer":
+        p.key("answer")
+        return "Answered the call." if p.call_state() == "in_call" else "I pressed answer — check the phone."
+    if a in ("decline", "reject", "hang_up", "end", "end_call", "hangup"):
+        p.key("hang_up")
+        return "Declined the call." if a in ("decline", "reject") else "Hung up."
+    if a in ("speaker", "mute"):
+        try:
+            hit = p.tap_text(a, "speaker" if a == "speaker" else "mute", "Speaker" if a == "speaker" else "Mute")
+        except Exception as e:
+            return f"ERROR: {e}"
+        return f"Tapped {hit} on the call." if hit else f"I can't see a {a} button — is the call on the screen?"
+    return "I can answer, decline, hang up, or switch speaker / mute."
+
+
+# ── see and control the phone from the PC ─────────────────
+@tool(group="phone")
+def phone_show_screen() -> str:
+    """Show the phone's live screen in a window on the PC (mouse and keyboard work in it)."""
+    from .. import phone_mirror
+    try:
+        return phone_mirror.start()
+    except Exception as e:
+        return (f"ERROR: I couldn't open the phone's screen ({e}). If the download is blocked, get scrcpy from "
+                "github.com/Genymobile/scrcpy, unzip it and put the path to scrcpy.exe in Settings → Phone.")
+
+
+@tool(group="phone")
+def phone_hide_screen() -> str:
+    """Close the phone's live screen window on the PC."""
+    from .. import phone_mirror
+    return phone_mirror.stop()
+
+
+@tool(group="phone")
+def phone_take_photo() -> str:
+    """Take a photo with the phone's camera right now and bring it to the PC."""
+    if err := _ready():
+        return err
+    p = ph.phone()
+    if p.status()["locked"]:
+        p.wake()
+    try:
+        shot = p.take_photo(ph.out_dir())
+    except Exception as e:
+        return f"ERROR: {e}"
+    if not shot:
+        return "The camera opened but no new photo appeared — unlock the phone and try again."
+    aid = context.record("image", "Photo from phone", shot, "phone camera")
+    context.attach(shot)
+    try:
+        from .. import cards
+        if aid:
+            cards.show("image", "Photo from your phone", {"id": f"artifact:{aid}", "name": shot.name, "path": str(shot)})
+    except Exception:
+        pass
+    return f"Photo taken and saved on the PC: {shot}. It is showing on the dashboard."
+
+
+# ── timing ────────────────────────────────────────────────
+@tool(group="phone")
+def phone_schedule_message(to: str, text: str, when: str, app: str = "whatsapp") -> str:
+    """Send a message from the phone LATER ("send Sam happy birthday at 7 tomorrow").
+    Args:
+        to: the person as named in that app
+        text: the message, word for word
+        when: date and time as "YYYY-MM-DD HH:MM" (work it out from the current date), or "tomorrow 07:00", "18:30", "in 20 minutes"
+        app: whatsapp, sms, telegram, signal, teams, gmail, outlook…
+    """
+    from .. import phone_schedule
+    at = phone_schedule.parse(when)
+    if not at:
+        return f"I didn't understand the time '{when}'."
+    import datetime as dt
+    if at <= dt.datetime.now():
+        return "That time has already passed."
+    if not to.strip() or not text.strip():
+        return "I need who it is for and what it should say."
+    item = phone_schedule.add(to.strip(), text.strip(), at, app)
+    return (f"Scheduled: {ph.MESSAGE_APPS.get(item['app'].lower(), item['app'])} to {item['to']} on "
+            f"{at:%A %d %B at %H:%M} — \"{item['text'][:120]}\". The phone must be unlocked then; if it is locked I "
+            "keep trying for an hour and tell you.")
+
+
+@tool(group="phone")
+def phone_scheduled() -> str:
+    """The messages waiting to be sent from the phone later."""
+    from .. import phone_schedule
+    items = phone_schedule.load()
+    return "\n".join(f"{i['id']}. {i['at']} — {i['app']} to {i['to']}: {i['text'][:100]}" for i in items) \
+        if items else "No messages are scheduled."
+
+
+@tool(group="phone")
+def phone_cancel_scheduled(which: str) -> str:
+    """Cancel a scheduled phone message.
+    Args:
+        which: its number, the person's name, or "all"
+    """
+    from .. import phone_schedule
+    gone = phone_schedule.cancel(which)
+    return f"Cancelled {len(gone)}: " + "; ".join(f"{g['to']} at {g['at']}" for g in gone) if gone else \
+        "I didn't find a scheduled message like that."
+
+
+@tool(group="phone")
+def phone_routine_trigger(name: str, at: str = "", when: str = "", days: str = "") -> str:
+    """Make a saved phone routine start BY ITSELF at a time and/or when something happens. Empty at and when = stop
+    starting it automatically.
+    Args:
+        name: the routine
+        at: time of day, e.g. "22:00"
+        when: charging | unplugged | battery below 20 | bluetooth <device name> | wifi <network name> | leaving wifi <network name>
+        days: e.g. "weekdays", "weekend", "mon wed fri"; empty = every day
+    """
+    from .. import phone_routines
+    return phone_routines.set_trigger(name, at, when, days)
+
+
+# ── everyday convenience ──────────────────────────────────
+@tool(group="phone")
+def phone_navigate(destination: str) -> str:
+    """Start Google Maps navigation on the phone.
+    Args:
+        destination: an address or place
+    """
+    if err := _ready():
+        return err
+    from urllib.parse import quote_plus
+    p = ph.phone()
+    p.wake()
+    p.sh(f"am start -a android.intent.action.VIEW -d 'google.navigation:q={quote_plus(destination)}'")
+    return f"Navigation to {destination} is starting on your phone."
+
+
+@tool(group="phone")
+def phone_send_clipboard() -> str:
+    """Send what is on the PC's clipboard to the phone: a link opens on the phone, text is typed into the text box
+    that is open on the phone."""
+    if err := _ready():
+        return err
+    import re
+    try:
+        import pyperclip
+        text = (pyperclip.paste() or "").strip()
+    except Exception as e:
+        return f"ERROR: I couldn't read the PC clipboard ({e})."
+    if not text:
+        return "The PC's clipboard is empty."
+    p = ph.phone()
+    p.wake()
+    if re.fullmatch(r"(https?://|www\.)\S+", text):
+        p.open_url(text if "://" in text else "https://" + text)
+        return "Opened the link from your clipboard on the phone."
+    if len(text) > 2000:
+        return "That's too much text to type onto the phone — send it as a file instead."
+    try:
+        box = next((e for e in p.screen() if e["edit"]), None)
+    except Exception:
+        box = None
+    if not box:
+        return "Open the text box on the phone where it should go (a chat, a note, a search bar) and ask me again."
+    if not box.get("focused"):
+        p.tap(box["x"], box["y"])
+        time.sleep(0.6)
+    p.type(text)
+    return "Typed your PC clipboard into the text box on the phone. Nothing was sent."
+
+
+BANK = r"(bank|fnb|absa|nedbank|capitec|standard ?bank|investec|discovery|tymebank|african bank|card|payment|purchase|" \
+       r"transaction|transfer|paypal|payfast|ozow|beneficiary|debit|withdraw)"
+
+
+@tool(group="phone")
+def phone_code() -> str:
+    """Get the newest one-time code (OTP / verification code) that arrived on the phone. It is spoken, shown on the
+    dashboard and copied to the PC clipboard — the digits are never put in the reply. Bank and payment codes are skipped."""
+    if err := _ready():
+        return err
+    import re
+    for n in ph.phone().notifications():
+        text = f"{n['title']} {n['text']}"
+        m = re.search(r"(?<![\d.,])(\d{3}[- ]?\d{3}|\d{4,8})(?![\d.,])", n["text"] or "")
+        if not m or not re.search(r"(code|otp|pin|verif|one[- ]time|passcode|password|login|sign[- ]?in)", text, re.I):
+            continue
+        if re.search(BANK, text, re.I):
+            return ("The newest code is from a bank or payment — I leave those alone. Read that one on the phone "
+                    "yourself.")
+        code = re.sub(r"\D", "", m.group(1))
+        try:
+            import pyperclip
+            pyperclip.copy(code)
+            copied = " and copied to the PC clipboard"
+        except Exception:
+            copied = ""
+        try:
+            from .. import cards
+            cards.show("info", f"Code from {n['title'] or 'your phone'}", {"text": code})
+        except Exception:
+            pass
+        if context.speak_now:
+            context.speak_now("The code is " + " ".join(code) + ".")
+        return f"The code from {n['title'] or 'your phone'} is on the dashboard{copied}. (I don't repeat the digits here.)"
+    return "I don't see a one-time code in the phone's notifications."
+
+
+@tool(group="phone")
+def phone_media(action: str = "what") -> str:
+    """Control what is playing on the phone, or say what it is.
+    Args:
+        action: play | pause | play_pause | next | previous | stop | what
+    """
+    if err := _ready():
+        return err
+    p = ph.phone()
+    a = action.lower().strip().replace(" ", "_")
+    if a in ("what", "whats_playing", "now_playing", ""):
+        title = p.now_playing()
+        return f"Playing on your phone: {title}." if title else "Nothing seems to be playing on your phone."
+    key = {"skip": "next", "back": "previous", "resume": "play", "toggle": "play_pause"}.get(a, a)
+    if key not in ("play", "pause", "play_pause", "next", "previous", "stop") or not p.key(key):
+        return "I can play, pause, skip to next, go to previous or stop."
+    return {"play": "Playing.", "pause": "Paused.", "play_pause": "Done.", "next": "Next track.",
+            "previous": "Previous track.", "stop": "Stopped."}[key]
+
+
+@tool(group="phone")
+def phone_missed() -> str:
+    """What came in on the phone since the user last asked: how many messages and calls, and from whom."""
+    from .. import phone_watch
+    return phone_watch.missed_summary() or "Nothing new has come in on your phone."
 
 
 @tool(group="phone")

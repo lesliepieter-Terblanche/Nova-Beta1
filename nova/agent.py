@@ -77,7 +77,19 @@ DIRECT = [
                 r"(?:phone|cell ?phone|galaxy)(?: please| now)?[.!?]?$", re.I), "phone_ring"),
     (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:locate|track|where(?:'s| is)) my "
                 r"(?:phone|cell ?phone|galaxy)(?: please| now| right now)?[.!?]?$", re.I), "phone_locate"),
+    (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:show|open|mirror|display) (?:me )?(?:my|the) "
+                r"(?:phone|phone'?s|galaxy|cell ?phone)(?:'s)? ?(?:screen)?(?: on (?:the|my) (?:pc|computer|screen))?"
+                r"(?: please| now)?[.!]?$", re.I), "phone_show_screen"),
+    (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:close|hide|stop showing) (?:my|the) "
+                r"(?:phone|phone'?s)(?:'s)? ?screen(?: please| now)?[.!]?$", re.I), "phone_hide_screen"),
+    (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(?:what(?:'s| is) the|read (?:me )?the|get the|give me the)"
+                r" (?:one[- ]time |verification |login |otp )?(?:code|otp|pin)(?: (?:from|on) my phone)?(?: please)?[.!?]?$",
+                re.I), "phone_code"),
+    (re.compile(r"^(?:hey |ok |please )?(?:nova[,!]? )?(?:please )?(answer|decline|reject|hang up|end)"
+                r"(?: (?:the|my|that|this))?(?: (?:call|phone))?(?: please| now)?[.!]?$", re.I), "phone_call_control"),
 ]
+DIRECT_ARGS = {"phone_call_control": lambda m: {"action": {"reject": "decline", "end": "hang_up", "hang up": "hang_up"}.get(
+    m.group(1).lower(), m.group(1).lower())}}
 
 
 # "whatsapp Sam I'm running late" / "send Sam a WhatsApp saying …" → one call to the phone, no improvising.
@@ -216,8 +228,9 @@ class Agent:
 
         for pattern, name in DIRECT:
             t = REGISTRY.get(name)
-            if t is not None and pattern.match(text):
-                out = self._run_tool(session, t, {})
+            hit = pattern.match(text) if t is not None else None
+            if hit:
+                out = self._run_tool(session, t, DIRECT_ARGS[name](hit) if name in DIRECT_ARGS else {})
                 self._remember(session, text, out)
                 return out
 
@@ -360,6 +373,7 @@ Rules:
 - To message someone from the phone (WhatsApp, SMS, Telegram, email…) or reply to them: ONE call to
   phone_send_message. To read what someone said: phone_messages. Any other multi-step phone job: ONE call to
   do_on_phone with the whole task — never tap through it yourself with phone_open_app / phone_read_screen.
+  A message for LATER is phone_schedule_message. A one-time code is phone_code (never say or write the digits).
 - You have a permanent memory. It learns automatically after each conversation; use the remember tool when
   {a.owner} explicitly asks you to remember something, and correct_memory when you are corrected.
 

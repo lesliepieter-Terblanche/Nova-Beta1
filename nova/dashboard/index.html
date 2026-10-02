@@ -797,7 +797,8 @@
   .phcard button { font: 600 11px var(--body); padding: 5px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); color: var(--text); cursor: pointer; }
   .phcard button:hover { background: rgba(255,255,255,.16); } .phcard button:disabled { opacity: .5; cursor: default; }
   .phrout button { border-color: rgba(167,139,250,.5); background: rgba(167,139,250,.14); }
-  .phcard.on #ph-recon { display: none; }
+  .phcard.on #ph-recon { display: none; } .phbtns button { flex: 1 1 28%; font-size: 10.5px; padding: 5px 2px; }
+  .phnote { margin-top: 6px; color: #fcd34d; } .phnote:empty { display: none; }
   .phmsg { margin-top: 7px; color: var(--muted); line-height: 1.35; } .phmsg:empty { display: none; }
   .rail:not(.min) { z-index: 6; }
   .rcol { max-height: none; }
@@ -979,7 +980,8 @@
       <div class="phring" id="ph-ring"><span id="ph-bat">–</span></div>
       <div class="phfacts"><div id="ph-store"></div><div class="phbar"><i id="ph-bar"></i></div><div id="ph-net"></div><div id="ph-temp"></div></div>
     </div>
-    <div class="phbtns"><button data-ph="ring" title="Make the phone ring loudly, even on silent">🔔 Ring</button><button data-ph="locate" title="Show where the phone is on the map">📍 Where</button><button data-ph="screenshot" title="Take a screenshot of the phone">📸 Shot</button><button data-ph="reconnect" id="ph-recon" title="Connect to the phone again">↻ Reconnect</button></div>
+    <div class="phbtns"><button data-ph="ring" title="Make the phone ring loudly, even on silent">🔔 Ring</button><button data-ph="locate" title="Show where the phone is on the map">📍 Where</button><button data-ph="screenshot" title="Take a screenshot of the phone">📸 Shot</button><button data-ph="mirror" id="ph-mirror" title="Show the phone's live screen in a window on this PC">🖥 Screen</button><button data-ph="photo" title="Take a photo with the phone's camera">📷 Photo</button><button data-ph="reconnect" id="ph-recon" title="Connect to the phone again">↻ Reconnect</button></div>
+    <div class="phnote" id="ph-note"></div>
     <div class="phrout" id="ph-rout"></div>
     <div class="phmsg" id="ph-msg"></div>
   </div>
@@ -1480,6 +1482,8 @@ async function loadPhone() {
   $("ph-bar").style.width = (p.storage_used_pct ?? 0) + "%";
   $("ph-net").textContent = p.online ? (p.wifi ? `Wi-Fi · ${p.wifi}` : "Mobile data") : "";
   $("ph-temp").textContent = [p.charging ? "⚡ charging" : "", p.temperature != null ? `${p.temperature}°C` : ""].filter(Boolean).join(" · ");
+  $("ph-mirror").dataset.ph = p.mirror ? "unmirror" : "mirror"; $("ph-mirror").textContent = p.mirror ? "🖥 Close" : "🖥 Screen";
+  $("ph-note").textContent = [p.call === "ringing" ? "📞 ringing" : p.call === "in_call" ? "📞 on a call" : "", p.scheduled ? `🕘 ${p.scheduled} message${p.scheduled > 1 ? "s" : ""} scheduled` : ""].filter(Boolean).join(" · ");
   const names = p.routines || [], box = $("ph-rout");
   if (box.dataset.k !== names.join("|")) { box.dataset.k = names.join("|"); box.innerHTML = ""; names.forEach((n) => { const x = document.createElement("button"); x.textContent = n; x.dataset.ph = "routine"; x.dataset.name = n; x.title = "Run this phone routine"; box.appendChild(x); }); }
 }

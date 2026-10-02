@@ -4,6 +4,29 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.29.0] — 2026-10-02
+### Added — calls, the phone on your PC screen, timing, everyday shortcuts
+- **Calls.** "Call Fritz Smith" looks the name up in the phone's contacts (Nova still asks before dialling, and asks
+  which one when two people match). When the phone rings Nova says who is calling; "answer the call", "decline the
+  call" and "hang up" work by voice, and "put it on speaker" / "mute" tap the button on the call screen.
+- **The phone's live screen on the PC.** "Show my phone screen" opens it in a window you can click and type in
+  (uses scrcpy, downloaded once, about 20 MB). "Close the phone screen" shuts it. Also a button on the phone card.
+- **Remote photo.** "Take a photo with my phone" presses the shutter and brings the picture to the PC and dashboard.
+- **Scheduled messages.** "Send Sam happy birthday at 7 tomorrow" — any of the messaging apps. "What's scheduled?",
+  "cancel the message to Sam". The phone has to be unlocked at that time: Nova never enters your PIN, so if it is
+  locked she tells you, keeps trying for an hour (Settings → Phone) and reports if it never went out.
+- **Routines that start by themselves**: at a time ("start bedtime at 22:00 on weekdays"), when the phone starts
+  charging or is unplugged, when the battery drops below a level, when it joins or leaves a Wi-Fi network, or when
+  Bluetooth connects to a named device ("start driving mode when Bluetooth connects to my car").
+- **Charge alert** at 80% (Settings → Phone; 0 = off).
+- **Morning briefing** ends with what came in on the phone overnight — counts and names only, added on the PC.
+- **Navigate**: "navigate to OR Tambo" starts Google Maps directions on the phone.
+- **PC clipboard to phone**: a copied link opens on the phone; copied text is typed into the text box that is open on
+  the phone (nothing is sent). Android doesn't allow reading the phone's clipboard from outside, so this is one-way.
+- **One-time codes**: "what's the code?" speaks the newest code, shows it on the dashboard and copies it to the PC
+  clipboard. The digits never go into Nova's reply or to an AI model, and bank / payment codes are left alone.
+- **Media**: play, pause, next, previous, and "what's playing on my phone".
+
 ## [2.28.0] — 2026-10-02
 ### Added — much more from the phone connection
 - **Read and reply.** "What did Karen say?", "any new messages?" reads what is waiting on the phone (WhatsApp, SMS,

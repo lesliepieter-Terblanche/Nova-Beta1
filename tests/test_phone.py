@@ -643,3 +643,243 @@ def test_send_only_in_the_right_persons_chat_and_never_a_thumbs_up(nova, monkeyp
     assert ph.names_on_screen(p.screen(), "karen") and not ph.names_on_screen(p.screen(), "Karen Jones")
     for label in ("Send a like", "Thumbs up", "Share", "Forward", "Video chat"):
         assert ph.risky({"do": "tap", "id": 1}, {1: {"text": label, "res": ""}}, "send"), label   # 'send' ≠ these
+
+
+# ── v2.29: calls, live screen, photo, scheduled messages, self-starting routines, convenience ──
+class CallAdb(RichAdb):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.call, self.photos, self.playing = 0, ["20261002_051500.jpg"], True
+
+    def __call__(self, args, timeout=25, binary=False):
+        if args[0] == "-s" and args[2] == "shell":
+            cmd = args[3]
+            if cmd.startswith("content query"):
+                self.shell.append(cmd)
+                return 0, ("Row: 0 display_name=Karen Smith, data1=+27 82 555 0100\n"
+                           "Row: 1 display_name=Karen Jones, data1=082 555 0200\n"
+                           "Row: 2 display_name=Fritz Smith, data1=+27825550300\n"
+                           "Row: 3 display_name=Fritz Smith, data1=+27 82 555 0300")
+            if "telephony.registry" in cmd:
+                return 0, f"  mCallState={self.call}\n  mCallState={self.call}"
+            if cmd == "input keyevent 5":
+                self.call = 2
+            if cmd == "input keyevent 6":
+                self.call = 0
+            if cmd == "input keyevent 27":
+                self.photos.insert(0, "20261002_173000.jpg")
+            if cmd.startswith("ls -t"):
+                return 0, "\n".join(self.photos)
+            if cmd.startswith("dumpsys media_session"):
+                return 0, ("Sessions Stack - have 1 sessions:\n    Spotify com.spotify.music/spotify-media-session (userId=0)\n"
+                           "      state=PlaybackState {state=3, position=1}\n"
+                           "      metadata: size=5, description=Africa, Toto, Toto IV\n") if self.playing else "no sessions"
+            if cmd.startswith("dumpsys bluetooth_manager"):
+                return 0, "Bonded devices:\n  XX:XX:XX:XX:12:34 [ DUAL ] My Car Audio\n  mActiveDevice: XX:XX:XX:XX:12:34\n"
+        return super().__call__(args, timeout, binary)
+
+
+@pytest.fixture()
+def calls(rich, monkeypatch, tmp_path):
+    p, _, said = rich
+    adb = CallAdb()
+    p._run = adb
+    from nova import phone_routines, phone_schedule, phone_watch
+    monkeypatch.setattr(phone_routines, "_tpath", lambda: tmp_path / "phone_triggers.json")
+    monkeypatch.setattr(phone_schedule, "_path", lambda: tmp_path / "phone_schedule.json")
+    monkeypatch.setattr(phone_watch, "_prev", None)
+    monkeypatch.setattr(phone_watch, "_call", "idle")
+    phone_watch.missed.clear()
+    monkeypatch.setattr(ph, "_recent", {})
+    return p, adb, said
+
+
+def test_call_a_contact_by_name(calls):
+    from nova.agent import needs_yes
+    p, adb, _ = calls
+    assert needs_yes(REGISTRY["phone_call"], {"number": "Fritz Smith"})                 # always asks first
+    assert REGISTRY["phone_call"].run({"number": "Fritz Smith"}) == "Calling Fritz Smith (+27825550300) from your phone."
+    assert adb.shell[-1] == "am start -a android.intent.action.CALL -d tel:+27825550300"
+    out = REGISTRY["phone_call"].run({"number": "Karen"})                              # two Karens: ask, don't guess
+    assert out.startswith("Which one? Karen Smith on +27825550100; Karen Jones on 0825550200")
+    assert not adb.shell[-1].endswith("0100") and "couldn't find 'Thabo'" in REGISTRY["phone_call"].run({"number": "Thabo"})
+
+
+def test_incoming_call_is_announced_and_answered_by_voice(calls, nova):
+    from nova import phone_watch
+    from nova.agent import Agent
+    p, adb, said = calls
+    p.connect()
+    adb.notif = "  NotificationRecord(0x1: pkg=com.samsung.android.incallui)\n   android.title=String (Karen Smith)\n   android.text=String (Incoming call)\n"
+    adb.call = 1
+    assert phone_watch.check_call(p) == "ringing" and phone_watch.check_call(p) == "ringing"
+    assert said == ["📞 Karen Smith is calling your phone. Say 'answer the call' or 'decline the call'."]   # once
+    agent = Agent(nova[0], context.llm)                                                # no model: straight to the phone
+    assert agent.handle("answer the call").text == "Answered the call." and adb.call == 2
+    assert agent.handle("Nova, hang up").text == "Hung up." and adb.call == 0
+    adb.call = 1
+    assert agent.handle("decline the call").text == "Declined the call."
+    assert phone_watch.missed_summary() == "On your phone: 1 call (Karen Smith)." and phone_watch.missed_summary() == ""
+
+
+def test_live_phone_screen_on_the_pc(calls, monkeypatch, tmp_path, nova):
+    from nova import phone_mirror
+    from nova.agent import Agent
+    p, adb, _ = calls
+    exe = tmp_path / "scrcpy.exe"
+    exe.write_bytes(b"x")
+    started = []
+
+    class Proc:
+        def __init__(self, cmd, **kw):
+            started.append((cmd, kw))
+            self.alive = True
+
+        def poll(self):
+            return None if self.alive else 0
+
+        def terminate(self):
+            self.alive = False
+    monkeypatch.setattr(phone_mirror, "exe_path", lambda: exe)
+    monkeypatch.setattr(phone_mirror.subprocess, "Popen", Proc)
+    monkeypatch.setattr(phone_mirror, "start", lambda popen=Proc, _s=phone_mirror.start: _s(popen))
+    monkeypatch.setattr(phone_mirror, "_proc", None)
+    nova[0]["phone"] = {"name": "Galaxy S24+", "mirror_size": 1024}
+    out = Agent(nova[0], context.llm).handle("show my phone screen").text
+    assert "open in a window on the PC" in out
+    cmd = started[0][0]
+    assert cmd[:3] == [str(exe), "-s", "R5CX123"] and "--no-audio" in cmd and cmd[cmd.index("--max-size") + 1] == "1024"
+    assert "Nova · Galaxy S24+" in cmd and phone_mirror.running()
+    assert "already open" in REGISTRY["phone_show_screen"].run({}) and len(started) == 1
+    assert Agent(nova[0], context.llm).handle("close the phone screen").text == "Closed the phone's screen on the PC."
+    assert not phone_mirror.running()
+
+
+def test_take_a_photo_with_the_phone(calls):
+    p, adb, _ = calls
+    out = REGISTRY["phone_take_photo"].run({})
+    assert "Photo taken and saved on the PC" in out and "20261002_173000.jpg" in out and context.attachments()
+    assert any("STILL_IMAGE_CAMERA" in c for c in adb.shell)
+
+
+def test_scheduled_message_goes_out_when_due_and_waits_for_a_locked_phone(calls, monkeypatch):
+    import datetime as dt
+
+    from nova import phone_schedule
+    p, adb, _ = calls
+    out = REGISTRY["phone_schedule_message"].run({"to": "Sam Dlamini", "text": "Happy birthday!", "when": "2099-01-01 07:00"})
+    assert out.startswith("Scheduled: WhatsApp to Sam Dlamini on Thursday 01 January at 07:00")
+    assert "passed" in REGISTRY["phone_schedule_message"].run({"to": "Sam", "text": "x", "when": "2020-01-01 07:00"})
+    assert REGISTRY["phone_scheduled"].run({}) == "1. 2099-01-01 07:00 — whatsapp to Sam Dlamini: Happy birthday!"
+    told, results = [], iter(["Your phone is locked — unlock it and ask me again. I never enter your PIN.",
+                              "Your phone is locked — unlock it and ask me again. I never enter your PIN.",
+                              'Done on your phone: sent "Happy birthday!".'])
+    asked = []
+    monkeypatch.setattr(ph, "run_task", lambda goal, allow="", **k: asked.append((goal, allow, k.get("only"), k.get("to"))) or next(results))
+    early = dt.datetime(2098, 12, 31, 23, 0)
+    phone_schedule.run_due(told.append, now=early)
+    assert asked == [] and told == []                                                  # not yet
+    at = dt.datetime(2099, 1, 1, 7, 0)
+    phone_schedule.run_due(told.append, now=at)
+    phone_schedule.run_due(told.append, now=at + dt.timedelta(minutes=5))              # still locked: said only once
+    assert len(told) == 1 and "can't send it yet" in told[0] and len(phone_schedule.load()) == 1
+    phone_schedule.run_due(told.append, now=at + dt.timedelta(minutes=9))              # unlocked now
+    assert told[-1] == 'Sent your scheduled WhatsApp message to Sam Dlamini: "Happy birthday!".'
+    assert phone_schedule.load() == [] and asked[-1][1:] == ("send", "whatsapp", "Sam Dlamini")
+    REGISTRY["phone_schedule_message"].run({"to": "Karen", "text": "Hi", "when": "2099-01-01 07:00", "app": "sms"})
+    assert REGISTRY["phone_cancel_scheduled"].run({"which": "karen"}).startswith("Cancelled 1: Karen")
+    assert phone_schedule.parse("tomorrow 7", dt.datetime(2026, 10, 2, 17, 30)) == dt.datetime(2026, 10, 3, 7, 0)
+    assert phone_schedule.parse("9pm", dt.datetime(2026, 10, 2, 17, 30)) == dt.datetime(2026, 10, 2, 21, 0)
+
+
+def test_a_scheduled_message_that_never_gets_through_is_reported(calls, monkeypatch):
+    import datetime as dt
+
+    from nova import phone_schedule
+    phone_schedule.add("Sam", "Hello", dt.datetime(2099, 1, 1, 7, 0))
+    monkeypatch.setattr(ph, "run_task", lambda goal, allow="", **k: "Your phone is locked — unlock it and ask me again.")
+    told = []
+    phone_schedule.run_due(told.append, now=dt.datetime(2099, 1, 1, 8, 30))            # past the hour of trying
+    assert "could NOT send your scheduled message to Sam" in told[0] and phone_schedule.load() == []
+
+
+def test_routines_start_by_themselves(calls, monkeypatch):
+    import datetime as dt
+
+    from nova import phone_routines, phone_watch
+    p, adb, said = calls
+    assert REGISTRY["phone_routine_trigger"].run({"name": "bedtime", "at": "22:00", "days": "weekdays"}) == \
+        "'Bedtime' will now start by itself at 22:00 on mon, tue, wed, thu, fri."
+    assert "when Bluetooth connects to 'car'" in REGISTRY["phone_routine_trigger"].run({"name": "Driving mode", "when": "bluetooth car"})
+    assert "didn't understand" in REGISTRY["phone_routine_trigger"].run({"name": "Bedtime", "when": "whenever"})
+    assert phone_routines.needs_bluetooth() and p.connect() == "" and p.bluetooth_connected() == ["My Car Audio"]
+    fri = dt.datetime(2026, 10, 2, 22, 5)
+    idle = {"charging": False, "battery": 50, "wifi": "HomeFibre", "bluetooth": []}
+    assert phone_routines.due(idle, idle, fri) == ["Bedtime"] and phone_routines.due(idle, idle, fri) == []   # once a day
+    assert phone_routines.due(idle, idle, dt.datetime(2026, 10, 3, 22, 5)) == []        # Saturday: not a weekday
+    assert phone_routines.due(idle, {**idle, "bluetooth": ["My Car Audio"]}, fri) == ["Driving mode"]
+    assert phone_routines.due({**idle, "bluetooth": ["My Car Audio"]}, {**idle, "bluetooth": ["My Car Audio"]}, fri) == []
+    assert phone_routines.due(None, {**idle, "bluetooth": ["My Car Audio"]}, fri) == []  # first look: no surprise start
+    REGISTRY["phone_routine_trigger"].run({"name": "Good morning", "when": "unplugged"})
+    assert phone_routines.due({**idle, "charging": True}, idle, fri) == ["Good morning"]
+    # end to end through the watcher: the car connects → driving mode runs
+    monkeypatch.setattr(phone_watch, "_prev", {**idle, "bluetooth": []})
+    phone_watch._automatic(p, {"charging": False, "battery": 50, "wifi": "HomeFibre"}, wait=True)
+    assert "svc bluetooth enable" in adb.shell and "cmd notification set_dnd priority" in adb.shell
+    notices = [e["title"] for e in context.store.activity(0) if e["kind"] == "notice"]
+    assert any("Starting 'Driving mode'" in n for n in notices) and any(n.startswith("Driving mode:") for n in notices)
+    assert REGISTRY["phone_routine_trigger"].run({"name": "Bedtime"}) == "'Bedtime' now only runs when you ask for it."
+
+
+def test_charged_alert_once(calls, nova, monkeypatch):
+    from nova import phone_watch
+    p, adb, said = calls
+    nova[0]["phone"] = {"address": "100.101.102.103", "alerts": False}
+    adb.devs["100.101.102.103:5555"] = "device"
+    monkeypatch.setattr(p, "health", lambda: {"battery": 82, "charging": True, "wifi": ""})
+    phone_watch.tick(p)
+    monkeypatch.setattr(phone_watch, "_health_at", 0.0)
+    phone_watch.tick(p)
+    assert said == ["Your phone has charged to 82 percent — you can unplug it."]
+
+
+def test_navigate_media_and_clipboard(calls, monkeypatch):
+    import sys
+    import types
+    p, adb, _ = calls
+    assert REGISTRY["phone_navigate"].run({"destination": "OR Tambo Airport"}).startswith("Navigation to OR Tambo")
+    assert adb.shell[-1] == "am start -a android.intent.action.VIEW -d 'google.navigation:q=OR+Tambo+Airport'"
+    assert REGISTRY["phone_media"].run({"action": "what"}) == "Playing on your phone: Africa, Toto."
+    assert REGISTRY["phone_media"].run({"action": "next"}) == "Next track." and adb.shell[-1] == "input keyevent 87"
+    assert REGISTRY["phone_media"].run({"action": "pause"}) == "Paused." and adb.shell[-1] == "input keyevent 127"
+    clip = types.SimpleNamespace(text="https://example.com/page", copied=[])
+    clip.paste = lambda: clip.text
+    clip.copy = clip.copied.append
+    monkeypatch.setitem(sys.modules, "pyperclip", clip)
+    assert "Opened the link" in REGISTRY["phone_send_clipboard"].run({})
+    assert adb.shell[-1] == "am start -a android.intent.action.VIEW -d 'https://example.com/page'"
+    clip.text = "Gate code is 4471"
+    assert "Typed your PC clipboard" in REGISTRY["phone_send_clipboard"].run({})
+    assert adb.shell[-1] == 'input text "Gate%scode%sis%s4471"'
+
+
+def test_one_time_code_is_never_put_in_the_reply_and_bank_codes_are_left_alone(calls, monkeypatch, nova):
+    import sys
+    import types
+
+    from nova.agent import Agent
+    p, adb, _ = calls
+    clip = types.SimpleNamespace(copied=[])
+    clip.copy = clip.copied.append
+    monkeypatch.setitem(sys.modules, "pyperclip", clip)
+    spoken = []
+    monkeypatch.setattr(context, "speak_now", spoken.append)
+    adb.notif = "  NotificationRecord(0x1: pkg=com.samsung.android.messaging)\n   android.title=String (Microsoft)\n   android.text=String (Use verification code 482913 to sign in.)\n"
+    out = Agent(nova[0], context.llm).handle("what's the code?").text                   # no model call
+    assert "482913" not in out and "Microsoft" in out and clip.copied == ["482913"]
+    assert spoken == ["The code is 4 8 2 9 1 3."]
+    adb.notif = "  NotificationRecord(0x1: pkg=com.samsung.android.messaging)\n   android.title=String (FNB)\n   android.text=String (Your OTP is 771204 for a payment of R500.)\n"
+    out = REGISTRY["phone_code"].run({})
+    assert "bank or payment" in out and "771204" not in out and clip.copied == ["482913"] and len(spoken) == 1
+    adb.notif = NOTIF
+    assert "don't see a one-time code" in REGISTRY["phone_code"].run({})

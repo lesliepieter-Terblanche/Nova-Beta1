@@ -112,6 +112,12 @@ phone:
   alert_apps: []             # e.g. [whatsapp, messages, phone] — empty = every messaging app
   check_seconds: 30
   low_battery: 15            # warn once when the phone drops to this %
+  call_alerts: true          # "Sam is calling your phone" — then "answer the call" / "decline the call"
+  charged_alert: 80          # tell me when it has charged to this % (0 = don't)
+  schedule_retry_minutes: 60 # a scheduled message keeps trying this long when the phone is locked at the set time
+  mirror_size: 1280          # the phone's live screen on the PC (smaller = smoother over mobile data)
+  mirror_on_top: false
+  scrcpy_path: ""            # "" = Nova's own copy (downloaded the first time)
 
 # Screen time from ActivityWatch (free, activitywatch.net — keeps its data on this PC)
 activitywatch:

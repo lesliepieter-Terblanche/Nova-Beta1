@@ -212,6 +212,12 @@ class Presence:
             reply = context.agent.handle(prompt, "voice")
             held = (" Also, while you were away: " + " ".join(self.held[-5:])) if self.held else ""
             self.held.clear()
+            try:                                     # what came in on the phone overnight (names only, added locally)
+                from . import phone_watch
+                onphone = phone_watch.missed_summary()
+                held += f" {onphone}" if onphone else ""
+            except Exception:
+                pass
             self._say(reply.text + held, force=True)
         except Exception as e:
             print(f"[presence] briefing failed: {e}")

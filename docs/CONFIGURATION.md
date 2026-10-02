@@ -186,13 +186,13 @@ dashboard:
   open_on_start: true
   allowed_hosts: []           # extra host names allowed to reach it, e.g. ["my-pc.tail1234.ts.net"] for Tailscale
   theme:                      # set from Settings → Appearance (applies live)
-    accent: "#8b7bff"
+    style: vivid              # vivid (colourful, default) · light (navy panels on a pale page) · dark
+    palette: aurora           # vivid look: aurora · ocean · sunset · forest · midnight
+    tilt: true                # the Personal and Work panels lean towards each other (3D); false = flat
+    rows: 6                   # files shown per folder before "+ n more"
+    accent: "#8b7bff"         # light / dark looks only
     accent2: "#4cc9f0"
-    background: "#03040a"
-    bloom: 0.85               # glow intensity
-    stars: 4500
-    orbit_speed: 1.0
-    labels: true
+    background: "#03040a"     # dark look only
 ```
 
 ## skills · plugins · playbooks (switch off)

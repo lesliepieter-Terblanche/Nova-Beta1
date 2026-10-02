@@ -4,6 +4,11 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.27.3] — 2026-10-02
+### Docs
+- New screenshots on the GitHub page: the Master Index in the Vivid look, opening and right-clicking an item, the
+  five colour themes, the phone layout, the Appearance settings and the weather page. The old sphere images are gone.
+
 ## [2.27.2] — 2026-10-02
 ### Changed — outstanding work is colour-coded everywhere
 - Every folder header shows what is still outstanding inside it, in the status colours: **red** = waiting on you,

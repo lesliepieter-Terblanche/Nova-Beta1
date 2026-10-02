@@ -12,14 +12,34 @@ It remembers everything permanently and shows its whole second brain as a live m
 
 </div>
 
-![Nova's second-brain master index](docs/images/dashboard-index.png)
+![Nova's second-brain master index](docs/images/dashboard.jpg)
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/dashboard-detail.jpg" alt="Open a note: status, project and contents"><br><sub>Click anything to open it, set its status or link it to a project</sub></td>
+<td width="50%"><img src="docs/images/dashboard-menu.jpg" alt="Right-click menu: move, status, delete"><br><sub>Right-click (long-press on a phone) to move, set a status or delete</sub></td>
+</tr>
+</table>
+
+<details>
+<summary><b>Colour themes</b> — Aurora (above), Ocean, Sunset, Forest, Midnight</summary>
+
+![Colour themes](docs/images/themes.jpg)
+</details>
+
+<details>
+<summary><b>On your phone</b> — the same index, private over Tailscale</summary>
+
+<img src="docs/images/dashboard-phone.jpg" width="320" alt="Nova on a phone">
+</details>
 
 ## Why Nova
 
 - **Voice first.** Wake word or hotkey → local Whisper transcription → answers in a natural ElevenLabs voice,
   streamed so it starts talking almost instantly. Interrupt it any time. The natural Kokoro voice takes over offline.
-- **Local first.** Everyday thinking runs on your own GPU with [Ollama](https://ollama.com). Hard tasks
-  hand off to free cloud tiers (Gemini, Groq) only when needed. Your memory, notes and files stay on your PC.
+- **Local first.** Your memory, notes and files stay on your PC. Thinking runs on your own GPU with
+  [Ollama](https://ollama.com), or — much faster on a small graphics card — on a free cloud tier (Groq, Gemini) with
+  the local model as the offline fallback. You choose in Settings.
 - **Never forgets.** After every conversation Nova files new facts, people, projects, preferences and
   decisions into a permanent memory. Corrections are versioned, never overwritten.
 - **Extensible.** Drop in Python plugins, write plain-English playbooks, or connect any
@@ -68,14 +88,16 @@ It remembers everything permanently and shows its whole second brain as a live m
 | ⚡ **Load-shedding** | Your area's schedule and a heads-up 30 min before the power goes off (EskomSePush, free token) |
 | 💸 **Price watcher** | "Tell me when this drops below R8,000" — Takealot and most shops, checked every few hours |
 | 📰 **News** | SA headlines and news about your vendors (Juniper, Avaya, Nokia…) — "vendor news" |
-| 🌦 **Weather** | "What's the weather?" → spoken forecast + animated weather page (free, no key) |
+| 🌦 **Weather** | "What's the weather?" → spoken forecast + a weather page that looks like the day: sunshine, rain, storm, snow, frost, heat (free, no key) |
 | ⏰ **Routines** | Reminders · scheduled briefings ("every weekday at 07:30…") |
 | ⚙️ **Settings page** | API keys (masked, with Test buttons), voice, models, Telegram, skills/plugins/MCP on-off, routines, colour themes with live preview |
 | 🔄 **Versions** | GitHub backup · "update yourself" · "roll back" · desktop shortcut · VS Code project |
 
 <img src="docs/images/ads.jpg" width="560" alt="Ads generated from a webcam photo">
 
-<img src="docs/images/settings.jpg" width="720" alt="Settings page">
+<img src="docs/images/settings.jpg" width="720" alt="Settings page: colour themes with live preview">
+
+<img src="docs/images/weather.jpg" width="720" alt="The weather page takes on the day's weather: sunshine, rain, thunderstorm, snow">
 
 ## Requirements
 

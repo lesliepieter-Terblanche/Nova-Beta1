@@ -867,6 +867,129 @@ def board_items() -> dict[str, dict[str, list[str]]]:
     return out
 
 
+# ── you correct the filing: move an item to the other side / another category, or delete it ──
+def _placements() -> dict[str, tuple[str, str]]:
+    """Where you put things that aren't files (projects, memories, missions): item → (domain, category)."""
+    s = context.store
+    if s is None:
+        return {}
+    with s.lock:
+        s.db.execute("CREATE TABLE IF NOT EXISTS placement(item TEXT PRIMARY KEY, domain TEXT, category TEXT)")
+        return {r["item"]: (r["domain"], r["category"]) for r in s.db.execute("SELECT * FROM placement")}
+
+
+def move_item(item: str, domain: str, category: str = "", sub: str = "") -> dict:
+    """Put one item where the user says. A note's file is moved (links, pins and status follow); anything else
+    remembers its place. Returns {"ok", "where"}."""
+    if domain not in TREE:
+        raise ValueError("Choose 01_Personal or 02_Work.")
+    found = category_named(category) if category else None
+    if category and (not found or found[0] != domain):
+        raise ValueError(f"{category} isn't a category of {domain}")
+    s = context.store
+    if item.startswith("note:"):
+        src = Path(item[5:])
+        if not src.is_file() or not _inside(src):
+            raise ValueError("That note isn't in the brain any more.")
+        v = vault()
+        rel = src.resolve().relative_to(v.resolve()).parts
+        if not found:                                   # only the side was chosen: keep the matching kind of category
+            same = rel[1][:3] if len(rel) > 2 and rel[0] in TREE else ""
+            cat = next((c for c in TREE[domain] if same and c.startswith(same)), None) or classify_in(domain, src)
+            found = (domain, cat)
+            if not sub and len(rel) > 3 and rel[0] in TREE:
+                sub = "" if rel[2] in TREE[rel[0]].get(rel[1], {}).get("subs", []) else rel[2]
+        dst = folder_for(domain, found[1], _sub(found[1], domain, sub)) / file_like(src.name)
+        if dst.resolve() == src.resolve():
+            return {"ok": True, "where": dst.relative_to(v).as_posix(), "id": item}
+        old_rel = "/".join(rel)
+        new = move_note(src, dst)
+        plan = load_plan()                              # it no longer needs a question or a check
+        plan["items"] = [i for i in plan.get("items", []) if i["rel"] != old_rel]
+        plan["checks"] = [c for c in plan.get("checks", []) if c["rel"] != old_rel]
+        if not plan["items"] and plan.get("state") == "ready":
+            plan["state"] = "clean"
+        save_plan(plan)
+        write_status_boards()
+        if s:
+            s.log("memory", "dashboard", f"🗂 Moved {src.name} → {new.relative_to(v).as_posix()}", turn=0)
+        return {"ok": True, "where": new.relative_to(v).as_posix(), "id": f"note:{new}"}
+    if s is None:
+        raise ValueError("The brain isn't ready.")
+    _placements()
+    with s.lock:
+        s.db.execute("INSERT OR REPLACE INTO placement(item, domain, category) VALUES(?,?,?)",
+                     (item, domain, found[1] if found else ""))
+        s.db.commit()
+    write_status_boards()
+    return {"ok": True, "where": "/".join(x for x in (domain, found[1] if found else "") if x), "id": item}
+
+
+def classify_in(domain: str, path: Path) -> str:
+    """Best category inside one domain for a note (keywords only)."""
+    text = (path.stem + " " + path.read_text(encoding="utf-8", errors="ignore")[:1500]).lower()
+    best, score = next(iter(TREE[domain])), 0
+    for cat, meta in TREE[domain].items():
+        n = sum(1 for w in meta["words"] if w in text)
+        if n > score:
+            best, score = cat, n
+    return best
+
+
+def delete_item(item: str) -> dict:
+    """Take one item out of the brain. A note's file is kept in backups/deleted (so it can be put back); a memory
+    is retired, not erased."""
+    s = context.store
+    if item.startswith("note:"):
+        src = Path(item[5:])
+        if not src.is_file() or not _inside(src):
+            raise ValueError("That note isn't in the brain any more.")
+        bin_ = backup_root() / "deleted"
+        bin_.mkdir(parents=True, exist_ok=True)
+        dst = unique(bin_ / f"{dt.datetime.now():%Y%m%d-%H%M%S}_{src.name}")
+        rel = src.resolve().relative_to(vault().resolve()).as_posix()
+        shutil.move(str(src), str(dst))
+        if s:
+            with s.lock:
+                s.db.execute("DELETE FROM chunks WHERE path=?", (str(src),))
+                s.db.execute("DELETE FROM tracking WHERE item=?", (item,))
+                try:
+                    s.db.execute("DELETE FROM links WHERE item=?", (item,))
+                except Exception:
+                    pass
+                s.db.commit()
+            s.log("memory", "dashboard", f"🗑 Deleted note {src.name}", f"kept in {dst}", turn=0)
+        plan = load_plan()
+        plan["items"] = [i for i in plan.get("items", []) if i["rel"] != rel]
+        plan["checks"] = [c for c in plan.get("checks", []) if c["rel"] != rel]
+        save_plan(plan)
+        write_status_boards()
+        return {"ok": True, "kept": str(dst)}
+    if s is None:
+        raise ValueError("The brain isn't ready.")
+    if item.startswith("memory:"):
+        mid = int(item[7:])
+        with s.lock:
+            row = s.db.execute("SELECT text FROM memories WHERE id=? AND superseded_by IS NULL", (mid,)).fetchone()
+            if not row:
+                raise ValueError("That memory is already gone.")
+            s.db.execute("UPDATE memories SET superseded_by=id WHERE id=?", (mid,))      # retired, still in the database
+            s.db.execute("DELETE FROM tracking WHERE item=?", (item,))
+            s.db.commit()
+        s.log("memory", "dashboard", f"🗑 Forgot: {row['text'][:90]}", turn=0)
+        try:
+            s.export_markdown(vault())
+        except Exception:
+            pass
+        write_status_boards()
+        return {"ok": True, "kept": ""}
+    if item.startswith("mission:"):
+        from .missions import missions
+        missions().delete(int(item[8:]))
+        return {"ok": True, "kept": ""}
+    raise ValueError("That kind of item can't be deleted from here.")
+
+
 def bottlenecks() -> list[dict]:
     """Everything that is waiting on the user right now: [{"id", "text", "domain", "why"}] — the dashboard's
     'active bottlenecks' list. `id` opens the item on the map ('filing' opens the filing review)."""

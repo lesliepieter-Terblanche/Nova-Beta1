@@ -118,8 +118,12 @@ class Dashboard:
         vault = resolve(self.cfg.brain.vault_dir)
         guessed = self.__dict__.setdefault("_domain_cache", {})
 
+        placed = tx._placements()
+
         def domain_for(nid, text):
-            """Which side of the brain: Personal (left) or Work (right). Keyword-only, so it costs nothing."""
+            """Which side of the brain: Personal (left) or Work (right) — where you put it, else by keywords."""
+            if nid in placed:
+                return placed[nid][0]
             key = (nid, text[:80])
             if key not in guessed:
                 if len(guessed) > 6000:
@@ -136,6 +140,9 @@ class Dashboard:
                  "status": tx.TRACK_TO_STATUS.get(t.get("status", ""), "") or status or ""}
             if extra:
                 n.update(extra)
+            if nid in placed:
+                domain = n["domain"] = placed[nid][0]
+                n["cat"] = placed[nid][1]
             if not parent:
                 parent = f"hub:{domain}:{kind}"
                 used_hubs.add((domain, kind))
@@ -1156,6 +1163,18 @@ class Dashboard:
                     if self.path == "/api/globe/install":
                         from ..skills import globe
                         return self._json({"message": globe.install()})
+                    if self.path in ("/api/brain/move", "/api/brain/delete"):
+                        from .. import taxonomy
+                        nid = str(body.get("id", ""))
+                        if not re.fullmatch(r"(memory|mission):\d+|note:.+", nid):
+                            return self._json({"error": "That item can't be moved or deleted from here."}, 400)
+                        try:
+                            if self.path.endswith("/move"):
+                                return self._json(taxonomy.move_item(nid, str(body.get("domain", "")),
+                                                                     str(body.get("category", "")), str(body.get("sub", ""))))
+                            return self._json(taxonomy.delete_item(nid))
+                        except (ValueError, KeyError) as e:
+                            return self._json({"error": str(e)}, 400)
                     if self.path == "/api/track":
                         nid = str(body.get("id", ""))
                         if not re.fullmatch(r"(memory|artifact|turn|mission):\d+|note:.+", nid):

@@ -215,3 +215,6 @@ lines around the error. Remove keys and personal details first.
   (faster, far less memory). Prefer it dark? Settings → Appearance → *Dashboard look* → dark.
 - **A file isn't in the tree** — a folder shows its first few files; click "+ n more", or the number next to a
   category to list everything in it. Memories, creations and actions open from the counters top right.
+- **Something is filed on the wrong side** — right-click it on the dashboard (long-press on the phone) → *Move to
+  01_Personal / 02_Work* and pick the category. Deleted a note by mistake? The file is in `backups/deleted/`; drop it
+  back onto the dashboard (📎) to file it again.

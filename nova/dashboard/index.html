@@ -59,13 +59,19 @@
   ul.tree ul > li::before { left: -14px; width: 26px; top: -8px; height: 21px; border-width: 1.5px; opacity: .6; }
   ul.tree ul > li:not(:last-child)::after { content: ""; position: absolute; left: -14px; top: 12px; bottom: -2px; border-left: 1.5px solid var(--lc); opacity: .6; }
   ul.tree li[data-flow="ip"] { --lc: var(--st-ip); } ul.tree li[data-flow="wait"] { --lc: var(--st-wait); }
-  ul.tree li[data-flow]::before, ul.tree li[data-flow]::after { opacity: 1; }
-  ul.tree li[data-flow="ip"]::before { animation: flowpulse 1.4s ease-in-out infinite; }
-  .elbows i[data-flow="ip"] { --dc: var(--st-ip); animation: flowpulse 1.4s ease-in-out infinite; }
-  .elbows i[data-flow="wait"] { --dc: var(--st-wait); }
-  @keyframes flowpulse { 50% { opacity: .35; } }
+  ul.tree li[data-flow]::before, ul.tree li[data-flow]::after { opacity: 1; border-width: 3px !important; }
+  ul.tree li[data-flow="wait"]::before, ul.tree li[data-flow="wait"]::after { filter: drop-shadow(0 0 4px var(--st-wait)); }
+  ul.tree li[data-flow="ip"]::before, ul.tree li[data-flow="ip"]::after { animation: flowhue 2.4s linear infinite; }
+  .elbows i[data-flow] { border-width: 3px; margin-top: 11px; }
+  .elbows i[data-flow="ip"] { animation: flowhue 2.4s linear infinite; }
+  .elbows i[data-flow="wait"] { --dc: var(--st-wait); filter: drop-shadow(0 0 4px var(--st-wait)); }
+  /* work in progress: the line runs through bright colours so the live path is unmistakable */
+  @keyframes flowhue {
+    0% { border-color: #00e5ff; filter: drop-shadow(0 0 5px #00e5ff); } 25% { border-color: #4d8dff; filter: drop-shadow(0 0 6px #4d8dff); }
+    50% { border-color: #b266ff; filter: drop-shadow(0 0 6px #b266ff); } 75% { border-color: #ff4fd8; filter: drop-shadow(0 0 6px #ff4fd8); }
+    100% { border-color: #00e5ff; filter: drop-shadow(0 0 5px #00e5ff); } }
   .dir { display: inline-flex; align-items: center; gap: 9px; background: none; border: 0; padding: 3px 8px 3px 2px; border-radius: 8px;
-    color: #fff; font: 700 16px var(--display); cursor: pointer; text-shadow: 0 1px 6px rgba(20,35,60,.55); max-width: 100%; }
+    color: #fff; font: 700 16px var(--display); cursor: pointer; max-width: 100%; }
   .dir:hover { background: rgba(255,255,255,.12); }
   .dir .nm { text-align: left; line-height: 1.15; min-width: 0; }
   .dir small { font: 600 11px var(--body); color: var(--muted); background: rgba(255,255,255,.14); padding: 1px 7px; border-radius: 999px; text-shadow: none; }
@@ -73,28 +79,27 @@
   li.d:not(.open) > .dir .fi { opacity: .7; }
   li.tofile > .dir { color: #ffd9dd; }
   .trow { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; background: none; border: 1.5px solid transparent;
-    border-radius: 7px; padding: 2px 9px 2px 5px; color: #f3f7fc; font: 500 14.5px var(--body); cursor: pointer; text-align: left;
-    text-shadow: 0 1px 5px rgba(20,35,60,.5); }
+    border-radius: 7px; padding: 3px 9px 3px 5px; color: #e6edf9; font: 500 14.5px var(--body); cursor: pointer; text-align: left; }
   .trow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .trow:hover { background: rgba(255,255,255,.12); }
   .pi { width: 13px; height: 16px; flex: none; opacity: .85; } .pi.k { font-size: 11px; line-height: 16px; text-align: center; }
-  li.f .stl { font: 500 13.5px var(--body); padding: 0 0 2px 27px; letter-spacing: .01em; }
+  li.f .stl { font: 600 12.5px var(--body); padding: 1px 0 3px 27px; letter-spacing: .03em; }
   li.f.more .trow, li.f.none .trow { color: var(--muted); font-size: 12.5px; font-style: italic; }
   li.f.none .trow { cursor: default; }
   /* state-driven looks */
   li.f[data-status="COMPLETED"] .stl { color: var(--st-done); }
   li.f[data-status="COMPLETED"]:has(.stl) > .trow { border-color: var(--st-done); box-shadow: 0 0 10px color-mix(in srgb, var(--st-done) 55%, transparent); }
-  li.f[data-status="IN-PROGRESS"] > .trow { border-color: var(--st-ip); background: rgba(59,157,255,.14); animation: st-pulse 1.6s ease-out infinite; }
+  li.f[data-status="IN-PROGRESS"] > .trow { border-color: var(--st-ip); border-width: 2px; background: rgba(47,198,255,.16); color: #fff; animation: st-pulse 1.6s ease-out infinite; }
   li.f[data-status="IN-PROGRESS"] .stl { color: var(--st-ip); }
-  li.f[data-status="WAITING-ON-USER"] > .trow { border-color: var(--st-wait); border-width: 2px; background: rgba(255,77,94,.14); box-shadow: 0 0 12px rgba(255,77,94,.55); }
+  li.f[data-status="WAITING-ON-USER"] > .trow { border-color: var(--st-wait); border-width: 2px; background: rgba(255,85,104,.18); color: #fff; box-shadow: 0 0 12px rgba(255,85,104,.6); }
   li.f[data-status="WAITING-ON-USER"] .stl { color: var(--st-wait); text-shadow: 0 0 8px rgba(255,77,94,.45); }
   li.f[data-status="BACKLOG"] > .trow { border-color: rgba(255,255,255,.3); border-style: dashed; }
   li.f[data-status="BACKLOG"] .stl { color: var(--muted); }
   @keyframes st-pulse { 0% { box-shadow: 0 0 0 0 rgba(59,157,255,.65); } 100% { box-shadow: 0 0 0 9px rgba(59,157,255,0); } }
   li.f.sel > .trow { outline: 2px solid #fff; outline-offset: 1px; }
   body.dimmed li.f.dim { opacity: .3; }
-  body.calm li.f[data-status="IN-PROGRESS"] > .trow, body.calm ul.tree li[data-flow="ip"]::before, body.calm .elbows i { animation: none; }
-  @media (prefers-reduced-motion: reduce) { li.f[data-status="IN-PROGRESS"] > .trow, ul.tree li[data-flow="ip"]::before, .elbows i { animation: none !important; } }
+  body.calm li.f[data-status="IN-PROGRESS"] > .trow, body.calm ul.tree li[data-flow="ip"]::before, body.calm ul.tree li[data-flow="ip"]::after, body.calm .elbows i { animation: none; border-color: var(--st-ip); }
+  @media (prefers-reduced-motion: reduce) { li.f[data-status="IN-PROGRESS"] > .trow, ul.tree li[data-flow="ip"]::before, ul.tree li[data-flow="ip"]::after, .elbows i { animation: none !important; } }
   /* right column: bottlenecks and counters */
   .rcol { position: fixed; right: 18px; top: 124px; width: 236px; z-index: 4; display: flex; flex-direction: column; gap: 9px; max-height: calc(100vh - 300px); }
   .bneck { position: relative; padding: 38px 8px 8px 12px; max-height: 32vh; overflow-y: auto; flex: none; }
@@ -115,7 +120,7 @@
     border-radius: 14px; text-align: left; font: inherit; }
   .tile:hover { border-color: var(--line-strong); }
   .tile .tn { font: 700 15px var(--display); } .tile .tl { font: 600 11px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  .tile b { font: 600 19px var(--display); color: #9ecbff; font-variant-numeric: tabular-nums; }
+  .tile b { font: 600 19px var(--display); color: #6fc3ff; font-variant-numeric: tabular-nums; }
   .legend .lk { font: 600 13px var(--body); padding: 2px 0; }
   .lk.c { color: var(--st-done); } .lk.i { color: var(--st-ip); } .lk.w { color: var(--st-wait); } .lk.b { color: var(--muted); }
   .bchip { position: fixed; right: 18px; bottom: 44px; z-index: 4; padding: 9px 16px; border-radius: 12px; color: var(--text); cursor: pointer;
@@ -129,16 +134,13 @@
   .ticker.warn .tab { background: #b23a48; }
   .brand .status .aud b { color: var(--ok); } .brand .status .aud b.warn { color: #ffb347; }
   /* the pale operational look (Settings → Appearance → Dashboard look) */
-  :root { --ink: #dfe6ff; --pane: rgba(14,18,36,.5); --personal: #4a9bea; --work: #3fbf7f; --st-ip: #4da3ff; --st-wait: #ff4d5e; --st-done: #46e08f; }
-  body.light { --st-ip: #9fd2ff; --st-done: #8dffbd; --st-wait: #ff5d6c; --personal: #3f8fe0; --work: #35c07a; }
-  body.light li.f .stl, body.light .legend .lk, body.light .pane .sum b { text-shadow: 0 1px 3px rgba(15,30,55,.75); }
-  body.light li.f[data-status="WAITING-ON-USER"] .stl, body.light .lk.w, body.light .pane .sum .wt { color: #ffb3ba; }
-  body.light { --bg: #e9f2f8; --ink: #17263a; --glass: rgba(104,124,150,.72); --glass-strong: rgba(84,104,130,.94); --pane: rgba(116,136,162,.62);
-    --line: rgba(255,255,255,.22); --line-strong: rgba(255,255,255,.4); --text: #f4f8fc; --muted: #d3dde9; --ok: #7dffb0;
-    background: radial-gradient(ellipse 70% 50% at 78% 62%, rgba(120,170,205,.45), transparent 70%),
-      radial-gradient(ellipse 60% 45% at 8% 70%, rgba(150,195,220,.4), transparent 70%), linear-gradient(160deg, #f1f7fb, #dcebf4 60%, #e9f3f8); }
+  :root { --ink: #dfe6ff; --pane: rgba(14,18,36,.5); --personal: #4aa8ff; --work: #2fd38a; --st-ip: #2fc6ff; --st-wait: #ff5568; --st-done: #37e08a; }
+  /* light page, deep-navy panels: white text on navy reads at a glance, and the bright status colours stand out */
+  body.light { --bg: #eef3f8; --ink: #0f1e33; --glass: rgba(18,29,48,.9); --glass-strong: #0d1727; --pane: #121e33;
+    --line: rgba(150,180,230,.16); --line-strong: rgba(150,180,230,.34); --text: #eef3fc; --muted: #9db0cb; --ok: #37e08a;
+    background: radial-gradient(ellipse 70% 55% at 80% 60%, rgba(160,195,225,.5), transparent 70%),
+      radial-gradient(ellipse 60% 45% at 6% 75%, rgba(175,205,230,.45), transparent 70%), linear-gradient(160deg, #f6f9fc, #e3ecf4 60%, #edf3f8); }
   body.light .vignette, body.light .grain { display: none; }
-  body.light .brand .status b { color: #7dffb0; }
   body.light .empty { color: #4a5d75; }
   @media (max-width: 1250px) { #tree { padding-right: 16px; padding-left: 16px; } .rcol { display: none; }
     .rcol.show { display: flex; top: auto; bottom: 92px; max-height: 60vh; } .rcol.show #tiles { display: none; } }
@@ -752,6 +754,17 @@
   .feed { bottom: 96px; }
   @media (min-width: 1251px) and (max-width: 1640px) { .bchip { display: none; } }
   @media (max-width: 900px) { .ask { bottom: 36px; } .rail { bottom: 108px; } }
+  .ctx { position: fixed; z-index: 30; display: none; min-width: 230px; max-width: 300px; max-height: 80vh; overflow-y: auto; padding: 6px;
+    border-radius: 12px; background: var(--glass-strong); border: 1px solid var(--line-strong); }
+  .ctx.show { display: block; }
+  .ctx .hd { font: 600 12.5px var(--display); padding: 6px 10px 8px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .ctx .gp { font: 600 10px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 3px; border-top: 1px solid var(--line); margin-top: 4px; }
+  .ctx .gp:empty { padding: 0; }
+  .ctx button { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); font: 13px var(--body); padding: 6px 10px; border-radius: 7px; cursor: pointer; }
+  .ctx button:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+  .ctx button:disabled { opacity: .6; cursor: default; }
+  .ctx button.danger { color: #ffb3ba; }
+  #tree li.f { -webkit-touch-callout: none; }
 </style>
 </head>
 <body>
@@ -838,6 +851,7 @@
   <div id="legend-body"><div class="lk c">Green = [COMPLETED]</div><div class="lk i">Blue = [IN-PROGRESS]</div><div class="lk w">Red = [WAITING-ON-USER]</div><div class="lk b">Grey = [BACKLOG]</div></div>
 </section>
 <button class="bchip glass" id="bneck-chip">ACTIVE BOTTLENECKS: 0</button>
+<div class="ctx glass" id="ctx" role="menu"></div>
 <div class="ticker" id="ticker"><span class="tab" id="ticker-state">System optimized</span><span class="msg" id="ticker-text">MONITORING ACTIVE.</span></div>
 
 <section class="feed glass" id="feed">
@@ -945,7 +959,7 @@ function treeModel() {
     }
     const tracked = n.isProject || n.kind === "project" || n.kind === "mission" || (n.status && n.kind !== "action") || (n.kind === "action" && n.status === "IN-PROGRESS");
     if (!tracked) continue;
-    const c = n.kind === "mission" ? catOf(n.domain, /Meetings|Interests/) : catOf(n.domain, /Projects/);
+    const c = (n.cat && m.dirs.has(n.cat)) ? n.cat : n.kind === "mission" ? catOf(n.domain, /Meetings|Interests/) : catOf(n.domain, /Projects/);
     if (m.dirs.get(c)) m.dirs.get(c).rows.push(n);
   }
   return model;
@@ -1028,6 +1042,59 @@ treeEl.addEventListener("click", (e) => {
   }
   const row = e.target.closest("li.f[data-id]");
   if (row) { const n = nodeById.get(row.dataset.id); if (n) select(n); }
+});
+// right-click (or long-press) a file: move it to the other side / another category, set its status, or delete it
+const menu = $("ctx");
+function closeMenu() { menu.classList.remove("show"); menu._n = null; }
+function openMenu(n, x, y) {
+  const canMove = /^(note|memory|mission):/.test(n.id), cats = data.tree || {};
+  const here = n.kind === "note" ? String(n.folder || "").split("/")[1] : n.cat;
+  let h = `<div class="hd">${esc(fileName(n))}</div><button data-a="open">Open</button>`;
+  if (canMove) for (const d of DOMAINS) {
+    h += `<div class="gp">Move to ${d}</div>` + (cats[d] || []).map((c) =>
+      `<button data-a="move" data-d="${d}" data-c="${esc(c)}"${n.domain === d && here === c ? " disabled" : ""}>${esc(c)}${n.domain === d && here === c ? " ✓" : ""}</button>`).join("");
+  }
+  if (/^(note|memory|mission|artifact|turn):/.test(n.id)) h += `<div class="gp">Status</div>` + [["doing", "In progress"], ["waiting", "Waiting on you"], ["done", "Completed"], ["todo", "Backlog"]]
+    .map(([k, l]) => `<button data-a="status" data-s="${k}"${n.track === k ? " disabled" : ""}>${l}${n.track === k ? " ✓" : ""}</button>`).join("");
+  if (canMove) h += `<div class="gp"></div><button data-a="delete" class="danger">Delete…</button>`;
+  menu.innerHTML = h; menu._n = n; menu.classList.add("show");
+  const r = menu.getBoundingClientRect();
+  menu.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + "px";
+  menu.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + "px";
+}
+treeEl.addEventListener("contextmenu", (e) => {
+  const li = e.target.closest("li.f[data-id]"); if (!li) return;
+  const n = nodeById.get(li.dataset.id); if (!n) return;
+  e.preventDefault(); openMenu(n, e.clientX, e.clientY);
+});
+let pressT = null, pressed = false;
+treeEl.addEventListener("touchstart", (e) => {
+  const li = e.target.closest("li.f[data-id]"), t = e.touches[0]; pressed = false;
+  if (!li || e.touches.length !== 1) return;
+  pressT = setTimeout(() => { const n = nodeById.get(li.dataset.id); if (n) { pressed = true; openMenu(n, t.clientX, t.clientY); } }, 550);
+}, { passive: true });
+["touchend", "touchmove", "touchcancel"].forEach((ev) => treeEl.addEventListener(ev, () => clearTimeout(pressT), { passive: true }));
+treeEl.addEventListener("click", (e) => { if (pressed) { pressed = false; e.stopPropagation(); e.preventDefault(); } }, true);
+document.addEventListener("pointerdown", (e) => { if (menu.classList.contains("show") && !menu.contains(e.target)) closeMenu(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
+treeEl.addEventListener("scroll", closeMenu, { passive: true, capture: true });
+menu.addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-a]"), n = menu._n; if (!b || !n) return;
+  const a = b.dataset.a; closeMenu();
+  if (a === "open") return select(n);
+  let r;
+  if (a === "move") r = await api("/api/brain/move", { id: n.id, domain: b.dataset.d, category: b.dataset.c });
+  else if (a === "status") r = await api("/api/track", { id: n.id, status: b.dataset.s });
+  else if (a === "delete") {
+    const what = n.kind === "note" ? "It is taken out of the brain; a copy is kept in the backups folder." : "Nova will no longer use it.";
+    if (!confirm(`Delete “${fileName(n)}”?\n\n${what}`)) return;
+    r = await api("/api/brain/delete", { id: n.id });
+    if (!r.error && selected?.id === n.id) closePanel();
+  }
+  if (r?.error) return flash(r.error);
+  flash(a === "move" ? `Moved to ${r.where}` : a === "delete" ? "Deleted." : "Status updated.");
+  await loadGraph(); loadStats(); loadFiling();
+  if (a === "move" && r.id) { const m = nodeById.get(r.id); if (m) flyTo(m); }
 });
 function applyLayout() { schedule(); }
 function fit() { treeEl.scrollTo({ top: 0, behavior: "smooth" }); }

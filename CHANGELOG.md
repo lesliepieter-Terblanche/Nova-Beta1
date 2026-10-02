@@ -4,6 +4,18 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.19.0] — 2026-10-02
+### Added — right-click on the Master Index: move, set status, delete
+- **Right-click a file (long-press on the phone)** → *Move to 01_Personal / 02_Work* with the category of your choice,
+  set its status, or delete it. A note's file really moves — links, attachments, pin, status and project link follow,
+  and its label switches to the new domain. Projects, memories and missions remember the side and category you chose.
+- **Delete** asks first. A deleted note leaves the brain and its file is kept in `backups/deleted/`; a deleted memory
+  is retired (Nova stops using it) rather than erased.
+### Changed — readable colour system
+- Deep-navy panels with white text on the light page (the grey boxes were hard to read); brighter status colours.
+- **Work in progress is unmistakable:** the lines leading to an in-progress item are thicker, glow and run through
+  cyan → blue → violet → pink; lines to something waiting on you are solid glowing red.
+
 ## [2.18.0] — 2026-10-02
 ### Changed — the dashboard is now the Second Brain "Master Index" (the 3D sphere is gone)
 - **Folder tree instead of an orb:** *Second Brain* → `01_Personal` (left) | `02_Work` (right) → numbered categories →

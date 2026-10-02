@@ -290,3 +290,38 @@ def test_index_data_has_domain_status_and_bottlenecks(nova):
     b.write_text("[DOMAIN: PERSONAL]\n[STATUS: IN-PROGRESS]\n\n# Gym plan\n")
     s.index_note(b)
     assert s.get_tracking(f"note:{b}")["status"] == "doing" and b.read_text().startswith("[LABEL: DOMAIN: PERSONAL]\n[LABEL: STATUS: IN-PROGRESS]")
+
+
+# ── right-click on the dashboard: move to the other side / another category, or delete ──
+def test_move_and_delete_from_the_dashboard(old_brain):
+    from nova.dashboard.server import Dashboard
+    v, note = old_brain
+    s = context.store
+    tx.build_plan()
+    # a note that is still in the old layout goes straight where you say — links and its pin follow
+    r = tx.move_item(f"note:{note}", "01_Personal", "04_Finance_&_Budgets")
+    new = v / "01_Personal/04_Finance_&_Budgets/2026-09-12_Axiz_Mist_Pricing.md"
+    assert r["where"] == new.relative_to(v).as_posix() and new.exists() and not Path(note).exists()
+    assert new.read_text().startswith("[LABEL: DOMAIN: PERSONAL]") and s.get_tracking(f"note:{new}")["pinned"]
+    assert "[[2026-09-12_Axiz_Mist_Pricing|" in (v / "Notes/Fishing trip Vaal.md").read_text()
+    assert all(i["rel"] != "Inbox/2026-09-12 Axiz Mist pricing.md" for i in tx.load_plan()["items"])
+    # only the side chosen: it keeps the same kind of category on the other side
+    r = tx.move_item(f"note:{new}", "02_Work")
+    assert r["where"].startswith("02_Work/04_Resources_&_Reference/") and (v / r["where"]).exists()
+    with pytest.raises(ValueError):
+        tx.move_item(r["id"], "02_Work", "02_Health_&_Fitness")
+    # things that aren't files remember where you put them
+    s.add_memory("TrueHome is a property platform project", "project")
+    mid = f"memory:{s.db.execute('SELECT id FROM memories').fetchone()[0]}"
+    tx.move_item(mid, "01_Personal", "Interests")
+    d = Dashboard(context.cfg, None)
+    node = next(n for n in d.graph()["nodes"] if n["id"] == mid)
+    assert node["domain"] == "01_Personal" and node["cat"] == "03_Interests_&_Projects"
+    # delete: the note leaves the brain but the file is kept; the memory is retired
+    out = tx.delete_item(r["id"])
+    assert not (v / r["where"]).exists() and Path(out["kept"]).exists() and "deleted" in out["kept"]
+    assert not s.db.execute("SELECT 1 FROM chunks WHERE path=?", (str(v / r["where"]),)).fetchone()
+    tx.delete_item(mid)
+    assert all(n["id"] != mid for n in d.graph()["nodes"])
+    with pytest.raises(ValueError):
+        tx.delete_item("artifact:1")

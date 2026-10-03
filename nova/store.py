@@ -7,7 +7,7 @@ Everything lives in one SQLite file (data/nova.db):
   activity   – a log of every request, tool call and reply (grouped into "turns":
                one turn = one request and everything Nova did for it)
   uses       – which memories / notes were recalled in which turn
-  tracking   – your own status, pin and note on any item (dashboard → Track)
+  tracking   – the status, pin and note on any item: yours (dashboard → Track) or Nova's own tag (auto=1)
 
 Semantic search uses local embeddings from Ollama (nomic-embed-text) and falls
 back to keyword matching when Ollama isn't available.
@@ -39,12 +39,14 @@ CREATE INDEX IF NOT EXISTS ix_chunks_path ON chunks(path);
 CREATE TABLE IF NOT EXISTS uses(item TEXT, turn INTEGER, ts TEXT);
 CREATE INDEX IF NOT EXISTS ix_uses_item ON uses(item);
 CREATE TABLE IF NOT EXISTS tracking(
-  item TEXT PRIMARY KEY, status TEXT DEFAULT '', pinned INTEGER DEFAULT 0, note TEXT DEFAULT '', updated TEXT);
+  item TEXT PRIMARY KEY, status TEXT DEFAULT '', pinned INTEGER DEFAULT 0, note TEXT DEFAULT '', updated TEXT,
+  auto INTEGER DEFAULT 0);
 """
 
 # columns added after v1.4 — added to existing databases on start-up
 _MIGRATIONS = {
     "activity": {"turn": "INTEGER", "ms": "INTEGER", "status": "TEXT DEFAULT ''"},
+    "tracking": {"auto": "INTEGER DEFAULT 0"},          # 1 = Nova tagged it herself, 0 = you did
     "memories": {"turn": "INTEGER"},
     "artifacts": {"turn": "INTEGER"},
 }
@@ -349,6 +351,29 @@ class Store:
         self.finish(tid, status, ms)
         self.current_turn = None
 
+    def set_turn_status(self, tid: int, status: str) -> None:
+        """Re-tag an earlier request (e.g. the one that asked a yes/no is completed once you answered)."""
+        with self.lock:
+            self.db.execute("UPDATE activity SET status=? WHERE id=? AND kind='user'", (status, tid))
+            self.db.commit()
+
+    def turn_text(self, tid: int) -> str:
+        """What was asked in that request."""
+        with self.lock:
+            r = self.db.execute("SELECT title, detail FROM activity WHERE id=? AND kind='user'", (tid,)).fetchone()
+        return (r["detail"] or r["title"] or "") if r else ""
+
+    def close_stale(self) -> int:
+        """Nova was restarted: nothing from before is still running, and a yes/no she asked is gone with it.
+        Called once at start-up (not by read-only users of the database). Returns how many were closed."""
+        with self.lock:
+            n = self.db.execute("UPDATE activity SET status='error' WHERE status='running' AND kind IN ('user','tool')"
+                                ).rowcount
+            n += self.db.execute("UPDATE activity SET status='cancelled' WHERE status='waiting' AND kind='user'").rowcount
+            n += self.db.execute("UPDATE activity SET status='expired' WHERE status='waiting' AND kind='tool'").rowcount
+            self.db.commit()
+        return n
+
     def note_use(self, item: str, turn: int | None = None) -> None:
         turn = turn if turn is not None else self.current_turn
         if turn is None:
@@ -364,13 +389,16 @@ class Store:
         return dict(r) if r else {"item": item, "status": "", "pinned": 0, "note": "", "updated": None}
 
     def set_tracking(self, item: str, status: str | None = None, pinned: bool | None = None,
-                     note: str | None = None, _from_file: bool = False) -> dict:
-        changed_status = status is not None and status != self.get_tracking(item)["status"]
+                     note: str | None = None, _from_file: bool = False, auto: bool = False) -> dict:
+        """auto=True: Nova is tagging it herself (see auto_status); otherwise the status is yours and she leaves it."""
         cur = self.get_tracking(item)
+        cur.setdefault("auto", 0)
+        changed_status = status is not None and status != cur["status"]
         if status is not None:
             if status not in TRACK_STATUSES:
                 raise ValueError(f"status must be one of {', '.join(s or 'none' for s in TRACK_STATUSES)}")
             cur["status"] = status
+            cur["auto"] = int(bool(auto and status))
         if pinned is not None:
             cur["pinned"] = int(bool(pinned))
         if note is not None:
@@ -380,10 +408,10 @@ class Store:
             if not cur["status"] and not cur["pinned"] and not cur["note"]:
                 self.db.execute("DELETE FROM tracking WHERE item=?", (item,))
             else:
-                self.db.execute("INSERT INTO tracking(item,status,pinned,note,updated) VALUES(?,?,?,?,?) "
+                self.db.execute("INSERT INTO tracking(item,status,pinned,note,updated,auto) VALUES(?,?,?,?,?,?) "
                                 "ON CONFLICT(item) DO UPDATE SET status=excluded.status, pinned=excluded.pinned, "
-                                "note=excluded.note, updated=excluded.updated",
-                                (item, cur["status"], cur["pinned"], cur["note"], cur["updated"]))
+                                "note=excluded.note, updated=excluded.updated, auto=excluded.auto",
+                                (item, cur["status"], cur["pinned"], cur["note"], cur["updated"], cur["auto"]))
             self.db.commit()
         if changed_status:                     # the note's own STATUS label follows, and so do the status boards
             try:
@@ -395,9 +423,21 @@ class Store:
             except Exception as e:
                 print(f"[brain] status labels: {e}")
         label = {"todo": "backlog", "doing": "in progress", "waiting": "waiting on you", "done": "completed"}.get(cur["status"], "")
-        self.log("track", "dashboard", f"Tracking: {label or ('pinned' if cur['pinned'] else 'updated')}", item, item,
-                 turn=0)
+        self.log("track", "nova" if auto else "dashboard",
+                 (f"Nova tagged it: {label}" if auto and label else f"Tracking: {label or ('pinned' if cur['pinned'] else 'updated')}"),
+                 item, item, turn=0)
         return cur
+
+    def auto_status(self, item: str, status: str) -> bool:
+        """Nova tags an item herself as she works. A status you chose by hand stays — except Backlog, which only
+        means "not started yet", so starting on it moves it on. True when the tag changed."""
+        cur = self.get_tracking(item)
+        if cur["status"] == status:
+            return False
+        if cur["status"] and not cur.get("auto") and cur["status"] != "todo":
+            return False
+        self.set_tracking(item, status=status, auto=True)
+        return True
 
     def tracked(self) -> list[dict]:
         with self.lock:

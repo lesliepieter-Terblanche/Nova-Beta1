@@ -4,6 +4,29 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.32.0] — 2026-10-03
+### Added
+- **Nova tags her own work.** Every command and every project now carries one of the four statuses without you
+  setting it:
+  - a **command** is *in progress* while she works on it, *waiting on you* while she waits for your yes/no (or when
+    it failed — for a day, then it is just history), and *completed* once she has answered;
+  - a **project** goes *in progress* the moment she does real work for it (builds, writes, sends, files — looking
+    something up doesn't count), and shows *waiting on you* for as long as one of its commands does.
+  A status you set yourself always stays — except Backlog, which only means "not started yet". Only you know when a
+  project is finished: say **"mark Harbour Homes as completed"** (or on hold, back in the backlog…), or set it on
+  the dashboard as before. "What's in progress?" / "what's waiting on me?" reads it back.
+- **Live work flow** on the dashboard, between the greeting and the two panes: everything in progress as a line of
+  steps the data moves through — you → what she recalled → her thinking → each tool (what went in, how long it
+  took) → what she saved → the reply. The moving link is the step she is on; red is where she waits for you. One
+  line per thing in progress (the current command, open yes/no questions, running missions); when nothing is, it
+  shows how the last command went. Click a line to open it; ▾ minimises it.
+- Commands sit under the project they belong to on the map, with their tag, for a day.
+### Fixed
+- A yes/no question you never answered (you said something else, or Nova was restarted) no longer stays "waiting"
+  for ever, and a command that was cut off by a restart no longer stays "in progress".
+- The map now updates the moment a command finishes, not at the next change.
+- A project lit up by its own command is no longer counted twice in "In progress" / "Waiting on you".
+
 ## [2.31.1] — 2026-10-02
 ### Fixed
 - The **"Tap 🎤 or Send once to let Nova talk on this device"** pop-up is gone. It appeared over the written answer

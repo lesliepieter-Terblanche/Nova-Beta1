@@ -350,9 +350,74 @@ Offered to the model when you say things like: _my phone, the phone, on my phone
 | `phone_get_photos` | Copy the newest photos / videos from the phone's camera to the PC and attach them. | `count`? |
 | `phone_put_file` | Copy a file from the PC to the phone's Download folder. | `path` |
 | `phone_open_link` | Open a web page or link on the phone. | `url` |
-| `phone_call` 🔒 | Start a phone call from the user's phone. | `number` |
+| `phone_call` 🔒 | Start a phone call from the user's phone — to a number or to someone in the phone's contacts by name. | `number` |
+| `phone_call_control` | Handle a call on the phone: answer, decline, hang_up, speaker or mute. | `action` |
+| `phone_show_screen` | Show the phone's live screen in a window on the PC (mouse and keyboard work in it). | — |
+| `phone_hide_screen` | Close the phone's live screen window on the PC. | — |
+| `phone_take_photo` | Take a photo with the phone's camera right now and bring it to the PC. | — |
+| `phone_schedule_message` | Send a message from the phone LATER ("send Sam happy birthday at 7 tomorrow"). | `to`, `text`, `when`, `app`? |
+| `phone_scheduled` | The messages waiting to be sent from the phone later. | — |
+| `phone_cancel_scheduled` | Cancel a scheduled phone message. | `which` |
+| `phone_routine_trigger` | Make a saved phone routine start BY ITSELF at a time and/or when something happens. Empty at and when = stop starting it automatically. | `name`, `at`?, `when`?, `days`? |
+| `phone_navigate` | Start Google Maps navigation on the phone. | `destination` |
+| `phone_send_clipboard` | Send what is on the PC's clipboard to the phone: a link opens on the phone, text is typed into the text box that is open on the phone. | — |
+| `phone_code` | Get the newest one-time code (OTP / verification code) that arrived on the phone. It is spoken, shown on the dashboard and copied to the PC clipboard — the digits are never put in the reply. Bank and payment codes are skipped. | — |
+| `phone_media` | Control what is playing on the phone, or say what it is. | `action`? |
+| `phone_missed` | What came in on the phone since the user last asked: how many messages and calls, and from whom. | — |
 | `do_on_phone` | Carry out a multi-step task on the user's phone by reading its screen and tapping / typing, step by step (e.g. "open WhatsApp and write to Sam that I'm running late", "turn on the hotspot", "find the cheapest Uber"). Stops before sending, paying, buying, calling or deleting unless those words are in `allowed`. | `task`, `allowed`? |
 | `stop_phone_task` | Stop the task Nova is doing on the phone. | — |
+| `phone_health` | How the phone is doing: battery, temperature, free storage, memory and Wi-Fi. | — |
+| `phone_switch` | Turn a phone setting on or off: wifi, bluetooth, mobile data, do not disturb, airplane mode, location, auto rotate, battery saver, dark mode, nfc, silent, vibrate, hotspot, flashlight. | `setting`, `on`? |
+| `phone_set_level` | Set the phone's brightness or a volume. | `what`, `percent` |
+| `phone_ring` | Find a phone: make it ring loudly, even when it is on silent — the user's own, or a family member's. | `who`? |
+| `phone_locate` | Where a phone is right now on the map: the user's own, or a family member's phone that was added with their agreement ("where is Sam?"). | `who`? |
+| `phone_add_family` | Add a family member's phone so it can be located and rung. Their phone must be plugged into the PC with USB debugging allowed and Tailscale on, and they must have agreed to it. | `name` |
+| `phone_reconnect` | Reconnect to the phone when the connection dropped (no cable needed unless the phone was restarted). | — |
+| `phone_self_repair_setup` | Prepare the phone so the connection restores itself after the phone restarts (no cable): gives an automation app on the phone the one permission it needs and explains the single rule to create in it. | — |
+| `phone_messages` | Read the messages waiting on the phone (WhatsApp, SMS, Telegram, Signal, Teams, email, missed calls) — "what did Sam say?", "any new messages?". | `app`?, `sender`? |
+| `phone_send_message` | Write a message to someone from the phone and send it — also for replying ("reply to Sam: on my way"). Works in WhatsApp, SMS (Messages), Telegram, Signal, Teams, Messenger, Gmail and Outlook. | `to`, `text`, `app`?, `send`? |
+| `phone_run_routine` | Run a saved phone routine (several steps from one phrase), e.g. "driving mode", "bedtime". | `name` |
+| `phone_save_routine` | Save (or replace) a phone routine. | `name`, `steps` |
+| `phone_routines_list` | The saved phone routines and their steps. | — |
+| `phone_delete_routine` | Remove a saved phone routine. | `name` |
+
+## budget
+
+Offered to the model when you say things like: _slip, receipt, invoice, budget, spending, spent, spend, expense, claim, reimburse, how much did i, how much have i_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `add_slip` | Read a photo or scan of a slip / receipt / invoice, file it under Personal → Finance & Budgets and add it to the budget. Empty path = the newest picture Nova has (e.g. the one just uploaded or photographed). | `path`?, `claim_for`?, `note`? |
+| `add_expense` | Add spending by hand when there is no slip. | `amount`, `merchant`?, `category`?, `date`?, `claim_for`? |
+| `spending` | How much was spent in a month, per category against the budget, and what is still to be claimed. | `month`? |
+| `set_budget` | Set the monthly budget for a category, or for the whole month with category "total". | `category`, `amount` |
+| `fix_expense_category` | Correct the category of an expense — Nova then uses it for that shop from now on. | `which`, `category` |
+| `list_claims` | The slips still to be claimed or waiting to be paid back. | — |
+| `update_claim` | Mark claims as submitted or paid back. | `which`, `state` |
+| `export_claims` | Make a folder with a spreadsheet of everything still to be claimed plus the slip pictures, ready to submit. | `claim_for`? |
+
+## assistant
+
+Offered to the model when you say things like: _undo, take that back, revert, put it back, weekly report, week report, activity review, what did you do, what have you done, what have you learned, personality, witty_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `undo_last` | Undo the last thing Nova changed (a moved or written file, a filed or deleted note, a memory, a reminder, a budget entry, a setting). Says plainly when something can't be undone. | — |
+| `undo_list` | The recent things Nova can still undo, newest first. | — |
+| `what_have_you_learned` | What Nova has learned from the user's corrections: filing rules, shop categories and standing preferences. | — |
+| `forget_lesson` | Forget something Nova learned from a correction. | `which` |
+| `set_personality` | Change how Nova talks. It stays that way until changed again. | `style`, `swearing`? |
+| `weekly_report` | Write this week's work report (what moved, what's stuck, what's due next week), save it in the brain and show it. Optionally also put it in Gmail as a draft — never sent. | `email_draft_to`? |
+| `activity_review` | What Nova did for the user lately: how many requests, what was used most, what failed, what is never used. | `days`? |
+
+## status
+
+Offered to the model when you say things like: _in progress, mark , tag , status of, status to, as completed, as complete, as done, is done, is finished, is complete, backlog_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `set_status` | Tag a project (or mission) with a status because the user says so: "mark the Harbour Homes project as completed", "Riverbend is on hold", "put Orchard back in the backlog". | `item`, `status` |
+| `work_status` | What is in progress right now, what is waiting on the user, and how much is in the backlog or completed. Use for "what are you working on", "what's in progress", "what's waiting on me", "what's outstanding". | — |
 
 ## Updates, rollback & extensions
 

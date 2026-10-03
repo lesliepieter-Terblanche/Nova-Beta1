@@ -36,6 +36,7 @@ def build():
     b = cfg.brain
     context.store = Store(resolve(b.db_file), cfg.llm.providers.ollama.base_url, b.embed_model)
     context.store.vault = resolve(b.vault_dir)
+    context.store.close_stale()             # nothing from before the restart is still "in progress"
     try:
         from nova import roadmap
         r = roadmap.sync(context.store)

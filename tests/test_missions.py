@@ -154,4 +154,10 @@ def test_mission_tools_and_dashboard(nova, monkeypatch):
     assert d.topic("mission")["items"][0]["id"] == "mission:1"
     assert any(n["id"] == "mission:1" for n in d.graph()["nodes"])
     assert d.now()["missions"] == []
+    from nova import autotag                              # v2.32: a running mission is a lane in the live work flow
+    missions().running[1] = {"status": "running", "progress": 0.4, "step": "step two"}
+    lane = next(ln for ln in autotag.flow()["lanes"] if ln["id"] == "mission:1")
+    assert lane["tag"] == "IN-PROGRESS" and lane["progress"] == 0.4 and lane["nodes"][0]["title"] == "Mission"
+    assert [n["kind"] for n in lane["nodes"]][-1] == "reply" and any(n["kind"] == "tool" for n in lane["nodes"])
+    missions().running.pop(1)
     assert "Paused" in REGISTRY["manage_mission"].run({"mission_id": 1, "action": "pause"})

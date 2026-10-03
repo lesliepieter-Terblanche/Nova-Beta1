@@ -6,6 +6,7 @@
   /api/item?id=     details for one node: what it is, where it came from, its timeline, your tracking
   /api/topic?kind=  every item in a topic (People, Projects, Actions, … or memories/notes/creations/tracked)
   /api/now          what Nova is busy with right now (current request and its steps)
+  /api/flow         the live work flow: everything in progress, as steps the data moves through
   /api/track        set your status / pin / note on an item (POST)
   /api/open         open an item on the PC (POST {"id": ...})
   /api/ask          talk to Nova by typing (POST {"text": ..., "voice": true = spoken reply as audio for this device})
@@ -137,6 +138,7 @@ class Dashboard:
             n = {"id": nid, "label": label[:120], "kind": kind, "val": val * (1.3 if t.get("pinned") else 1),
                  "color": HUBS[kind][1], "created": created, "hot": (nid in recent and kind != "action") or t.get("status") == "doing",
                  "track": t.get("status", ""), "pinned": bool(t.get("pinned")), "domain": domain,
+                 "auto": bool(t.get("auto")),         # Nova tagged it herself
                  "status": tx.TRACK_TO_STATUS.get(t.get("status", ""), "") or status or ""}
             if extra:
                 n.update(extra)
@@ -176,10 +178,15 @@ class Dashboard:
                 {"status": m_status.get(ms["status"], ""), "mstatus": ms["status"], "progress": ms.get("progress", 0)})
             if ms["status"] == "running":
                 nodes[-1]["hot"] = True
-        for t in turns:
+        from .. import autotag
+        for t in turns:                                  # every command is tagged from how it went
+            tstatus = t["status"] or "done"
             add(f"turn:{t['id']}", t["title"], "action", 3.2, t["ts"], None,
-                {"status": "IN-PROGRESS" if t["status"] == "running" else "", "session": t["session"]})
-            if t["status"] == "running":
+                {"session": t["session"], "tstatus": tstatus, "fresh": autotag.is_fresh(t["ts"])},
+                status=autotag.tag_of_turn(tstatus))
+            if not nodes[-1]["track"]:
+                nodes[-1]["auto"] = True
+            if tstatus == "running":
                 nodes[-1]["hot"] = True
 
         # people cards: each person linked to everything that mentions them
@@ -235,6 +242,28 @@ class Dashboard:
             if item in ids and pid in ids and item != pid:
                 by_id[item]["project"] = pid
                 links.append({"source": pid, "target": item, "type": "project", "color": org["color"].get(pid)})
+        # live: a project is in progress while Nova works on one of its commands or missions, and waits on you
+        # while one of them does — whatever its saved tag says
+        rank = {"WAITING-ON-USER": 2, "IN-PROGRESS": 1}
+        for n in list(nodes):
+            pid = n.get("project")
+            if not pid or n["kind"] not in ("action", "mission"):
+                continue
+            if n["kind"] == "action":                    # a command sits with its project on the map
+                n["domain"] = by_id[pid]["domain"]
+                if by_id[pid].get("cat"):
+                    n["cat"] = by_id[pid]["cat"]
+                if n.get("tstatus") not in ("running", "waiting"):
+                    continue
+            if n.get("status") not in rank:
+                continue
+            for _ in range(4):
+                p_ = by_id.get(pid)
+                if not p_:
+                    break
+                if rank[n["status"]] > rank.get(p_.get("live") or "", 0):
+                    p_.update(status=n["status"], live=n["status"], hot=True)
+                pid = org["parents"].get(pid, "")
         try:
             waiting = tx.bottlenecks()
         except Exception as e:
@@ -242,8 +271,14 @@ class Dashboard:
             waiting = []
         seen = {w["id"] for w in waiting}
         for n in nodes:                                  # anything on the map that waits on you is listed too
-            if n.get("status") == "WAITING-ON-USER" and n["id"] not in seen:
-                waiting.append({"id": n["id"], "text": n["label"], "domain": n["domain"], "why": ""})
+            if n.get("status") == "WAITING-ON-USER" and n["id"] not in seen and not n.get("live"):
+                why = ""
+                if n["kind"] == "action" and not n["track"]:
+                    if n.get("tstatus") == "error" and not n.get("fresh"):
+                        continue                         # an old failure is history, not a bottleneck
+                    why = "say yes or no" if n.get("tstatus") == "waiting" else \
+                        "it failed — ask again, or mark it completed"
+                waiting.append({"id": n["id"], "text": n["label"], "domain": n["domain"], "why": why})
         try:
             audit = tx.plan_summary()
         except Exception:
@@ -258,7 +293,9 @@ class Dashboard:
             t = s.db.execute("SELECT COUNT(*) c, COALESCE(MAX(updated), '') u, COALESCE(SUM(LENGTH(status) * 7 + pinned), 0) x "
                              "FROM tracking").fetchone()
             c = s.db.execute("SELECT COUNT(DISTINCT path) c, COALESCE(MAX(mtime), 0) m FROM chunks").fetchone()
-        return f"{t['c']}.{t['u']}.{t['x']}.{c['c']}.{int(c['m'])}"
+            a = s.db.execute("SELECT COUNT(*) c, COALESCE(SUM(id), 0) x FROM activity WHERE kind='user' "
+                             "AND status IN ('running','waiting')").fetchone()     # commands change tag as they go
+        return f"{t['c']}.{t['u']}.{t['x']}.{c['c']}.{int(c['m'])}.{a['c']}.{a['x']}"
 
     # ── projects: what belongs together ───────────────────
     def organized(self, force: bool = False) -> dict:
@@ -1047,6 +1084,9 @@ class Dashboard:
                         return self._json(dash.skills())
                     if u.path == "/api/now":
                         return self._json(dash.now())
+                    if u.path == "/api/flow":                    # the live work flow: what is in progress, step by step
+                        from .. import autotag
+                        return self._json(autotag.flow())
                     if u.path == "/api/focus":
                         from .. import focus, wellbeing
                         return self._json({**focus.state(), "wb": wellbeing.state()})

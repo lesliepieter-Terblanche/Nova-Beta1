@@ -14,6 +14,9 @@ It remembers everything permanently and shows its whole second brain as a live m
 
 ![Nova's second-brain master index](docs/images/dashboard.jpg)
 
+![Live work flow: what Nova is busy with, step by step](docs/images/work-flow.jpg)
+<sub>Live work flow — what is in progress right now, step by step, and Nova tagging the project and the command herself</sub>
+
 <table>
 <tr>
 <td width="50%"><img src="docs/images/dashboard-detail.jpg" alt="Open a note: status, project and contents"><br><sub>Click anything to open it, set its status or link it to a project</sub></td>
@@ -56,7 +59,7 @@ It remembers everything permanently and shows its whole second brain as a live m
 | 📝 **Meetings** | "Record this meeting" → mic + Teams/Zoom audio → transcript, summary, decisions, your action items (to Google Tasks) |
 | 🧠 **Memory & 2nd brain** | "Remember that…" · "What do you know about…?" · research saved as notes (Obsidian-compatible Markdown) |
 | 🗂 **Brain filing rules** | Everything under `01_Personal/` or `02_Work/`, numbered categories, three levels, clean names · every note labelled `[LABEL: DOMAIN: …]` `[LABEL: STATUS: …]` · status boards of what waits on you · reorganises your existing notes only after you approve (backup first, links kept) |
-| 🗃 **Master Index dashboard** | Your brain as a live folder tree: `01_Personal` \| `02_Work` → numbered categories → files · blue = in progress, red = waiting on you, green = completed · active bottlenecks list · light on memory (plain HTML, no 3D) · click anything to open, track or correct it |
+| 🗃 **Master Index dashboard** | Your brain as a live folder tree: `01_Personal` \| `02_Work` → numbered categories → files · blue = in progress, red = waiting on you, green = completed — Nova tags commands and projects herself as she works · **live work flow**: what is in progress, step by step, with the data moving between the steps · active bottlenecks list · light on memory (plain HTML, no 3D) · click anything to open, track or correct it |
 | 📱 **Remote control** | Private Telegram bot: text or voice notes in; text, voice notes and files out |
 | 📧 **Google Workspace** | Gmail search/read/draft/send/reply · Calendar · Drive · Docs · Sheets · Tasks |
 | 📁 **Files** | Find, read (PDF/Word/Excel), write, move, tidy folders, zip, send to phone |

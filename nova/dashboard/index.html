@@ -948,6 +948,56 @@
   .stage-foot > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
   .shot-btn { border: 1px solid var(--line-strong); background: rgba(255,255,255,.1); color: var(--text); border-radius: 999px; padding: 7px 14px; font: 600 12.5px var(--body); cursor: pointer; text-decoration: none; }
   .shot-btn:hover { background: rgba(255,255,255,.2); }
+  /* v2.32: live work flow — everything in progress as a pipeline the data moves through */
+  .flow { border-radius: 18px; margin: 0 0 18px; padding: 12px 16px 14px; border: 1px solid rgba(255,255,255,.16);
+    background: rgba(10,12,34,.42); backdrop-filter: blur(18px) saturate(160%); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 22px 36px -20px rgba(5,0,30,.7); }
+  .flow:empty { display: none; }
+  .flow.busy { border-color: color-mix(in srgb, var(--st-ip) 60%, transparent); }
+  .flow.wait { border-color: color-mix(in srgb, var(--st-wait) 65%, transparent); }
+  .flow .fl-hd { display: flex; align-items: center; gap: 10px; font: 600 11px var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .flow .fl-hd i { width: 9px; height: 9px; border-radius: 50%; background: #aab4c8; flex: none; }
+  .flow.busy .fl-hd i { background: var(--st-ip); box-shadow: 0 0 10px var(--st-ip); animation: blink 1s infinite; }
+  .flow.wait .fl-hd i { background: var(--st-wait); box-shadow: 0 0 10px var(--st-wait); animation: none; }
+  .flow .fl-hd b { color: #fff; font-weight: 700; }
+  .flow .fl-hd .sum { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; color: #dfe6ff; opacity: .85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .flow .fl-hd button { margin-left: auto; flex: none; width: 26px; height: 26px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; cursor: pointer; }
+  .flow.min .lane { display: none; }
+  .lane { margin-top: 12px; }
+  .lane + .lane { padding-top: 12px; border-top: 1px dashed rgba(255,255,255,.14); }
+  .lane-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; cursor: pointer; }
+  .lane-hd .tg { font: 700 10.5px var(--body); padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: rgba(170,180,200,.28); color: #fff; }
+  .lane[data-tag="IN-PROGRESS"] .tg { background: var(--st-ip); color: #06263a; }
+  .lane[data-tag="WAITING-ON-USER"] .tg { background: var(--st-wait); color: #3b0612; }
+  .lane[data-tag="COMPLETED"] .tg { background: var(--st-done); color: #06301a; }
+  .lane-hd .t { font: 600 14px var(--display); color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .lane-hd .pj { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid rgba(255,210,63,.6); color: #ffe08a; white-space: nowrap; }
+  .lane-hd .m { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .lane .bar { height: 3px; border-radius: 3px; background: rgba(255,255,255,.12); margin: -3px 0 9px; overflow: hidden; }
+  .lane .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--st-ip), var(--st-done)); transition: width .6s; }
+  .pipe { display: flex; align-items: stretch; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; }
+  .fnode { flex: 1 1 0; min-width: 106px; max-width: 210px; padding: 9px 10px; border-radius: 13px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07); cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-content: start; position: relative; }
+  .fnode .ic { grid-row: span 2; font-size: 19px; line-height: 1.2; }
+  .fnode b { font: 600 12.5px/1.25 var(--body); color: #fff; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .fnode small { font-size: 11px; line-height: 1.3; color: #cfd5f5; opacity: .85; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+  .fnode em { grid-column: 1 / -1; font: 600 10px var(--body); font-style: normal; letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; color: var(--muted); }
+  .fnode.done { border-color: color-mix(in srgb, var(--st-done) 70%, transparent); } .fnode.done em { color: var(--st-done); }
+  .fnode.running { border-color: var(--st-ip); background: rgba(47,198,255,.16); animation: st-pulse 1.6s ease-out infinite; } .fnode.running em { color: var(--st-ip); }
+  .fnode.waiting { border-color: var(--st-wait); background: rgba(255,85,104,.18); box-shadow: 0 0 12px rgba(255,85,104,.5); } .fnode.waiting em { color: var(--st-wait); }
+  .fnode.error { border-color: var(--st-wait); border-style: dashed; } .fnode.error em { color: var(--st-wait); }
+  .fnode.todo, .fnode.skipped { border-style: dashed; opacity: .55; }
+  .flink { flex: 0 0 60px; display: grid; align-content: center; justify-items: center; gap: 4px; }
+  .flink i { display: block; width: 100%; height: 3px; border-radius: 3px; background: rgba(255,255,255,.16); position: relative; }
+  .flink i::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5.5px solid transparent; border-left-color: rgba(255,255,255,.3); border-right: 0; }
+  .flink small { font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .flink.done i { background: var(--st-done); } .flink.done i::after { border-left-color: var(--st-done); }
+  .flink.run i { background: repeating-linear-gradient(90deg, var(--st-ip) 0 8px, transparent 8px 16px); background-size: 16px 100%; animation: fl-move .5s linear infinite; }
+  .flink.run i::after { border-left-color: var(--st-ip); } .flink.run small { color: var(--st-ip); }
+  .flink.wait i { background: repeating-linear-gradient(90deg, var(--st-wait) 0 8px, transparent 8px 16px); } .flink.wait i::after { border-left-color: var(--st-wait); } .flink.wait small { color: var(--st-wait); }
+  @keyframes fl-move { to { background-position: 16px 0; } }
+  .flow.idle .pipe { opacity: .78; }
+  body.calm .fnode.running, body.calm .flink.run i, body.calm .flow.busy .fl-hd i { animation: none; }
+  @media (prefers-reduced-motion: reduce) { .fnode.running, .flink.run i, .flow.busy .fl-hd i { animation: none !important; } }
+  @media (max-width: 900px) { .flow { padding: 10px 12px 12px; } .fnode { min-width: 132px; } .flink { flex-basis: 34px; } .flink small { display: none; } }
 </style>
 </head>
 <body>
@@ -1133,7 +1183,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify([...v]));
 const closed = new Set(lsGet("nova.tree.closed")), expanded = new Set();
 const FOLDER = `<svg class="fi" viewBox="0 0 24 20" aria-hidden="true"><path d="M1 3.5A2.5 2.5 0 0 1 3.5 1h5l2.4 2.6H20.5A2.5 2.5 0 0 1 23 6.1v10.4a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 1 16.5z"/></svg>`;
 const FILE = `<svg class="pi" viewBox="0 0 16 20" aria-hidden="true"><path d="M2 1h8l4 4v14H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 9h6M5 12h6M5 15h4" stroke="currentColor" stroke-width="1.2"/></svg>`;
-const ICON = { project: "◆", mission: "➤", person: "●", goal: "◎" };
+const ICON = { project: "◆", mission: "➤", person: "●", goal: "◎", action: "▸" };
 const CAT_LOOK = { "01_Life_Admin": ["🏠", "#ff9f43"], "02_Health": ["💪", "#ff5d8f"], "03_Interests": ["🎣", "#8b7bff"], "04_Finance": ["💰", "#22c58b"], "05_Journal": ["📓", "#38a8ff"],
   "01_Role": ["🎯", "#38a8ff"], "02_Clients": ["🤝", "#ff7a59"], "03_Projects": ["🚀", "#a06bff"], "04_Resources": ["📚", "#22c7dd"], "05_Meetings": ["📅", "#f5b041"] };
 const catLook = (name) => CAT_LOOK[Object.keys(CAT_LOOK).find((k) => name.startsWith(k))] || ["📁", "#8b7bff"];
@@ -1161,7 +1211,7 @@ function treeModel() {
       } else dir.rows.push(n);
       continue;
     }
-    const tracked = n.isProject || n.kind === "project" || n.kind === "mission" || (n.status && n.kind !== "action") || (n.kind === "action" && n.status === "IN-PROGRESS");
+    const tracked = n.isProject || n.kind === "project" || n.kind === "mission" || (n.status && n.kind !== "action") || (n.kind === "action" && (n.track || n.tstatus === "running" || n.tstatus === "waiting" || (n.fresh && (n.project || n.tstatus === "error"))));
     if (!tracked) continue;
     const c = (n.cat && m.dirs.has(n.cat)) ? n.cat : n.kind === "mission" ? catOf(n.domain, /Meetings|Interests/) : catOf(n.domain, /Projects/);
     if (m.dirs.get(c)) m.dirs.get(c).rows.push(n);
@@ -1171,13 +1221,14 @@ function treeModel() {
 const fileName = (n) => n.kind === "note" ? n.label + ".md" : (n.short || n.label);
 function rowHtml(n) {
   const st = n.status || "", name = fileName(n);
-  const explicit = ACTIVE(st) || (st && (n.track || n.isProject || n.kind === "project" || n.kind === "mission"));
+  const explicit = ACTIVE(st) || (st && (n.track || n.isProject || n.kind === "project" || n.kind === "mission" || n.kind === "action"));
+  const by = n.live ? " · live: Nova is working on it" : n.auto ? " · tagged by Nova" : n.track ? " · tagged by you" : "";
   return `<li class="f" data-id="${esc(n.id)}"${st ? ` data-status="${st}"` : ""}${ACTIVE(st) ? ` data-flow="${st === "IN-PROGRESS" ? "ip" : "wait"}"` : ""}>` +
     `<button class="trow" title="${esc(n.label)}">${n.kind === "note" ? FILE : `<span class="pi k">${ICON[n.kind] || "◆"}</span>`}<span class="nm">${esc(name.length > 54 ? name.slice(0, 53) + "…" : name)}</span></button>` +
-    (explicit ? `<div class="stl" title="[STATUS: ${st}]">${PILL[st] || st}</div>` : "") + `</li>`;
+    (explicit ? `<div class="stl" title="[STATUS: ${st}]${by}">${n.tstatus === "error" && !n.track ? "✕ Failed — your call" : PILL[st] || st}</div>` : "") + `</li>`;
 }
 const order = (a, b) => (ACTIVE(b.status) - ACTIVE(a.status)) || ((b.status === "WAITING-ON-USER") - (a.status === "WAITING-ON-USER"))
-  || ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || String(b.created || "").localeCompare(String(a.created || ""));
+  || ((a.kind === "action") - (b.kind === "action")) || ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || String(b.created || "").localeCompare(String(a.created || ""));
 function dirHtml(dir, depth) {
   const rows = [...dir.rows].sort(order), subs = [...dir.subs.values()].sort((a, b) => a.name.localeCompare(b.name));
   const all = [...rows.map((r) => r.status), ...subs.flatMap((s) => s.rows.map((r) => r.status))];
@@ -1213,13 +1264,14 @@ function renderTree() {
     const work = rowsAll.filter((r) => r.track || r.isProject || r.kind === "project" || r.kind === "mission");
     const open = work.filter((r) => r.status !== "COMPLETED" && r.track !== "done").length;
     const flow = flows[d] = worst(sts), n = sts.length + m.unfiled.length;
-    for (const st of sts) if (st in tally && st !== "COMPLETED") tally[st]++;
+    const own = rowsAll.filter((r) => !r.live).map((r) => r.status);   // a project lit up by its own command isn't counted twice
+    for (const st of own) if (st in tally && st !== "COMPLETED") tally[st]++;
     tally.COMPLETED += work.length - open; tally.OPEN = (tally.OPEN || 0) + open; tally.WORK = (tally.WORK || 0) + work.length;
     const pct = work.length ? Math.round(open / work.length * 100) : 0;
     const seg = (st) => work.filter((r) => r.status === st).length / (work.length || 1) * 100;      // the ring in the status colours
     const a1 = seg("WAITING-ON-USER"), a2 = a1 + seg("IN-PROGRESS"), a3 = Math.max(a2, pct);
     const ringTip = work.length ? `${open} of ${work.length} tracked item${work.length === 1 ? "" : "s"} still to be completed` : "Nothing is being tracked on this side yet";
-    const ip = sts.filter((s) => s === "IN-PROGRESS").length, w = sts.filter((s) => s === "WAITING-ON-USER").length;
+    const ip = own.filter((s) => s === "IN-PROGRESS").length, w = own.filter((s) => s === "WAITING-ON-USER").length;
     h += `<section class="pane ${d === DOMAINS[0] ? "personal" : "work"}" id="pane-${d}" data-domain="${d}"${flow ? ` data-flow="${flow}"` : ""}>` +
       `<button class="dom" data-dom="${d}" title="${d === DOMAINS[0] ? "Life admin, health, hobbies, travel, own money" : "Role, clients, projects, strategy, reference"}">${FOLDER}<span>${esc(nice(d))}</span><span class="donut${work.length ? "" : " idle"}" style="--a1:${a1.toFixed(1)}%;--a2:${a2.toFixed(1)}%;--a3:${a3.toFixed(1)}%" title="${ringTip}"><b>${work.length ? pct + "%" : "–"}</b></span></button>` +
       `<div class="sum"><button class="fold" data-fold="${d}" data-to="open">Expand all</button> · <button class="fold" data-fold="${d}" data-to="close">Collapse all</button> · ${n} item${n === 1 ? "" : "s"}${work.length ? ` · <b class="od">${open} of ${work.length} outstanding</b>` : ""}${ip ? ` · <b class="ip">${ip} in progress</b>` : ""}${w ? ` · <b class="wt">${w} waiting on you</b>` : ""}</div>` +
@@ -1233,10 +1285,10 @@ function renderTree() {
   const line = [ip ? `${ip} thing${ip === 1 ? "" : "s"} in progress` : "", (wt || nb) ? `${Math.max(wt, nb)} waiting on you` : "", (!ip && !wt && !nb) ? "Nothing is waiting on you" : ""].filter(Boolean).join(" · ");
   const root = `<div class="hero"><div><h2>${hello}${OWNER ? ", " + esc(OWNER) : ""}</h2><p>${line}</p></div><div class="kp">` +
     `<span class="k ip"><b>${ip}</b>In progress</span><span class="k wt"><b>${Math.max(wt, nb)}</b>Waiting on you</span><span class="k od"><b>${tally.OPEN || 0}</b>Outstanding</span><span class="k ok"><b>${tally.COMPLETED}</b>Completed</span><span class="k bl"><b>${tally.BACKLOG}</b>Backlog</span></div></div>`;
-  const html = root + `<div class="panes">${h}</div>`;
+  const html = root + `<section class="flow" id="flow" aria-label="Live work flow"></section><div class="panes">${h}</div>`;
   if (html !== lastHtml) {
     const keep = [...treeEl.querySelectorAll(".pane")].map((p) => p.scrollTop), top = treeEl.scrollTop;
-    treeEl.innerHTML = lastHtml = html;
+    treeEl.innerHTML = lastHtml = html; paintFlow(true);
     treeEl.querySelectorAll(".pane").forEach((p, i) => { p.scrollTop = keep[i] || 0; }); treeEl.scrollTop = top;
   }
   markRows();
@@ -1992,12 +2044,13 @@ async function poll() {
       }
       showNotices();
       const changed = graphRev !== null && r.rev !== graphRev; graphRev = r.rev;
-      if (!first && (changed || r.events.some((e) => ["memory", "artifact", "user", "mission"].includes(e.kind)))) { await loadGraph(); loadStats(); }
+      if (!first && (changed || r.events.some((e) => ["memory", "artifact", "user", "mission", "reply", "track"].includes(e.kind)))) { await loadGraph(); loadStats(); }
       else if (!first) loadStats();
       if (!first) { loadNow(); if (view && view.type !== "skills" && $("panel").classList.contains("open")) refreshSoon(); }
     }
   } catch { setStatus("offline"); }
   if (++poll.n % 8 === 0) loadNow();        // keeps the "ago" times fresh
+  if (FLOW.busy || status !== "idle" || poll.n % 4 === 0) loadFlow();   // the work flow moves while Nova is working
   setTimeout(poll, 1500);
 }
 
@@ -2646,12 +2699,66 @@ $("mic").onclick = () => {
 };
 
 
+// ── live work flow ────────────────────────────────────
+// One lane per thing in progress (the command Nova is on, a yes/no she is waiting for, a running mission). A lane is
+// the path the data takes: you → her brain → her thinking → each tool → the reply. The link that is moving is the
+// step being worked on right now.
+let FLOW = { busy: false, lanes: [] }, flowHtml = "", flowMin = false;
+try { flowMin = localStorage.getItem("nova.flow.min") === "1"; } catch {}
+const FL_STATE = { done: "✓ done", running: "● working…", waiting: "? needs you", error: "✕ failed", todo: "next", skipped: "⊘ skipped" };
+function laneHtml(l) {
+  const since = l.live && l.status === "running" ? Math.max(0, Math.round((Date.now() - Date.parse(l.started)) / 1000)) : null;
+  const took = since != null ? `${since}s so far` : l.ms ? secs(l.ms) : "";
+  const how = { voice: "by voice", dashboard: "typed here", telegram: "via Telegram", phone: "from the phone", mission: "mission" }[l.channel] || l.channel;
+  let h = `<div class="lane" data-tag="${esc(l.tag)}" data-lane="${esc(l.id)}"><div class="lane-hd"><span class="tg">${l.status === "error" ? "✕ Failed" : PILL[l.tag] || l.tag}</span>` +
+    `<span class="t" title="${esc(l.title)}">${l.live ? "" : "Last: "}${esc(l.title)}</span>` +
+    (l.project?.title ? `<span class="pj" title="Project this belongs to">◆ ${esc(l.project.title)}</span>` : "") +
+    `<span class="m">${esc([how, took].filter(Boolean).join(" · "))}</span></div>`;
+  if (l.kind === "mission") h += `<div class="bar"><span style="width:${Math.round((l.progress || 0) * 100)}%"></span></div>`;
+  h += `<div class="pipe">`;
+  l.nodes.forEach((n, i) => {
+    if (i) {
+      const prev = l.nodes[i - 1];
+      const ls = n.state === "running" ? "run" : n.state === "waiting" ? "wait" : (n.state === "done" || n.state === "error") && prev.state !== "todo" ? "done" : "";
+      h += `<div class="flink ${ls}"><i></i><small>${esc(prev.out || "")}</small></div>`;
+    }
+    const tip = [n.title, n.sub, n.result ? "→ " + n.result : ""].filter(Boolean).join("\n");
+    h += `<div class="fnode ${esc(n.state)}" title="${esc(tip)}"><span class="ic">${n.icon || "⚙️"}</span><b>${esc(n.title)}</b><small>${esc(n.sub || "")}</small>` +
+      `<em>${FL_STATE[n.state] || ""}${n.ms != null && n.state === "done" ? " · " + secs(n.ms) : ""}</em></div>`;
+  });
+  return h + `</div></div>`;
+}
+function paintFlow(force) {
+  const el = $("flow"); if (!el) return;
+  const lanes = FLOW.lanes || [], ip = lanes.filter((l) => l.live && l.tag === "IN-PROGRESS").length, wt = lanes.filter((l) => l.live && l.tag === "WAITING-ON-USER").length;
+  const sum = FLOW.busy ? [ip ? `${ip} in progress` : "", wt ? `${wt} waiting on you` : ""].filter(Boolean).join(" · ") : lanes.length ? "Nothing in progress — this is how the last command went" : "Nothing yet — ask Nova something and watch it move";
+  const html = `<div class="fl-hd"><i></i><b>Live work flow</b><span class="sum">${esc(sum)}</span><button data-flmin title="${flowMin ? "Show the steps" : "Minimise"}" aria-label="Minimise the work flow">${flowMin ? "▸" : "▾"}</button></div>` + lanes.map(laneHtml).join("");
+  el.className = "flow" + (FLOW.busy ? (wt && !ip ? " wait" : " busy") : " idle") + (flowMin ? " min" : "");
+  if (force || html !== flowHtml) {
+    const keep = [...el.querySelectorAll(".pipe")].map((p) => p.scrollLeft);
+    el.innerHTML = flowHtml = html;
+    el.querySelectorAll(".pipe").forEach((p, i) => {            // keep the step being worked on in view
+      const act = p.querySelector(".fnode.running, .fnode.waiting");
+      p.scrollLeft = act ? Math.max(0, act.offsetLeft - p.offsetLeft - p.clientWidth + act.offsetWidth + 110) : (keep[i] || 0);
+    });
+  }
+}
+async function loadFlow() {
+  try { FLOW = await api("/api/flow"); } catch { return; }
+  paintFlow(false);
+}
+treeEl.addEventListener("click", (e) => {
+  if (e.target.closest("[data-flmin]")) { flowMin = !flowMin; try { localStorage.setItem("nova.flow.min", flowMin ? "1" : "0"); } catch {} return paintFlow(true); }
+  const lane = e.target.closest(".flow [data-lane]"); if (lane) openById(lane.dataset.lane);
+});
+
 // ── start ─────────────────────────────────────────────
 poll.n = 0;
 pollGestures();
 await Promise.all([applyTheme(), loadStats(), loadNow(), loadFocus()]);
 loadPhone();
 await loadGraph();
+loadFlow();
 { let saved = null; try { saved = localStorage.getItem(FOCUS_KEY); } catch {}
   if (saved === "1" || (saved == null && F?.wb?.focus_default)) setFocusMode(true); }
 setTimeout(() => $("intro").classList.add("gone"), 300);

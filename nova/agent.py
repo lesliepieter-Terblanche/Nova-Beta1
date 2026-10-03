@@ -65,6 +65,7 @@ class Pending:
     prefer_smart: bool
     skipped_ids: list[str]
     log_id: int | None = None
+    turn: int | None = None           # the request that asked the question — closed once you answer
     created: float = field(default_factory=time.time)
 
 
@@ -155,6 +156,8 @@ class Agent:
             self._tools_used = []
             self._model_ms = 0
             self._rounds = 0
+            self._gave_up = False
+            self._answers = None              # the earlier request this one answers with a yes/no
             t0 = time.perf_counter()
             turn = None
             if store:
@@ -183,8 +186,21 @@ class Agent:
                           status="error" if failed else "ok", ms=total)
                 store.log("timing", session, timing, json.dumps({"total_ms": total, "model_ms": self._model_ms,
                           "model": model, "rounds": self._rounds, "tools": self._tools_used}), turn=turn)
-                store.end_turn(turn, "error" if failed else "waiting" if waiting else "done", total)
+                status = "error" if failed or self._gave_up else "waiting" if waiting else "done"
+                if waiting and self.pending[session].turn is None:
+                    self.pending[session].turn = turn
+                if self._answers and not waiting:          # the command that asked is finished now too
+                    store.set_turn_status(self._answers, "error" if status == "error" else "done")
+                elif self._answers:                        # …or it asked a second question
+                    store.set_turn_status(self._answers, "done")
+                store.end_turn(turn, status, total)
                 store.set_status("idle")
+                try:                                       # tag the project this was for: in progress
+                    from . import autotag
+                    asked = store.turn_text(self._answers) if self._answers else ""    # "yes" answers that request
+                    autotag.after_turn(self._answers if asked else turn, asked or text, list(self._tools_used), status)
+                except Exception as e:
+                    print(f"[autotag] {e}")
                 # Learn in the background so the reply isn't delayed.
                 if self.cfg.brain.get("learn_automatically", True) and not session.startswith("mission:"):
                     threading.Thread(target=learn_from_turn, daemon=True, args=(
@@ -200,7 +216,12 @@ class Agent:
 
     def reset(self, session: str) -> None:
         self.histories.pop(session, None)
-        self.pending.pop(session, None)
+        p = self.pending.pop(session, None)
+        if p and context.store:
+            if p.log_id:
+                context.store.finish(p.log_id, "dropped")
+            if p.turn:
+                context.store.set_turn_status(p.turn, "cancelled")
 
     # ── internals ──────────────────────────────────────────
     def _handle(self, text: str, session: str, force_smart: bool = False) -> str:
@@ -211,6 +232,11 @@ class Agent:
             if NO.match(text):
                 return self._resume(session, text, p, approved=False)
             # Anything else: treat as a new request and drop the pending action.
+            if context.store:
+                if p.log_id:
+                    context.store.finish(p.log_id, "dropped")
+                if p.turn:
+                    context.store.set_turn_status(p.turn, "cancelled")
 
         try:                                             # a saved phone routine by name: "driving mode"
             from . import phone_routines
@@ -292,6 +318,7 @@ class Agent:
                 else:
                     result = self._run_tool(session, t, call.arguments)
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": result[:6000]})
+        self._gave_up = True
         return "I couldn't finish that in a reasonable number of steps. Try breaking it into smaller requests."
 
     @staticmethod
@@ -307,6 +334,7 @@ class Agent:
             return None
 
     def _resume(self, session, text, p: Pending, approved: bool) -> str:
+        self._answers = p.turn
         if context.store and getattr(p, "log_id", None):
             context.store.finish(p.log_id, "approved" if approved else "declined")
         if approved:

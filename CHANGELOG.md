@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.34.2] — 2026-10-06
+### Changed
+- **Three add-ons are switched on for you** at the first start after this update: **Windows control** (open and
+  operate any desktop app), **Excel** (read and write workbooks) and **ElevenLabs studio** (sound effects and voice
+  design, using your ElevenLabs credits). Nova still asks before anything that changes or deletes. Switch any of
+  them off again in Settings → Extensions.
+
 ## [2.34.1] — 2026-10-06
 ### Removed
 - **Postiz social posting**, added in 2.34.0: running it for free needs Docker and a developer app with every social

@@ -204,7 +204,7 @@ def test_one_time_switch_on(nova, monkeypatch):
     monkeypatch.setattr(settings, "load_doc", lambda: doc)
     monkeypatch.setattr(settings, "save_doc", lambda d: saved.append(json.loads(json.dumps(d))))
     monkeypatch.setattr(activate, "resolve", lambda p: tmp / "nowhere" / p)        # never the real tools folder
-    monkeypatch.setattr(activate.shutil, "which", lambda name: "/usr/bin/npx")
+    monkeypatch.setattr(activate.shutil, "which", lambda name: f"/usr/bin/{name}")
     monkeypatch.setattr(skill_library, "install", lambda: {"added": ["frontend-design"], "off": [], "skipped": {}})
     monkeypatch.setattr(upscale, "install", lambda: Path("x"))
     told = []
@@ -212,8 +212,15 @@ def test_one_time_switch_on(nova, monkeypatch):
     for k in ("CEREBRAS_API_KEY", "MISTRAL_API_KEY", "GITHUB_MODELS_TOKEN"):
         monkeypatch.delenv(k, raising=False)
     cfg["globe"] = {"dir": "tools/gods-eye-view"}
+    doc["mcp_servers"] = {"excel": {"enabled": False, "command": "uvx", "args": ["excel-mcp-server", "stdio"]}}
+    cfg["mcp_servers"] = {"excel": {"enabled": False, "command": "uvx", "args": ["excel-mcp-server", "stdio"]}}
     done = activate.run(cfg, tmp, wait=0, background=False)
-    assert done == {"globe_removed": True, "playwright": True, "library": True, "upscaler": True, "told_keys": True}
+    assert done == {"globe_removed": True, "playwright": True, "addons": True, "library": True, "upscaler": True,
+                    "told_keys": True}
+    assert doc["mcp_servers"]["excel"]["enabled"] is True                       # was there, switched off → on
+    assert doc["mcp_servers"]["windows"]["args"] == ["windows-mcp"] and doc["mcp_servers"]["elevenlabs"]["enabled"]
+    assert all(cfg["mcp_servers"][n]["enabled"] for n in ("windows", "excel", "elevenlabs"))
+    assert "Switched on: Windows control, Excel, ElevenLabs studio" in told[0]
     assert "globe" not in doc and doc["skills"]["disabled"] == ["weather"]
     assert doc["mcp_servers"]["playwright"]["enabled"] and cfg["mcp_servers"]["playwright"]["command"] == "npx"
     assert len(told) == 1 and "Playwright browser control is on" in told[0] and "skills library is installed" in told[0]
@@ -221,6 +228,14 @@ def test_one_time_switch_on(nova, monkeypatch):
     told.clear()
     activate.run(cfg, tmp, wait=0, background=False)                               # the second start: nothing again
     assert not told
+
+
+def test_addons_wait_for_uv(nova, monkeypatch):
+    from nova import activate
+    monkeypatch.setattr(activate.shutil, "which", lambda name: None)
+    cfg = {"mcp_servers": {"windows": {"enabled": True, "command": "uvx"}}}
+    assert activate.switch_on_addon(cfg, "windows")                               # already on: nothing to do
+    assert not activate.switch_on_addon(cfg, "excel") and "excel" not in cfg["mcp_servers"]
 
 
 def test_postiz_is_gone(nova):

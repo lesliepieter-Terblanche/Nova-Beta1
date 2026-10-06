@@ -1,7 +1,8 @@
 """One-time switch-on after an update, so new things work without a trip through Settings.
 
 v2.34: the skills library and Real-ESRGAN are downloaded, Playwright MCP is added (when Node.js is there), and
-God's Eye View — removed in this version — is cleaned off the PC. Each step runs once; a step that can't run yet
+God's Eye View — removed in this version — is cleaned off the PC. v2.34.2: the Windows control, Excel and
+ElevenLabs studio add-ons are switched on. Each step runs once; a step that can't run yet
 (no internet, no Node.js) is tried again at the next start. What still needs you (API keys) is listed in
 one message on the dashboard and Telegram.
 """
@@ -81,6 +82,34 @@ def add_playwright(cfg) -> bool:
     return True
 
 
+ADDONS = [("windows", "Windows control"), ("excel", "Excel"), ("elevenlabs", "ElevenLabs studio")]   # v2.34.2
+
+
+def switch_on_addon(cfg, name: str) -> bool:
+    """Switch one of the catalogue's MCP add-ons on in config.yaml — adding it, or enabling the entry that is
+    already there switched off. These run through uv (uvx). True when it is on."""
+    from . import settings
+    have = (cfg.get("mcp_servers") or {}).get(name)
+    if have and have.get("enabled", True):
+        return True
+    if not shutil.which("uvx"):
+        return False
+    spec = settings.mcp_catalog_spec(name)
+    with settings._lock:
+        doc = settings.load_doc()
+        if settings.get_path(doc, f"mcp_servers.{name}") is None:
+            settings.set_path(doc, f"mcp_servers.{name}", spec)
+        else:
+            settings.set_path(doc, f"mcp_servers.{name}.enabled", True)
+        settings.save_doc(doc)
+    servers = cfg.setdefault("mcp_servers", {})
+    if have:
+        servers[name]["enabled"] = True
+    else:
+        servers[name] = spec
+    return True
+
+
 def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dict:
     """Do whatever hasn't been done yet. The config edits happen now (before the MCP servers start); the
     downloads happen in the background so start-up isn't held up."""
@@ -101,6 +130,15 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
                 said.append("Playwright browser control is on — say \"use Playwright to…\".")
         except Exception as e:
             print(f"[activate] Playwright not added: {e}")
+    if not done.get("addons"):
+        try:
+            on = [title for name, title in ADDONS if switch_on_addon(cfg, name)]
+            if len(on) == len(ADDONS):
+                done["addons"] = True
+            if on:
+                said.append(f"Switched on: {', '.join(on)} (Settings → Extensions to switch any off).")
+        except Exception as e:
+            print(f"[activate] add-ons not switched on: {e}")
     _save(mark_dir, done)
 
     def downloads():
@@ -126,6 +164,8 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
         todo = []
         if not done.get("playwright"):
             todo.append("Playwright needs Node.js (nodejs.org) — install it and restart me")
+        if not done.get("addons") and not shutil.which("uvx") and not done.get("told_keys"):
+            todo.append("Windows control, Excel and ElevenLabs studio need 'uv' (run setup.bat again) — then restart me")
         missing = [name for name, key in FREE_KEYS if not os.environ.get(key, "").strip()]
         if missing and not done.get("told_keys"):
             todo.append(f"add a free key for {', '.join(missing)} in Settings → API keys for more free AI use")

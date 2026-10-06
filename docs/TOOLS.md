@@ -355,7 +355,8 @@ Offered to the model when you say things like: _business, businesses, cockpit, e
 | `offer_test` | Write a few different versions of an offer to try against each other. Responses are then counted per version with count_offer_response. | `business`, `offer` |
 | `count_offer_response` | Count a response (a reply, a sign-up, a sale) for one version of the running offer test, and say which leads. | `business`, `version`, `count`? |
 | `add_enquiry` | Log a new enquiry or lead for a business. Nova scores it and drafts a reply for the approval queue. | `business`, `name`, `message`, `contact`? |
-| `check_enquiries` | Look in Gmail for new enquiries for the businesses, log them and draft replies for approval. | `business`? |
+| `business_send_email` 🔒 | Send an email from a business's own mailbox (the one connected on the Business dashboard), so it comes from the business's address. Use only when the user clearly says to send it. | `business`, `to`, `subject`, `body`, `in_reply_to`? |
+| `check_enquiries` | Look in each business's mailbox (or Gmail) for new enquiries, log them and draft replies for approval. | `business`? |
 | `record_money` | Record money for a business: a sale that came in, an invoice someone owes, or a bill to pay. | `business`, `kind`, `party`, `amount`, `due`?, `note`? |
 | `mark_as_paid` | Mark an open invoice or bill as paid. A paid invoice is counted as a sale. | `business`, `party` |
 | `business_task` | Add a task for a business, or tick one off. | `business`, `task`, `done`?, `due`? |

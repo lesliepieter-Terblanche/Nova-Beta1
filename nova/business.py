@@ -2,7 +2,7 @@
 
   cockpit        per business: sales this week, leads, open tasks, money owed, what's waiting on you
   approval queue everything Nova wants to send or do for a business lines up here — nothing leaves without your yes
-  lead inbox     enquiries (told to her, or found in Gmail) are logged, scored and get a drafted reply to approve
+  lead inbox     enquiries (told to her, or found in the business's mailbox or Gmail) are logged, scored and get a drafted reply to approve
   money watch    sales, who owes you, what you owe, what is overdue
   follow-ups     promises and open threads; she drafts the message when it's due
   standing       rules she runs by herself inside limits you set ("answer every new enquiry", "chase invoices after
@@ -228,7 +228,7 @@ def approve(item_id: int, edit: str = "") -> dict:
         t = REGISTRY.get(it["tool"])
         if t is None:
             result, ok = (f"I can't do this one myself: the '{it['tool'].replace('_', ' ')}' ability isn't available "
-                          "(is Google connected?). It stays in the queue."), False
+                          "(is Google, or the business's mailbox, connected?). It stays in the queue."), False
         else:
             args = json.loads(it["args"] or "{}")
             key = _body_key(args)
@@ -263,6 +263,17 @@ def reject(item_id: int) -> dict:
     elif src.startswith("followup:"):
         _x("UPDATE biz_followups SET status='done' WHERE id=?", (src[9:],))
     return {"ok": True, "message": "Dropped.", "item": it}
+
+
+# ── which mail a business uses ────────────────────────────
+def mail_tool(b: dict, to: str, subject: str, body: str, in_reply_to: str = "") -> tuple[str, dict]:
+    """The tool (and its arguments) that sends an email for this business: from its own mailbox when that is
+    connected (v2.37), else from the Gmail account Nova is connected to."""
+    from . import mailbox
+    if mailbox.can_send(b["id"]):
+        return "business_send_email", {"business": b["id"], "to": to, "subject": subject, "body": body,
+                                       "in_reply_to": in_reply_to}
+    return "gmail_send", {"to": to, "subject": subject, "body": body}
 
 
 # ── leads ─────────────────────────────────────────────────
@@ -321,8 +332,14 @@ def queue_reply(lead: dict, instruction: str = "", auto: bool = False) -> int:
     tool, args = "", {}
     if lead["ref"] and lead["source"] == "gmail":
         tool, args = "gmail_reply", {"message_id": lead["ref"], "body": body}
+    elif lead["source"] == "mailbox":                 # answered from the business's own address, in the same thread
+        from . import mailbox
+        subject = (lead["message"].splitlines() or [""])[0].strip()
+        if email and mailbox.can_send(b["id"]):
+            tool, args = mail_tool(b, email.group(0), subject if subject.lower().startswith("re:") else
+                                   f"Re: {subject or 'your enquiry'}", body, lead["ref"][5:])
     elif email:
-        tool, args = "gmail_send", {"to": email.group(0), "subject": f"Your enquiry — {b['name']}", "body": body}
+        tool, args = mail_tool(b, email.group(0), f"Your enquiry — {b['name']}", body)
     qid = enqueue(b["id"], "reply", f"Reply to {lead['name'] or 'the enquiry'}"
                   + (f" ({lead['contact']})" if lead["contact"] and not tool else ""), body, tool, args, f"lead:{lead['id']}")
     _x("UPDATE biz_leads SET status='drafted' WHERE id=?", (lead["id"],))
@@ -341,12 +358,25 @@ def _from_parts(sender: str) -> tuple[str, str]:
 
 
 def scan_inbox(biz: str = "") -> int:
-    """Look in Gmail for new enquiries for each business (its inbox search) and log them as leads."""
+    """Look for new enquiries for each business and log them as leads: in its own mailbox when that is connected,
+    else in Gmail (its inbox search)."""
+    from . import mailbox
     from .tools import REGISTRY
-    if "gmail_search" not in REGISTRY:
-        return 0
     found = 0
     for b in ([need(biz)] if biz else businesses()):
+        if mailbox.box(b["id"]):
+            try:
+                hits = mailbox.fetch(b["id"], known=lambda ref: bool(_q("SELECT id FROM biz_leads WHERE ref=?", (ref,))))
+            except Exception as e:
+                print(f"[business] couldn't read the {b['name']} mailbox: {e}")
+                continue
+            for h in hits:
+                name, email = _from_parts(h["from"])
+                lead = add_lead(b["id"], name, email, f"{h['subject']}\n{h['snippet']}".strip(), "mailbox", h["id"])
+                found += bool(lead)
+            continue
+        if "gmail_search" not in REGISTRY:
+            continue
         try:
             hits = REGISTRY["gmail_search"].func(query=inbox_query(b), max_results=10)
         except Exception as e:
@@ -445,8 +475,7 @@ def due_followups(today: dt.date | None = None) -> int:
                       f"{f['what']}. One clear question or next step. Under 80 words. Plain text, no subject line, "
                       "nothing invented.", fallback)
         email = EMAIL.search(f["contact"] or "")
-        tool, args = ("gmail_send", {"to": email.group(0), "subject": f"Following up — {b['name']}", "body": body}) \
-            if email else ("", {})
+        tool, args = mail_tool(b, email.group(0), f"Following up — {b['name']}", body) if email else ("", {})
         enqueue(b["id"], "follow-up", f"Follow up with {f['who']}: {f['what'][:60]}", body, tool, args, f"followup:{f['id']}")
         _x("UPDATE biz_followups SET status='queued' WHERE id=?", (f["id"],))
         n += 1
@@ -530,8 +559,7 @@ def run_rules(today: dt.date | None = None) -> dict:
                               + (f"House rule: {r['text']}. " if r["text"] else "")
                               + "Under 90 words, plain text, no subject line, nothing invented.", fallback)
                 email = EMAIL.search(m["note"] or "") or EMAIL.search(m["party"] or "")
-                tool, args = ("gmail_send", {"to": email.group(0), "subject": f"Payment reminder — {b['name']}",
-                                             "body": body}) if email else ("", {})
+                tool, args = mail_tool(b, email.group(0), f"Payment reminder — {b['name']}", body) if email else ("", {})
                 qid = enqueue(b["id"], "chase", f"Chase {m['party']} for {money_text(b, m['amount'])} ({late} days late)",
                               body, tool, args, f"money:{m['id']}")
                 _x("UPDATE biz_money SET chased=? WHERE id=?", ("queued", m["id"]))
@@ -570,7 +598,9 @@ def cockpit(b: dict, today: dt.date | None = None) -> dict:
     open_leads = [x for x in leads if x["status"] in ("new", "drafted")]
     tasks = _q("SELECT * FROM biz_tasks WHERE biz=? AND status='open' ORDER BY due='' , due, id", (b["id"],))
     fups = _q("SELECT * FROM biz_followups WHERE biz=? AND status IN ('open','queued') ORDER BY due", (b["id"],))
+    from . import mailbox
     return {"id": b["id"], "name": b["name"], "url": b["url"], "about": b["about"], "currency": b["currency"] or "R",
+            "mailbox": mailbox.status(b["id"]),
             "inbox": b["inbox"], "email": b.get("email") or "", "watching": inbox_query(b),
             "gmail": gmail_connected(),
             "kpi": {"sales_week": sales_w, "sales_month": sales_m, "leads_week": sum(x["ts"][:10] >= week for x in leads),
@@ -839,11 +869,25 @@ def act(body: dict) -> dict:
             return {"ok": True, "message": (f"Saved — I'll watch {b['email']} for {b['name']} enquiries." if b["email"]
                                             else "Saved. No enquiry address yet, so I'll look for mail that mentions "
                                                  f"{b['name']}.")}
+        if a == "mailbox_connect":
+            from . import mailbox
+            b = need(bid)
+            r = mailbox.connect(b["id"], str(body.get("email") or b.get("email") or ""), str(body.get("password") or ""),
+                                str(body.get("user") or ""), str(body.get("imap_host") or ""), str(body.get("smtp_host") or ""))
+            set_up(b["id"], email=mailbox.box(b["id"])["email"])
+            return r
+        if a == "mailbox_disconnect":
+            from . import mailbox
+            b = need(bid)
+            mailbox.disconnect(b["id"])
+            return {"ok": True, "message": f"Disconnected. The {b['name']} password is deleted from this PC."}
         if a == "scan":
+            from . import mailbox
             n = scan_inbox(bid)
             r = run_rules()
+            where = "the mailbox" if bid and mailbox.box(need(bid)["id"]) else "the inbox"
             return {"ok": True, "message": f"{n} new enquir{'y' if n == 1 else 'ies'}; {r['queued']} drafts waiting for your yes."
-                    if n or r["queued"] else "No new enquiries in Gmail."}
+                    if n or r["queued"] else f"No new enquiries in {where}."}
         if a == "lead_add":
             lead = add_lead(bid, str(body.get("name", "")), str(body.get("contact", "")), str(body.get("message", "")))
             rule = next((r for r in rules(lead["biz"]) if r["trigger"] == "new_lead" and r["enabled"]), None)
@@ -880,4 +924,9 @@ def act(body: dict) -> dict:
             return {"ok": bool(r) and not (r or {}).get("error"), "message": "Counted." if r else "No offer test is running."}
     except (ValueError, KeyError, TypeError) as e:
         return {"ok": False, "message": str(e)[:1].upper() + str(e)[1:]}
+    except Exception as e:
+        from . import mailbox
+        if isinstance(e, mailbox.MailError):
+            return {"ok": False, "message": str(e)}
+        raise
     return {"ok": False, "message": "I don't know that button."}

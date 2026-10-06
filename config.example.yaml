@@ -146,7 +146,7 @@ reports:
 # without your yes unless a standing instruction of yours says so.
 business:
   enabled: true
-  scan_inbox: true           # look in Gmail for new enquiries
+  scan_inbox: true           # look in each business's own mailbox (or Gmail) for new enquiries
   scan_minutes: 15
 
 # Nova improving herself: a weekly self-review (sent with the review above) and playbooks she drafts for jobs you

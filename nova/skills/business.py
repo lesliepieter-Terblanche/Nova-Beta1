@@ -163,9 +163,28 @@ def add_enquiry(business: str, name: str, message: str, contact: str = "") -> st
             f"— item {qid} in the approval queue.")
 
 
+@tool(group="business", confirm=True)
+def business_send_email(business: str, to: str, subject: str, body: str, in_reply_to: str = "") -> str:
+    """Send an email from a business's own mailbox (the one connected on the Business dashboard), so it comes from
+    the business's address. Use only when the user clearly says to send it.
+    Args:
+        business: which business
+        to: the recipient's email address
+        subject: the subject line
+        body: the message, plain text
+        in_reply_to: leave empty (Nova fills it in when answering an enquiry)
+    """
+    from .. import mailbox
+    try:
+        b = biz.need(business)
+        return mailbox.send(b["id"], to, subject, body, in_reply_to, name=b["name"])
+    except (ValueError, mailbox.MailError) as e:
+        return _err(e)
+
+
 @tool(group="business")
 def check_enquiries(business: str = "") -> str:
-    """Look in Gmail for new enquiries for the businesses, log them and draft replies for approval.
+    """Look in each business's mailbox (or Gmail) for new enquiries, log them and draft replies for approval.
     Args:
         business: which business ("" = all)
     """

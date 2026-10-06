@@ -299,3 +299,195 @@ def test_a_place_for_each_business_enquiry_address(shop):
     (shop["tmp"] / "token.json").write_text("{}")                                # Google gets connected
     shop["cfg"]["google"]["token_file"] = "token.json"
     assert biz.cockpit(biz.find("harbour"))["gmail"] is True
+
+
+# ── v2.37: a business's own mailbox, signed in to directly ─────────────────
+class FakeMail:
+    """One pretend mail host: an IMAP inbox and an SMTP server that accept one username and password."""
+
+    def __init__(self, host="mail.harbourhomes.example", user="hello@harbourhomes.example", pw="s3cret"):
+        self.host, self.user, self.pw = host, user, pw
+        self.inbox, self.sent, self.filed, self.smtp_ports = [], [], [], (465,)
+
+    def add(self, uid, raw, flags="", when="06-Oct-2026 09:00:00 +0200"):
+        self.inbox.append((uid, flags, when, raw.replace("\n", "\r\n").encode()))
+
+    def imap(self, host, port=993, ssl_context=None, timeout=None):
+        if host != self.host:
+            raise OSError("no such host")
+        outer = self
+
+        class C:
+            def login(self, user, pw):
+                if (user, pw) != (outer.user, outer.pw):
+                    raise __import__("imaplib").IMAP4.error("AUTHENTICATIONFAILED")
+
+            def select(self, box, readonly=False):
+                assert readonly                                        # nothing is ever marked as read
+                return "OK", [b"1"]
+
+            def uid(self, cmd, *a):
+                if cmd == "search":
+                    return "OK", [b" ".join(str(u).encode() for u, *_ in outer.inbox)]
+                want = a[0].decode().split(",") if isinstance(a[0], bytes) else [a[0]]
+                out = []
+                for u, flags, when, raw in outer.inbox:
+                    if str(u) not in want:
+                        continue
+                    part = raw.split(b"\r\n\r\n")[0] + b"\r\n\r\n" if "HEADER" in a[1] else raw
+                    out += [(f'{u} (UID {u} FLAGS ({flags}) INTERNALDATE "{when}" BODY[] {{{len(part)}}}'.encode(), part), b")"]
+                return "OK", out
+
+            def list(self):
+                return "OK", [b'(\\HasNoChildren) "." "INBOX"', b'(\\HasNoChildren \\Sent) "." "INBOX.Sent"']
+
+            def append(self, folder, flags, when, raw):
+                outer.filed.append((folder, raw))
+
+            def logout(self):
+                pass
+
+            def shutdown(self):
+                pass
+        return C()
+
+    def smtp(self, host, port=465, timeout=None, context=None):
+        if host != self.host or port not in self.smtp_ports:
+            raise OSError("connection refused")
+        outer = self
+
+        class S:
+            def starttls(self, context=None):
+                pass
+
+            def login(self, user, pw):
+                if (user, pw) != (outer.user, outer.pw):
+                    raise __import__("smtplib").SMTPAuthenticationError(535, b"no")
+
+            def send_message(self, msg):
+                outer.sent.append(msg)
+
+            def quit(self):
+                pass
+
+            def close(self):
+                pass
+        return S()
+
+
+@pytest.fixture()
+def post(shop, monkeypatch):
+    from nova import mailbox, settings
+    monkeypatch.setattr(settings, "ENV", shop["tmp"] / ".env")
+    monkeypatch.setattr(settings, "ENV_TEMPLATE", shop["tmp"] / "none")
+    monkeypatch.delenv("BIZ_MAIL_HARBOUR_HOMES", raising=False)
+    monkeypatch.setattr(mailbox, "mx_hosts", lambda domain: [])
+    host = FakeMail()
+    monkeypatch.setattr(mailbox.imaplib, "IMAP4_SSL", host.imap)
+    monkeypatch.setattr(mailbox.smtplib, "SMTP_SSL", host.smtp)
+    monkeypatch.setattr(mailbox.smtplib, "SMTP", host.smtp)
+    return host
+
+
+ENQUIRY = """From: Sam Carter <sam@example.com>
+To: hello@harbourhomes.example
+Subject: Listing my house
+Message-ID: <abc123@example.com>
+Content-Type: text/plain; charset=utf-8
+
+Hi, how much does it cost to list my house? Please call me on 082 555 0100.
+"""
+NEWSLETTER = """From: Deals <news@shop.example>
+Subject: 50% off
+Message-ID: <news1@shop.example>
+List-Unsubscribe: <mailto:off@shop.example>
+
+Buy now
+"""
+WEB_FORM = """From: Website <noreply@harbourhomes.example>
+Reply-To: Jo Mills <jo@example.com>
+Subject: New website enquiry
+Message-ID: <form9@harbourhomes.example>
+Content-Type: text/html; charset=utf-8
+
+<html><head><style>p{color:red}</style></head><body><p>Is the flat in Bay Road still available?</p><p>Jo</p></body></html>
+"""
+
+
+def test_mail_servers_are_worked_out_from_the_address():
+    from nova import mailbox
+    assert mailbox.servers("info@riverbend.example", [])[0] == ("mail.riverbend.example", "mail.riverbend.example", 465)
+    assert mailbox.servers("info@riverbend.example", ["aspmx.l.google.com"]) == [("imap.gmail.com", "smtp.gmail.com", 465)]
+    assert mailbox.servers("me@riverbend.example", ["riverbend-example.mail.protection.outlook.com"])[0][1] == "smtp.office365.com"
+    assert ("mx1.host.example", "mx1.host.example", 465) in mailbox.servers("a@riverbend.example", ["mx1.host.example"])
+    assert mailbox.env_key("harbour-homes") == "BIZ_MAIL_HARBOUR_HOMES"
+
+
+def test_a_business_mailbox_is_signed_in_to_directly(shop, post):
+    from nova import mailbox
+    from nova.agent import needs_yes
+    bid = "harbour-homes"
+    r = biz.act({"biz": bid, "action": "mailbox_connect", "email": "hello@harbourhomes.example", "password": "wrong"})
+    assert r["ok"] is False and "refused that username and password" in r["message"] and "app password" not in r["message"]
+    assert biz.act({"biz": bid, "action": "mailbox_connect", "email": "hello@harbourhomes.example"}) == \
+        {"ok": False, "message": "Type the mailbox's password too"}
+    assert biz.cockpit(biz.find("harbour"))["mailbox"] == {"connected": False}
+    r = biz.act({"biz": bid, "action": "mailbox_connect", "email": " Hello@HarbourHomes.example", "password": "s3cret"})
+    assert r == {"ok": True, "message": "Connected to hello@harbourhomes.example. I read its enquiries and send approved replies from it."}
+    c = biz.cockpit(biz.find("harbour"))
+    assert c["email"] == "hello@harbourhomes.example" and c["mailbox"]["can_send"] and c["mailbox"]["imap_host"] == post.host
+    assert "s3cret" not in json.dumps(biz.state())                               # the password never goes to the page
+    assert "BIZ_MAIL_HARBOUR_HOMES=s3cret" in (shop["tmp"] / ".env").read_text() and "pass" not in json.dumps(mailbox.box(bid))
+
+    post.add(1, ENQUIRY)
+    post.add(2, NEWSLETTER)                                                      # automatic mail is not an enquiry
+    post.add(3, WEB_FORM)                                                        # a website form: answer the Reply-To
+    post.add(4, ENQUIRY.replace("abc123", "old1"), flags="\\Seen", when="01-Jan-2020 09:00:00 +0200")   # read before
+    post.add(5, ENQUIRY.replace("abc123", "done1"), flags="\\Answered")                                  # answered by you
+    shop["inbox"].append({"id": "g1", "from": "x@example.com", "subject": "Harbour Homes", "snippet": "hi"})
+    assert biz.scan_inbox("harbour") == 2 and biz.scan_inbox("harbour") == 0      # each mail once; its Gmail search unused
+    assert biz.scan_inbox() == 1 and biz.find("riverbend") and biz.cockpit(biz.find("riverbend"))["leads"][0]["source"] == "gmail"
+    form, sam = biz.cockpit(biz.find("harbour"))["leads"]
+    assert (sam["name"], sam["contact"], sam["source"], sam["score"]) == ("Sam Carter", "sam@example.com", "mailbox", 5)
+    assert (form["name"], form["contact"]) == ("Jo Mills", "jo@example.com")
+    assert form["message"] == "New website enquiry\nIs the flat in Bay Road still available?\nJo"
+    biz._x("DELETE FROM biz_leads WHERE biz='riverbend'")
+    assert biz.run_rules() == {"queued": 0, "sent": 0}                           # no standing instruction: nothing drafted
+    biz.add_rule(bid, "new_lead", "Offer a call.")
+    assert biz.run_rules() == {"queued": 2, "sent": 0} and not post.sent
+    q = next(x for x in biz.pending(bid) if "Sam" in x["title"])
+    assert q["tool"] == "business_send_email" and needs_yes(REGISTRY["business_send_email"], {})
+    assert json.loads(q["args"])["subject"] == "Re: Listing my house"
+    r = biz.act({"action": "approve", "id": q["id"], "body": "Hi Sam, I'll call you at 3."})
+    assert r == {"ok": True, "message": "Approved — Email sent to sam@example.com from hello@harbourhomes.example."}
+    [m] = post.sent
+    assert m["From"] == "Harbour Homes <hello@harbourhomes.example>" and m["To"] == "sam@example.com"
+    assert m["In-Reply-To"] == "<abc123@example.com>" and m.get_content().strip() == "Hi Sam, I'll call you at 3."
+    assert post.filed[0][0] == '"INBOX.Sent"' and not shop["sent"]               # copy in Sent; Gmail untouched
+
+    biz.add_followup(bid, "Dana Reed", "the valuation", "today", "dana@example.com")       # other mail goes out the same way
+    biz.due_followups()
+    assert biz.pending(bid)[-1]["tool"] == "business_send_email"
+    assert biz.pending("riverbend") == [] and biz.mail_tool(biz.find("riverbend"), "a@b.example", "s", "b")[0] == "gmail_send"
+
+    assert "Disconnected" in biz.act({"biz": bid, "action": "mailbox_disconnect"})["message"]
+    assert biz.cockpit(biz.find("harbour"))["mailbox"] == {"connected": False}
+    assert "s3cret" not in (shop["tmp"] / ".env").read_text()
+
+
+def test_a_mailbox_that_can_be_read_but_not_sent_from(shop, post):
+    from nova import mailbox
+    post.smtp_ports = ()
+    r = biz.act({"biz": "harbour-homes", "action": "mailbox_connect", "email": "hello@harbourhomes.example", "password": "s3cret"})
+    assert r["ok"] and "can't send from it yet" in r["message"]
+    post.add(1, ENQUIRY)
+    assert biz.scan_inbox("harbour") == 1
+    qid = biz.queue_reply(biz._q("SELECT * FROM biz_leads")[0])
+    assert biz._q("SELECT tool FROM biz_queue WHERE id=?", (qid,))[0]["tool"] == ""        # you send this one yourself
+    assert REGISTRY["business_send_email"].func("harbour", "sam@example.com", "Hi", "x").startswith("ERROR: I can read")
+    post.smtp_ports = (587,)                                                      # typed in under Advanced
+    r = biz.act({"biz": "harbour-homes", "action": "mailbox_connect", "email": "hello@harbourhomes.example",
+                 "imap_host": post.host, "smtp_host": post.host})                  # no password: the saved one is used
+    assert r["ok"] and mailbox.box("harbour-homes")["smtp_port"] == 587
+    with pytest.raises(mailbox.MailError, match="couldn't reach the mail server"):
+        mailbox.connect("riverbend", "shop@riverbend.example", "pw")

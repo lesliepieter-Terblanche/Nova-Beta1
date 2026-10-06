@@ -4,6 +4,21 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.37.0] — 2026-10-06
+### Added
+- **Each business's own mailbox, signed in to directly.** On the Business dashboard, the *Connections* box of a
+  business now takes its email address and mailbox password — nothing has to be forwarded to your Gmail.
+  - Nova reads the inbox herself (without marking anything as read), logs each enquiry, scores it and drafts the
+    reply. Newsletters, bounces and other automatic mail are skipped; a website form that sends as "no-reply" is
+    answered to the customer's own address.
+  - When you approve, the reply is sent **from the business's address**, in the same thread, and a copy is put in
+    the mailbox's Sent folder. Follow-ups and payment reminders for that business go out the same way.
+  - The mail servers are found from the address (the usual `mail.yourdomain`, or the provider the domain uses);
+    *Advanced* lets you type the username and server names if your host is unusual.
+  - The password is kept on this PC only, in `.env`, and is never shown again; *Disconnect* deletes it.
+  - Google and Microsoft mailboxes need an app password (Microsoft often refuses password sign-in altogether).
+  - A business without a connected mailbox keeps working through Gmail as before.
+
 ## [2.36.2] — 2026-10-06
 ### Added
 - **VapeEssence** (www.vapeessence.co.za) is a third business on the Business dashboard, with its own tab and the

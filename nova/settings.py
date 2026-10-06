@@ -350,7 +350,7 @@ SCHEMA = [
         {"path": "reports.review_time", "label": "…at", "type": "text", "default": "18:00"},
         {"path": "business.enabled", "label": "Business mode: run my businesses' day-to-day (Business dashboard)",
          "type": "bool", "default": True, "help": "Enquiries, standing instructions, follow-ups and the weekly business review"},
-        {"path": "business.scan_inbox", "label": "…look in Gmail for new enquiries", "type": "bool", "default": True},
+        {"path": "business.scan_inbox", "label": "…look in each business's mailbox (or Gmail) for new enquiries", "type": "bool", "default": True},
         {"path": "business.scan_minutes", "label": "…every (minutes)", "type": "number", "min": 5, "max": 240, "default": 15},
         {"path": "evolve.enabled", "label": "Weekly self-review: what Nova struggled with and would change",
          "type": "bool", "default": True, "help": "Sent together with the weekly review"},

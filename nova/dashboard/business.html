@@ -119,7 +119,7 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let DATA = { businesses: [] }, current = localStorage.getItem("nova.biz") || "", busy = false;
-const reviews = {};
+const reviews = {}, connMsg = {}, connDraft = {};
 
 async function api(path, body) {
   const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined);
@@ -133,7 +133,7 @@ function ago(ts) {
   return Math.round(d / 86400) + " d ago";
 }
 const KIND = { reply: "Reply", email: "Email", "follow-up": "Follow-up", chase: "Payment reminder", post: "Post", page: "Web page", other: "For you" };
-const HOW = { gmail_send: "Approve = I send this email", gmail_reply: "Approve = I send this reply", gmail_draft: "Approve = I save it as a Gmail draft",
+const HOW = { business_send_email: "Approve = I send this from the business's own address", gmail_send: "Approve = I send this email", gmail_reply: "Approve = I send this reply", gmail_draft: "Approve = I save it as a Gmail draft",
   build_website: "Approve = I build the page and open a preview" };
 const LEAD = { new: ["New", "var(--wait)"], drafted: ["Reply drafted", "var(--gold)"], replied: ["Replied", "var(--done)"], won: ["Won", "var(--done)"], lost: ["Lost", "var(--muted)"] };
 
@@ -146,7 +146,7 @@ function render() {
   }
   const b = all.find((x) => x.id === current) || all[0]; current = b.id; localStorage.setItem("nova.biz", current);
   $("tabs").innerHTML = all.map((x) => `<button data-tab="${esc(x.id)}" class="${x.id === b.id ? "on" : ""}">${esc(x.name)}${x.kpi.waiting ? `<b>${x.kpi.waiting}</b>` : ""}</button>`).join("");
-  const k = b.kpi;
+  const k = b.kpi, mb = b.mailbox || {}, ready = mb.connected || (b.email && b.gmail), dr = connDraft[b.id] || {};
   const queue = b.queue.map((q) => `<div class="q" data-q="${q.id}">
       <div class="top"><span class="kind">${esc(KIND[q.kind] || q.kind)}</span><b>${esc(q.title)}</b><span class="when">#${q.id} · ${ago(q.ts)}</span></div>
       <textarea spellcheck="true">${esc(q.body)}</textarea>
@@ -173,7 +173,7 @@ function render() {
   const rv = reviews[b.id];
   $("main").innerHTML = `
     <section class="hero glass"><div><h2>${esc(b.name)}</h2><p>${b.url ? `<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.url.replace(/^https?:\/\//, ""))}</a> · ` : ""}${esc(b.about || "")}</p></div>
-      <div class="go">${b.email ? "" : `<button class="btn setup" data-go="jump" title="Tell Nova where this business's enquiries arrive">⚙ Set the enquiry address</button>`}<button class="btn" data-go="scan" title="Look in Gmail for new enquiries now">Check for enquiries</button><button class="btn main" data-go="review">This week's review</button></div></section>
+      <div class="go">${ready ? "" : `<button class="btn setup" data-go="jump" title="Let Nova read this business's enquiries and reply from its address">⚙ Connect the mailbox</button>`}<button class="btn" data-go="scan" title="Look for new enquiries now">Check for enquiries</button><button class="btn main" data-go="review">This week's review</button></div></section>
     <section class="kpis">
       <div class="kpi money"><span>Sales this week</span><b>${money(b, k.sales_week)}</b><small>${money(b, k.sales_month)} this month</small></div>
       <div class="kpi wait ${k.waiting ? "has" : ""}"><span>Waiting for your yes</span><b>${k.waiting}</b><small>${k.waiting ? "see the queue below" : "all clear"}</small></div>
@@ -186,18 +186,29 @@ function render() {
       <section class="glass box"><h3><span class="dot" style="--dc:var(--wait)"></span>Waiting for your yes<span class="n">${b.queue.length}</span></h3>
         <p class="sub">Nothing goes out until you approve it. Change the wording first if you like.</p>${queue || `<div class="empty">Nothing is waiting on you. 🎉</div>`}</section>
       <section class="glass box"><h3><span class="dot" style="--dc:var(--ip)"></span>Enquiries<span class="n">${b.leads.length}</span></h3>
-        <p class="sub">Logged from Gmail or told to Nova, scored 1–5, each with a drafted reply.</p>${leads || `<div class="empty">No enquiries yet. Tell Nova “new enquiry for ${esc(b.name)} from …”, or add one here.</div>`}
+        <p class="sub">Logged from the mailbox or told to Nova, scored 1–5, each with a drafted reply.</p>${leads || `<div class="empty">No enquiries yet. Tell Nova “new enquiry for ${esc(b.name)} from …”, or add one here.</div>`}
         <div class="add"><input id="l-name" placeholder="Name"><input id="l-contact" placeholder="Email or phone"><input id="l-msg" placeholder="What they asked" style="flex:3"><button class="btn" data-go="lead">Add</button></div></section>
       ${rv !== undefined ? `<section class="glass box"><h3><span class="dot" style="--dc:#a5f3fc"></span>This week's review</h3><div class="review">${rv === null ? `<div class="empty">Writing it…</div>` : esc(rv).replace(/^## (.+)$/gm, "<h4>$1</h4>")}</div></section>` : ""}
     </div><div class="col">
-      <section class="glass box conn ${b.email ? "" : "todo"}" id="conn"><h3><span class="dot" style="--dc:${b.email ? "var(--done)" : "var(--gold)"}"></span>Connections<span class="n">${b.email ? "set" : "to set up"}</span></h3>
-        <p class="sub">Where this business's enquiries arrive. Point your website's contact form at this address and Nova picks every enquiry up, scores it and drafts the reply.</p>
-        <label class="fl">Enquiry email address<input id="c-email" type="email" placeholder="e.g. hello@${esc((b.url || "yourbusiness.co.za").replace(/^https?:\/\/(www\.)?/, "").split("/")[0])}" value="${esc(b.email)}"></label>
-        <details ${b.inbox ? "open" : ""}><summary>Advanced: my own Gmail search</summary>
-          <label class="fl">Gmail search (leave empty to use the address above)<input id="c-inbox" placeholder='e.g. label:website-forms is:unread' value="${esc(b.inbox)}"></label></details>
-        <div class="add" style="align-items:center"><span class="state">${!b.gmail ? "⚠ Gmail isn't connected to Nova yet — connect Google in Settings first."
-          : b.inbox ? "✓ Watching Gmail with your search: " + esc(b.inbox) : b.email ? "✓ Watching Gmail for mail sent to " + esc(b.email) : "Not set yet — until then I look for unread mail that mentions " + esc(b.name) + "."}</span><button class="btn main" data-go="setup">Save</button></div>
-        <p class="note">This address must deliver into the Gmail account Nova is connected to (directly, or by forwarding). Payments aren't connected: tell Nova about a sale, or add it under Money.</p></section>
+      <section class="glass box conn ${ready ? "" : "todo"}" id="conn"><h3><span class="dot" style="--dc:${ready ? "var(--done)" : "var(--gold)"}"></span>Connections<span class="n">${mb.connected ? "mailbox connected" : ready ? "through Gmail" : "to set up"}</span></h3>
+        <p class="sub">Sign Nova in to this business's own mailbox. She reads every enquiry there, scores it and drafts the reply — and when you approve, it is sent from this address.</p>
+        <label class="fl">Email address<input id="c-email" type="email" autocomplete="off" placeholder="e.g. hello@${esc((b.url || "yourbusiness.co.za").replace(/^https?:\/\/(www\.)?/, "").split("/")[0])}" value="${esc(dr.email ?? b.email)}"></label>
+        <label class="fl">Mailbox password<input id="c-pass" type="password" autocomplete="new-password" placeholder="${mb.connected ? "•••••••• saved — type a new one to change it" : "the password you use for this mailbox"}"></label>
+        <details ${(mb.connected && mb.error) || connMsg[b.id] ? "open" : ""}><summary>Advanced: username and mail servers</summary>
+          <label class="fl">Username (if it isn't the email address)<input id="c-user" autocomplete="off" value="${esc(dr.user ?? (mb.connected && mb.user !== mb.email ? mb.user : ""))}"></label>
+          <label class="fl">Incoming server (IMAP)<input id="c-imap" placeholder="found automatically — e.g. mail.yourdomain.co.za" value="${esc(dr.imap ?? (mb.imap_host || ""))}"></label>
+          <label class="fl">Outgoing server (SMTP)<input id="c-smtp" placeholder="found automatically" value="${esc(dr.smtp ?? (mb.smtp_host || ""))}"></label></details>
+        <details ${!mb.connected && b.inbox ? "open" : ""}><summary>Or: use the Gmail account Nova is connected to</summary>
+          <p class="note">Only if this address already delivers into that Gmail. Save the address above without a password; leave this empty to watch for mail sent to it.</p>
+          <label class="fl">Gmail search<input id="c-inbox" placeholder='e.g. label:website-forms is:unread' value="${esc(b.inbox)}"></label></details>
+        <div class="add" style="align-items:center"><span class="state">${mb.connected
+            ? (mb.can_send ? "✓ Signed in to " + esc(mb.email) + " — reading enquiries and sending approved replies from it" : "⚠ Signed in to " + esc(mb.email) + " for reading, but " + esc(mb.error || "sending isn't set up"))
+              + (mb.can_send && mb.error ? " · ⚠ " + esc(mb.error) : "") + (mb.last_ok ? " · checked " + ago(mb.last_ok) : "")
+            : b.email && b.gmail ? "Not signed in. Watching Gmail for mail sent to " + esc(b.email) + "."
+            : "Not connected yet — type the address and its password, then Connect."}</span>
+          ${mb.connected ? `<button class="btn no" data-go="mb-off">Disconnect</button>` : ""}<button class="btn main" data-go="setup">${mb.connected ? "Save" : "Connect"}</button></div>
+        ${connMsg[b.id] ? `<div class="res" style="color:#fda4af">${esc(connMsg[b.id])}</div>` : ""}
+        <p class="note">The password stays on this PC (in Nova's own settings file) and is never shown again. Google and Microsoft mailboxes need an “app password”. Payments aren't connected: tell Nova about a sale, or add it under Money.</p></section>
       <section class="glass box"><h3><span class="dot" style="--dc:var(--done)"></span>Money<span class="n">${open.length} open</span></h3>
         <p class="sub">Sales, who owes you, what you owe.</p>${moneyRows || `<div class="empty">Nothing recorded yet.</div>`}
         <div class="add"><select id="m-kind"><option value="sale">Sale</option><option value="owed_to_me">Owes me</option><option value="i_owe">I owe</option></select><input id="m-party" placeholder="Who"><input id="m-amt" placeholder="Amount" inputmode="decimal" style="max-width:110px"><input id="m-due" placeholder="Due (e.g. Friday)" style="max-width:150px"><button class="btn" data-go="money">Add</button></div></section>
@@ -237,8 +248,20 @@ $("main").addEventListener("click", async (e) => {
   if (t.dataset.offer) return act({ action: "offer", version: t.dataset.offer });
   const go = t.closest("[data-go]")?.dataset.go, v = (id) => ($(id)?.value || "").trim();
   if (go === "jump") { $("conn").scrollIntoView({ behavior: "smooth", block: "center" }); return $("c-email").focus({ preventScroll: true }); }
-  if (go === "setup") return act({ action: "setup", email: v("c-email"), inbox: v("c-inbox") });
-  if (go === "scan") { flash("Checking Gmail…"); return act({ action: "scan" }); }
+  if (go === "setup") {
+    const mb = (DATA.businesses.find((x) => x.id === current) || {}).mailbox || {};
+    const changed = v("c-email").toLowerCase() !== (mb.email || "") || v("c-user") !== (mb.user !== mb.email ? mb.user || "" : "") || v("c-imap") !== (mb.imap_host || "") || v("c-smtp") !== (mb.smtp_host || "");
+    if ($("c-pass").value || (mb.connected && changed)) {
+      if (!v("c-email")) return flash("Type the email address first.");
+      flash("Signing in to the mailbox… this can take half a minute.");
+      const id = current; connDraft[id] = { email: v("c-email"), user: v("c-user"), imap: v("c-imap"), smtp: v("c-smtp") };   // a failed try keeps what you typed
+      const r = await act({ action: "mailbox_connect", email: v("c-email"), password: $("c-pass").value, user: v("c-user"), imap_host: v("c-imap"), smtp_host: v("c-smtp") });
+      connMsg[id] = r.ok ? "" : r.message || ""; if (r.ok) delete connDraft[id]; return render();
+    }
+    return act({ action: "setup", email: v("c-email"), inbox: v("c-inbox") });
+  }
+  if (go === "mb-off") { if (confirm("Disconnect this mailbox? Nova deletes its password from this PC.")) act({ action: "mailbox_disconnect" }); return; }
+  if (go === "scan") { flash("Checking for enquiries…"); return act({ action: "scan" }); }
   if (go === "review") { reviews[current] = null; render(); const r = await api("/api/business/review?biz=" + encodeURIComponent(current)); reviews[current] = r.text || "Nothing to review yet."; return render(); }
   if (go === "lead") { if (!v("l-name") && !v("l-msg")) return flash("Give me a name or what they asked."); return act({ action: "lead_add", name: v("l-name"), contact: v("l-contact"), message: v("l-msg") }); }
   if (go === "money") { const n = parseFloat(v("m-amt").replace(/[^\d.]/g, "")); if (!n) return flash("How much?"); return act({ action: "money_add", kind: v("m-kind"), party: v("m-party"), amount: n, due: v("m-due") }); }

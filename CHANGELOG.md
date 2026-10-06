@@ -4,6 +4,35 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.38.0] — 2026-10-07
+### Added — eight upgrades to the Business dashboard, for each website
+1. **Website health watch.** Every round (15 minutes) Nova checks that each site answers, how fast, and when its
+   security certificate runs out; once a day she also tries the links on the home page and checks there is still a
+   way to contact you. A light on each tab, and a message the moment a site goes down (after a second look, so one
+   blip isn't an alarm) and again when it is back.
+2. **Sales recorded by themselves.** In a connected mailbox, "new order" and "payment received" emails become
+   sales: amount, order number and customer are read from the mail. The shop's notice and the payment provider's
+   notice about the same sale count once. Each such sale has a *Not a sale* button. Refunds, "your order" mail
+   (things you bought) and shipping notices are ignored.
+3. **Visitors and search.** A read-only sign-in to Google Search Console and Google Analytics (separate from the
+   Gmail connection): visitors, page views, times shown and clicked in Google — this week against last — plus the
+   searches that found you and the most-viewed pages. Each site is matched by its web address; what still has to
+   be set up at Google is listed with a link.
+4. **Weekly Google check (SEO).** Nova reads up to ten pages and scores the site out of 100: missing or duplicate
+   titles and descriptions, thin pages, pages that are empty until JavaScript runs, pictures without descriptions,
+   no sitemap. The fixes, in plain words, go in the approval queue with a drafted title and description.
+5. **Posts for the week.** A week of posts per business, drafted in its voice, with a picture or reel idea each —
+   Copy, post it yourself, tick it off. Age-restricted businesses are written for adults only.
+6. **Competitor watch.** Name a competitor's page; once a week Nova says what changed on it (new prices, new lines).
+7. **Customers.** Everyone who enquired or bought, with what they spent and when last; repeat customers stand out.
+   A buyer who goes quiet for 60 days gets a check-in drafted for your yes (each person once, three a week at most).
+8. **Targets and trends.** A monthly sales target per business, where the month is heading at this pace, and eight
+   weeks of sales and enquiries as a chart.
+
+The weekly business review now uses all of this. By voice: "is the TrueHome website up?", "run the Google check
+for…", "watch <address> for…", "set a sales target of … for…", "plan this week's posts for…", "who are my
+customers at…". Each part can be switched off in Settings.
+
 ## [2.37.0] — 2026-10-06
 ### Added
 - **Each business's own mailbox, signed in to directly.** On the Business dashboard, the *Connections* box of a

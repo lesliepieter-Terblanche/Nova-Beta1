@@ -10,7 +10,10 @@ WORDS = ["business", "businesses", "cockpit", "enquiry", "enquiries", "inquiry",
          "sold a", "invoice", "owes me", "overdue", "mark as paid", "has paid", "approval", "approve number",
          "approve item", "approve the reply", "approve and send", "waiting for my yes", "standing instruction",
          "follow up with", "follow-up with", "launch kit", "launch plan", "business idea", "validate this idea",
-         "go or no-go", "offer test", "test this offer", "business review", "make money"]
+         "go or no-go", "offer test", "test this offer", "business review", "make money", "website up", "website down",
+         "site down", "website health", "broken links", "seo", "google check", "competitor", "competitors", "rival",
+         "sales target", "monthly target", "on track", "plan posts", "week of posts", "content calendar",
+         "customer list", "my customers", "repeat customers"]
 
 
 def refresh_keywords() -> None:
@@ -353,3 +356,150 @@ def business_review(business: str = "") -> str:
     if not which:
         return "No businesses are set up yet."
     return "\n\n".join(f"{b['name']}\n{biz.review(b)}" for b in which)
+
+
+# ── v2.38–2.41: websites, targets, customers, posts ──────────────────────
+@tool(group="business")
+def website_health(business: str = "") -> str:
+    """Is a business's website up, how fast is it, any broken links, how does it score with Google.
+    Args:
+        business: which business ("" = all)
+    """
+    from .. import sitewatch
+    try:
+        which = [biz.need(business)] if business else biz.businesses()
+    except ValueError as e:
+        return _err(e)
+    out = []
+    for b in which:
+        row = sitewatch.check(b, deep=bool(business))
+        seo = sitewatch.seo(b["id"])
+        out.append(f"{b['name']}: " + (f"up, answered in {row['ms']} ms" if row["up"] else f"DOWN — {row['error']}")
+                   + (f", security certificate has {row['ssl_days']} days left" if row["ssl_days"] is not None and row["ssl_days"] <= 30 else "")
+                   + (f", {len(row['broken'])} broken links" if row["broken"] else "")
+                   + (f"; Google check {seo['score']} out of 100" if seo else "") + ".")
+    return "\n".join(out) or "No businesses are set up yet."
+
+
+@tool(group="business")
+def google_check(business: str) -> str:
+    """Check how a business's website looks to Google (SEO): a score out of 100 and what to fix. Takes a minute.
+    Args:
+        business: which business
+    """
+    from .. import sitewatch
+    try:
+        b = biz.need(business)
+        res = biz.seo_now(b)
+    except ValueError as e:
+        return _err(e)
+    except Exception as e:
+        return f"ERROR: I couldn't read the site — {sitewatch._plain(e)}."
+    top = "; ".join(f"{i['page']} {i['text']}" for i in res["issues"][:3])
+    return f"{b['name']} scores {res['score']} out of 100 ({res['pages']} pages read)." + \
+        (f" Biggest problems: {top}. The full list with fixes is in the approval queue." if top else " Nothing to fix.")
+
+
+@tool(group="business")
+def watch_competitor(business: str, website: str, name: str = "", stop: bool = False) -> str:
+    """Watch a competitor's web page for a business (or stop watching): once a week Nova says what changed on it.
+    Args:
+        business: which business
+        website: the competitor page's web address
+        name: what to call the competitor
+        stop: true to stop watching this one
+    """
+    from .. import sitewatch
+    try:
+        b = biz.need(business)
+        if stop:
+            hit = next((r for r in sitewatch.rivals(b["id"]) if website.lower().strip("/") in r["url"].lower()
+                        or (name and name.lower() in r["name"].lower())), None)
+            if not hit:
+                return "ERROR: I'm not watching that one."
+            sitewatch.drop_rival(hit["id"])
+            return f"Stopped watching {hit['name']}."
+        r = sitewatch.add_rival(b["id"], name, website)
+        sitewatch.check_rival(r)
+    except ValueError as e:
+        return _err(e)
+    return f"Watching {r['name']} for {b['name']} — I'll tell you what changes, once a week."
+
+
+@tool(group="business")
+def competitor_changes(business: str = "") -> str:
+    """Look at the watched competitor pages now and say what changed since the last look.
+    Args:
+        business: which business ("" = all)
+    """
+    from .. import sitewatch
+    try:
+        bid = biz.need(business)["id"] if business else ""
+    except ValueError as e:
+        return _err(e)
+    if not any(sitewatch.rivals(b["id"]) for b in biz.businesses() if not bid or b["id"] == bid):
+        return "No competitors are being watched yet. Say 'watch <web address> for <business>'."
+    moved = sitewatch.check_rivals(bid, force=True)
+    return "\n".join(moved) if moved else "Nothing changed on the competitor pages since the last look."
+
+
+@tool(group="business")
+def sales_target(business: str, monthly_amount: float = -1) -> str:
+    """Set a business's monthly sales target, or (without an amount) say how the month is going against it.
+    Args:
+        business: which business
+        monthly_amount: the target in rand per month (0 removes it; leave out to hear the progress)
+    """
+    from .. import bizplan
+    try:
+        b = biz.need(business)
+        if monthly_amount >= 0:
+            b = bizplan.set_target(b["id"], monthly_amount)
+            return f"Target for {b['name']}: {biz.money_text(b, b['target'])} a month." if b["target"] else f"{b['name']} has no target now."
+    except ValueError as e:
+        return _err(e)
+    t = bizplan.trend(b)
+    if not t["target"]:
+        return f"{b['name']} has no target. Sales this month: {biz.money_text(b, t['month'])}."
+    return (f"{b['name']}: {biz.money_text(b, t['month'])} of {biz.money_text(b, t['target'])} ({t['pct']}%) on day {t['day']} of "
+            f"{t['days']}. At this pace the month ends on {biz.money_text(b, t['pace'])} — "
+            + ("on track." if t["on_track"] else f"{biz.money_text(b, t['target'] - t['pace'])} short."))
+
+
+@tool(group="business")
+def plan_posts(business: str, focus: str = "") -> str:
+    """Draft a week of social media posts for a business (to copy and post yourself). They appear on its tab of the
+    Business dashboard.
+    Args:
+        business: which business
+        focus: what this week is about, if anything special (a launch, an offer)
+    """
+    from .. import bizplan
+    try:
+        b = biz.need(business)
+    except ValueError as e:
+        return _err(e)
+    rows = [p for p in bizplan.plan_week(b, brief=focus) if p["status"] == "planned"]
+    return f"{len(rows)} posts drafted for {b['name']}:\n" + "\n".join(
+        f"• {p['day']} {p['platform']}: {' '.join(p['text'].split())[:90]}" for p in rows)
+
+
+@tool(group="business")
+def customer_list(business: str) -> str:
+    """Who a business's customers are: how many, who bought more than once, who has gone quiet.
+    Args:
+        business: which business
+    """
+    from .. import bizplan
+    try:
+        b = biz.need(business)
+    except ValueError as e:
+        return _err(e)
+    people = bizplan.customers(b)
+    if not people:
+        return f"No customers on file for {b['name']} yet — they appear as enquiries and sales come in."
+    quiet = [p for p in people if (p["orders"] or p["won"]) and p["quiet_days"] >= int(biz.cfg().get("quiet_days", 60))]
+    best = sorted(people, key=lambda p: -p["spent"])[:5]
+    return (f"{b['name']}: {len(people)} people on file, {sum(p['repeat'] for p in people)} bought more than once, "
+            f"{len(quiet)} gone quiet.\nBiggest: " + "; ".join(f"{p['name']} ({biz.money_text(b, p['spent'])}, {p['orders']} orders)"
+                                                               for p in best if p["spent"]))

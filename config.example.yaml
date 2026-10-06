@@ -148,6 +148,13 @@ business:
   enabled: true
   scan_inbox: true           # look in each business's own mailbox (or Gmail) for new enquiries
   scan_minutes: 15
+  sales_from_email: true     # record a sale when an order or payment email arrives in a connected mailbox
+  health: true               # watch each website: up, speed, security certificate, broken links
+  seo_weekly: true           # weekly Google check of each website, with a list of fixes
+  rivals: true               # weekly look at the competitor pages you named
+  calendar: true             # draft a week of posts per business
+  win_back: true             # draft a check-in for customers who went quiet…
+  quiet_days: 60             # …for this many days
 
 # Nova improving herself: a weekly self-review (sent with the review above) and playbooks she drafts for jobs you
 # keep asking for. Drafts are plain steps, never code, and are only used once you say "approve the playbook …".

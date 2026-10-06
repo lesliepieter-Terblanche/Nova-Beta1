@@ -24,6 +24,7 @@ def shop(nova, monkeypatch):
     fake("gmail_reply", lambda message_id, body: sent.append(("reply", message_id, body)) or "Reply sent.")
     fake("gmail_draft", lambda to, subject, body: sent.append(("draft", to, subject, body)) or "Draft saved (id d1).")
     fake("gmail_search", lambda query="", max_results=5: list(inbox))
+    cfg["business"] = {"health": False, "seo_weekly": False, "rivals": False, "calendar": False, "win_back": False}
     h = biz.add_business("Harbour Homes", "www.harbourhomes.example", "Property sales and rentals on the coast.")
     r = biz.add_business("Riverbend", "https://riverbend.example", "A fishing app with a gear shop.")
     assert h["url"] == "https://www.harbourhomes.example" and r["id"] == "riverbend"
@@ -197,7 +198,7 @@ def test_idea_validator_offer_test_and_weekly_review(shop, monkeypatch):
     assert text.startswith("Riverbend\n## What moved") and "Sales this week: R499" in m.prompts[-1]
     assert biz.weekly().count("💼") == 2
     shop["cfg"]["business"] = {"enabled": False}
-    assert biz.weekly() == "" and biz.tick() == {"leads": 0, "queued": 0, "sent": 0, "followups": 0}
+    assert biz.weekly() == "" and biz.tick() == {"leads": 0, "queued": 0, "sent": 0, "followups": 0, "sales": 0, "alerts": 0}
 
 
 def test_without_a_model_everything_still_works_plainly(shop, monkeypatch):
@@ -220,7 +221,7 @@ def test_the_round_tells_you_once_and_the_dashboard_shows_it(shop, monkeypatch):
     monkeypatch.setattr(context, "push", lambda text, files=None: told.append(text))
     biz.add_rule("harbour", "new_lead", "Be brief.")
     shop["inbox"] += [{"id": "m9", "from": "kim@example.com", "subject": "Harbour Homes listing", "snippet": "How much to list?"}]
-    assert biz.tick() == {"leads": 1, "queued": 1, "sent": 0, "followups": 0}
+    assert biz.tick() == {"leads": 1, "queued": 1, "sent": 0, "followups": 0, "sales": 0, "alerts": 0}
     assert told == ["💼 1 new thing waiting for your yes on the Business dashboard (1 new enquiry)."]
     assert biz.tick()["queued"] == 0 and len(told) == 1
     assert [b for b in bottlenecks() if b["id"] == "business"][0]["text"] == "Harbour Homes: Reply to kim"
@@ -491,3 +492,282 @@ def test_a_mailbox_that_can_be_read_but_not_sent_from(shop, post):
     assert r["ok"] and mailbox.box("harbour-homes")["smtp_port"] == 587
     with pytest.raises(mailbox.MailError, match="couldn't reach the mail server"):
         mailbox.connect("riverbend", "shop@riverbend.example", "pw")
+
+
+# ── v2.38: website health watch, and sales read from order emails ──────────
+HOME = """<html><head><title>Harbour Homes — coastal property for sale and to rent</title>
+<meta name="viewport" content="width=device-width"><meta name="description" content="Homes on the coast."></head>
+<body><h1>Find your place by the sea</h1><p>{words}</p><a href="/listings">Listings</a> <a href="/gone">Old page</a>
+<a href="mailto:hello@harbourhomes.example">Email us</a><img src="a.jpg"><img src="b.jpg" alt="Beach house"></body></html>"""
+
+
+@pytest.fixture()
+def web(shop, monkeypatch):
+    """A pretend internet: {web address: (status, page)}; anything else can't be reached."""
+    from nova import sitewatch
+    pages = {"https://www.harbourhomes.example": (200, HOME.format(words="sea view " * 120)),
+             "https://www.harbourhomes.example/listings": (200, "<html><head><title>Listings</title></head><body><p>Two homes.</p></body></html>"),
+             "https://www.harbourhomes.example/gone": (404, "gone")}
+
+    def get(url, timeout=20):
+        if url.rstrip("/") not in pages:
+            raise OSError("[Errno -2] Name or service not known")
+        st, text = pages[url.rstrip("/")]
+        if st == 0:
+            raise TimeoutError("timed out")
+        return st, text, 0.42, url
+    monkeypatch.setattr(sitewatch, "_get", get)
+    monkeypatch.setattr(sitewatch, "_cert_days", lambda host: 80)
+    shop["cfg"]["business"] = {"recheck_seconds": 0}
+    return pages
+
+
+def test_a_website_is_watched_and_you_hear_when_it_goes_down(shop, web, monkeypatch):
+    from nova import sitewatch
+    h = biz.find("harbour")
+    assert sitewatch.health("harbour-homes") == {"state": "unknown"}
+    assert sitewatch.watch([h]) == ["🔗 Harbour Homes: 1 broken link(s) on the home page — see the Business dashboard."]
+    s = biz.cockpit(h)["site"]["health"]
+    assert (s["state"], s["ms"], s["ssl_days"], s["uptime"], s["links"], s["contact"]) == ("up", 420, 80, 100.0, 2, True)
+    assert s["broken"] == [{"url": "https://www.harbourhomes.example/gone", "why": "error 404"}]
+    assert sitewatch.watch([h]) == []                                             # the daily look isn't repeated every round
+    web["https://www.harbourhomes.example"] = (0, "")
+    assert sitewatch.watch([h]) == [] and sitewatch.health("harbour-homes")["state"] == "up"   # the PC itself is offline: no alarm
+    web["https://www.google.com/generate_204"] = (204, "")
+    assert sitewatch.watch([h]) == ["🔴 The Harbour Homes website is DOWN — the site didn't answer in time. (https://www.harbourhomes.example)"]
+    assert sitewatch.watch([h]) == []                                             # told once, not every round
+    down = sitewatch.health("harbour-homes")
+    assert down["state"] == "down" and down["down_since"] and down["broken"]      # the last full look is kept
+    web["https://www.harbourhomes.example"] = (200, HOME.format(words="x"))
+    [back] = sitewatch.watch([h])
+    assert back.startswith("🟢 The Harbour Homes website is back up")
+    monkeypatch.setattr(sitewatch, "_cert_days", lambda host: 9)
+    sitewatch._x("UPDATE biz_health SET ts='2020-01-01T00:00:00'")                  # a day later: the full look again
+    assert "🔒 The Harbour Homes website's security certificate runs out in 9 days" in sitewatch.watch([h])[0]
+    web["https://www.harbourhomes.example"] = (403, "Just a moment...")           # a bot wall is not an outage
+    row = sitewatch.check(h, deep=True)
+    assert row["up"] == 1 and "turns automatic checks away" in row["error"] and row["links"] == 0
+    r = biz.act({"biz": "riverbend", "action": "health_check"})
+    assert r["message"] == "Riverbend is DOWN — the web address can't be found (DNS)."
+    from nova.skills.business import website_health
+    web["https://www.harbourhomes.example"] = (200, HOME.format(words="x"))
+    assert website_health("harbour").startswith("Harbour Homes: up, answered in 420 ms, security certificate has 9 days left")
+
+
+ORDER = """From: Harbour Homes <noreply@harbourhomes.example>
+To: hello@harbourhomes.example
+Subject: [Harbour Homes] New order #1042
+Message-ID: <order1042@harbourhomes.example>
+Auto-Submitted: auto-generated
+Content-Type: text/html; charset=utf-8
+
+<p>You've received the following order from Thabo Nkosi:</p>
+<table><tr><td>Featured listing</td><td>1</td><td>R 450.00</td></tr><tr><td>Subtotal:</td><td>R450.00</td></tr>
+<tr><td>Shipping:</td><td>R99.00</td></tr><tr><td>Total:</td><td>R549.00</td></tr></table>
+"""
+PAYMENT = """From: PayGate <noreply@paygate.example>
+Subject: Payment received
+Message-ID: <pay77@paygate.example>
+
+You have received a payment of R549.00 for Harbour Homes.
+"""
+
+
+def test_order_and_payment_emails_become_sales(shop, post, monkeypatch):
+    from nova import mailbox
+    assert mailbox.order_of("[Shop] New order #1042", "order from Thabo Nkosi:\nSubtotal: R450.00\nTotal: R549.00") == \
+        {"amount": 549.0, "order": "1042", "party": "Thabo Nkosi (order 1042)"}
+    assert mailbox.order_of("Payment received", "You have received a payment of R1 250,00 from Jo Mills.")["amount"] == 1250.0
+    assert mailbox.order_of("Your order has shipped", "Total: R50.00") is None    # something you bought
+    assert mailbox.order_of("Refund for order #7", "Total: R50.00") is None and mailbox.order_of("New order", "thanks") is None
+    assert biz.act({"biz": "harbour-homes", "action": "mailbox_connect", "email": "hello@harbourhomes.example", "password": "s3cret"})["ok"]
+    post.add(1, ORDER)
+    post.add(2, PAYMENT)                                                         # the payment provider, about the same sale
+    post.add(3, ENQUIRY)
+    post.add(4, NEWSLETTER)
+    pushed = []
+    monkeypatch.setattr(context, "push", lambda text, files=None: pushed.append(text))
+    out = biz.tick()
+    assert out["sales"] == 1 and out["leads"] == 1
+    assert pushed[0] == "💰 Sale recorded for Harbour Homes: R549 — Thabo Nkosi (order 1042)."
+    c = biz.cockpit(biz.find("harbour"))
+    assert c["kpi"]["sales_week"] == 549 and c["kpi"]["leads_open"] == 1
+    [sale] = [m for m in c["money"] if m["kind"] == "sale"]
+    assert sale["ref"] == "mbox:<order1042@harbourhomes.example>" and "order 1042" in sale["note"]
+    assert biz.scan("harbour") == {"leads": 0, "sales": []}                       # nothing is counted twice
+    post.add(5, ORDER.replace("1042", "1043"))                                   # the same amount, another order number
+    assert [m["party"] for m in biz.scan("harbour")["sales"]] == ["Thabo Nkosi (order 1043)"]
+    assert biz.act({"biz": "harbour-homes", "action": "money_delete", "id": sale["id"]}) == {"ok": True, "message": "Removed."}
+    assert biz.cockpit(biz.find("harbour"))["kpi"]["sales_week"] == 549           # "Not a sale" took the first one off
+    shop["cfg"]["business"]["sales_from_email"] = False
+    post.add(6, ORDER.replace("1042", "1050"))
+    assert biz.scan("harbour") == {"leads": 0, "sales": []}
+
+
+# ── v2.39–2.41: targets, customers, posts, the Google check, competitors, visitor numbers ─────────
+def test_target_trend_and_customers(shop):
+    from nova import bizplan
+    from nova.skills.business import customer_list, sales_target
+    today = dt.date.today()
+    biz.add_money("harbour", "sale", "Sam Carter", 1500)
+    biz.add_money("harbour", "sale", "Sam Carter", 500)
+    biz.add_money("harbour", "sale", "Dune Realty", 900, note="accounts@dune.example")
+    biz.add_lead("harbour", "Sam Carter", "sam@example.com", "How much to list?")
+    biz.add_lead("harbour", "Priya Naidoo", "082 555 0100", "Rentals?")
+    assert sales_target("harbour") == "Harbour Homes has no target. Sales this month: R2 900."
+    assert sales_target("harbour", 10000) == "Target for Harbour Homes: R10 000 a month."
+    t = biz.cockpit(biz.find("harbour"))["trend"]
+    assert (t["target"], t["month"], t["pct"]) == (10000, 2900, 29) and len(t["weeks"]) == 8
+    assert t["weeks"][-1]["now"] and t["weeks"][-1]["sales"] == 2900 and t["weeks"][-1]["leads"] == 2
+    assert t["pace"] == pytest.approx(2900 / today.day * t["days"]) and "R2 900 of R10 000 (29%)" in sales_target("harbour")
+    assert biz.act({"biz": "harbour-homes", "action": "target_set", "amount": 0})["message"] == "Target removed."
+    people = {p["name"]: p for p in bizplan.customers(biz.find("harbour"))}
+    assert set(people) == {"Sam Carter", "Dune Realty", "Priya Naidoo"}
+    sam = people["Sam Carter"]
+    assert (sam["email"], sam["orders"], sam["spent"], sam["enquiries"], sam["repeat"]) == ("sam@example.com", 2, 2000, 1, True)
+    assert people["Dune Realty"]["email"] == "accounts@dune.example" and people["Priya Naidoo"]["phone"] == "0825550100"
+    c = biz.cockpit(biz.find("harbour"))["customers"]
+    assert (c["total"], c["repeat"]) == (3, 1)
+    assert "3 people on file, 1 bought more than once, 0 gone quiet" in customer_list("harbour")
+    assert bizplan.win_back() == 0                                                # nobody is quiet yet
+    later = today + dt.timedelta(days=70)
+    assert bizplan.win_back(later) == 2 and bizplan.win_back(later) == 0          # each person once
+    q = {x["title"]: x for x in biz.pending("harbour-homes")}
+    assert set(q) == {"Win back Sam Carter — quiet for 70 days", "Win back Dune Realty — quiet for 70 days"}   # Priya never bought
+    assert q["Win back Sam Carter — quiet for 70 days"]["tool"] == "gmail_send" and not shop["sent"]
+    assert "Customers on file: 3, of whom 1 bought more than once." in biz.growth_facts(biz.find("harbour"), biz.cockpit(biz.find("harbour")))
+
+
+def test_a_week_of_posts_is_drafted_to_post_yourself(shop, monkeypatch):
+    from nova import bizplan
+    monday = dt.date(2026, 10, 5)
+    rows = bizplan.plan_week(biz.find("harbour"), monday)                         # no model: slots to fill in yourself
+    assert [p["day"] for p in rows] == ["2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09"]
+    assert rows[0]["platform"] == "Instagram" and "Harbour Homes · www.harbourhomes.example" in rows[0]["text"]
+
+    class Model:
+        def complete(self, prompt, **k):
+            assert "adults only" in prompt and "Property sales and rentals on the coast." in prompt and "spring special" in prompt
+            return json.dumps({"posts": [{"day": d, "platform": "Facebook", "text": f"Post for {d} #coast", "idea": "A drone shot"}
+                                         for d in ("2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2031-01-01")]})
+    monkeypatch.setattr(context, "llm", Model())
+    r = biz.act({"biz": "harbour-homes", "action": "plan_week", "brief": "spring special"})
+    assert r["message"].endswith("posts drafted for the coming week.")
+    saturday = dt.date(2026, 10, 10)
+    rows = bizplan.plan_week(biz.find("harbour"), saturday, "spring special")     # at the weekend: next Monday to Friday
+    assert [p["day"] for p in rows] == ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16"]
+    assert rows[0]["text"] == "Post for 2026-10-12 #coast" and rows[0]["idea"] == "A drone shot"
+    assert biz.act({"action": "post_status", "id": rows[0]["id"], "status": "posted"})["message"] == "Marked as posted."
+    assert biz.act({"action": "post_status", "id": rows[1]["id"], "status": "skipped"})["message"] == "Skipped."
+    left = bizplan.posts("harbour-homes", saturday)
+    assert [p["status"] for p in left] == ["posted", "planned", "planned", "planned"]
+    bizplan.plan_week(biz.find("harbour"), saturday)                              # planning again keeps what was posted
+    assert [p["status"] for p in bizplan.posts("harbour-homes", saturday)].count("posted") == 1
+    assert bizplan.plan_due(saturday) == 1 and bizplan.plan_due(saturday) == 0     # Riverbend had nothing; then all are planned
+    assert [p["day"] for p in bizplan.plan_week(biz.find("riverbend"), dt.date(2026, 10, 7))] == ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16"]
+
+
+def test_the_google_check_scores_the_site_and_lists_fixes(shop, web):
+    from nova import sitewatch
+    r = biz.act({"biz": "harbour-homes", "action": "seo_check"})
+    assert r["ok"] and r["message"].startswith("Google check: ") and "the list is in the queue" in r["message"]
+    seo = biz.cockpit(biz.find("harbour"))["site"]["seo"]
+    said = [f"{i['page']} {i['text']}" for i in seo["issues"]]
+    assert seo["pages"] == 2 and "/listings is thin (2 words)" in said and "/listings has no description for Google to show under the title" in said
+    assert "whole site has no sitemap.xml for Google to find all the pages" in said and "home page has no share picture" in " ".join(said)
+    assert not any("home page has no main heading" in s or "home page is thin" in s or "home page isn't marked as phone-friendly" in s for s in said)
+    assert seo["issues"][0]["sev"] >= seo["issues"][-1]["sev"] and 5 <= seo["score"] < 100
+    [q] = biz.pending("harbour-homes")
+    assert q["kind"] == "page" and q["tool"] == "" and f"scores {seo['score']} out of 100" in q["body"] and "Fix:" in q["body"]
+    biz.act({"biz": "harbour-homes", "action": "seo_check"})
+    assert len(biz.pending("harbour-homes")) == 1 and biz.cockpit(biz.find("harbour"))["site"]["seo"]["before"] == seo["score"]
+    spa = sitewatch._page("https://x.example/", "<html><head><title>App</title></head><body><div id=root></div>" + "<script></script>" * 4 + "</body></html>")
+    score, issues = sitewatch.audit([spa], True, True)
+    assert "almost no text until JavaScript runs" in issues[0]["text"] and score < 80
+    assert biz.act({"biz": "riverbend", "action": "seo_check"}) == \
+        {"ok": False, "message": "I couldn't read the site: the web address can't be found (DNS)."}
+
+
+def test_competitor_pages_are_watched_for_changes(shop, web):
+    from nova import sitewatch
+    from nova.skills.business import competitor_changes, watch_competitor
+    assert competitor_changes() == "No competitors are being watched yet. Say 'watch <web address> for <business>'."
+    web["https://coastlist.example/pricing"] = (200, "<html><body><h1>Pricing</h1><p>Basic listing R199</p><p>Agents welcome</p></body></html>")
+    assert watch_competitor("harbour", "coastlist.example/pricing", "CoastList") == \
+        "Watching CoastList for Harbour Homes — I'll tell you what changes, once a week."
+    [r] = biz.cockpit(biz.find("harbour"))["site"]["rivals"]
+    assert r["summary"] == "First look saved — changes show from next week." and "text" not in r
+    assert sitewatch.check_rivals() == [] and competitor_changes("harbour") == "Nothing changed on the competitor pages since the last look."
+    web["https://coastlist.example/pricing"] = (200, "<html><body><h1>Pricing</h1><p>Basic listing R149</p><p>Agents welcome</p><p>Free in October</p></body></html>")
+    assert sitewatch.check_rivals() == []                                         # only once a week by itself
+    [moved] = sitewatch.check_rivals(force=True)
+    assert moved == "CoastList: new prices: R149; prices gone: R199; 2 new line(s), e.g. “Basic listing R149” · “Free in October”"
+    c = biz.cockpit(biz.find("harbour"))
+    assert any(f.startswith("Competitors this week — CoastList: new prices: R149") for f in biz.growth_facts(biz.find("harbour"), c))
+    web["https://coastlist.example/pricing"] = (403, "")
+    sitewatch.check_rivals(force=True)
+    assert "some big sites block automatic readers" in sitewatch.rivals("harbour-homes")[0]["summary"]
+    assert watch_competitor("harbour", "coastlist.example", stop=True) == "Stopped watching CoastList." and not sitewatch.rivals("harbour-homes")
+
+
+def test_visitor_and_search_numbers_from_google(shop, monkeypatch):
+    from nova import sitestats
+    monkeypatch.setattr(sitestats, "resolve", lambda p: shop["tmp"] / p)
+    assert biz.cockpit(biz.find("harbour"))["stats"] == {"connected": False, "connecting": False, "error": ""}
+    assert biz.act({"biz": "harbour-homes", "action": "stats_refresh"}) == {"ok": False, "message": "Press Connect first."}
+    (shop["tmp"] / "secrets").mkdir(exist_ok=True)
+    sitestats.token_file().write_text("{}")
+    off = {"analytics": False}
+
+    class Reply:
+        def __init__(self, data, code=200):
+            self.status_code, self.text, self._d = code, json.dumps(data), data
+
+        def json(self):
+            return self._d
+
+    class Session:
+        def request(self, method, url, json=None, timeout=30):
+            if "analytics" in url and off["analytics"]:
+                return Reply({"error": {"message": "Google Analytics Data API has not been used in project 12 before or it is disabled. "
+                                                   "Enable it by visiting https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=12 then retry."}}, 403)
+            if url.endswith("/webmasters/v3/sites"):
+                return Reply({"siteEntry": [{"siteUrl": "sc-domain:harbourhomes.example", "permissionLevel": "siteOwner"},
+                                            {"siteUrl": "https://other.example/", "permissionLevel": "siteOwner"}]})
+            if "searchAnalytics" in url:
+                assert "sc-domain%3Aharbourhomes.example" in url
+                if json.get("dimensions"):
+                    return Reply({"rows": [{"keys": ["houses for sale ballito"], "clicks": 9, "impressions": 120, "position": 6.42}]})
+                return Reply({"rows": [{"clicks": 30, "impressions": 400, "position": 8.0}]} if json["startDate"] > "2026-09-25"
+                             else {"rows": [{"clicks": 20, "impressions": 500, "position": 9.0}]})
+            if "accountSummaries" in url:
+                return Reply({"accountSummaries": [{"propertySummaries": [{"property": "properties/1"}, {"property": "properties/2"}]}]})
+            if url.endswith("properties/1/dataStreams"):
+                return Reply({"dataStreams": [{"webStreamData": {"defaultUri": "https://other.example"}}]})
+            if url.endswith("properties/2/dataStreams"):
+                return Reply({"dataStreams": [{"webStreamData": {"defaultUri": "https://www.harbourhomes.example"}}]})
+            assert url.endswith("properties/2:runReport")
+            if json.get("dimensions"):
+                return Reply({"rows": [{"dimensionValues": [{"value": "/listings"}], "metricValues": [{"value": "88"}]}]})
+            return Reply({"rows": [{"dimensionValues": [{"value": "date_range_0"}], "metricValues": [{"value": "150"}, {"value": "180"}, {"value": "420"}]},
+                                   {"dimensionValues": [{"value": "date_range_1"}], "metricValues": [{"value": "100"}, {"value": "120"}, {"value": "400"}]}]})
+    monkeypatch.setattr(sitestats, "_session", lambda: Session())
+    d = sitestats.refresh(biz.find("harbour"), dt.date(2026, 10, 6))
+    assert d["search"] == {"clicks": 30, "shown": 400, "position": 8.0, "clicks_change": 50, "shown_change": -20,
+                           "queries": [{"q": "houses for sale ballito", "clicks": 9, "shown": 120, "position": 6.4}]}
+    assert d["visitors"] == {"visitors": 150, "visits": 180, "views": 420, "visitors_change": 50, "views_change": 5,
+                             "pages": [{"path": "/listings", "views": 88}]} and d["needs"] == []
+    c = biz.cockpit(biz.find("harbour"))
+    assert c["stats"]["connected"] and c["stats"]["visitors"]["visitors"] == 150
+    facts = " ".join(biz.growth_facts(biz.find("harbour"), c))
+    assert "Website visitors last 7 days: 150 (+50% on the week before)" in facts and "top searches: houses for sale ballito" in facts
+    assert sitestats.refresh_due(biz.businesses()) == 1                           # Riverbend hadn't been fetched; Harbour is fresh
+    r = sitestats.stats("riverbend")
+    assert r["search"] is None and "Add riverbend.example to Google Search Console" in r["needs"][0]["text"]
+    off["analytics"] = True
+    d = sitestats.refresh(biz.find("harbour"), dt.date(2026, 10, 6))
+    assert d["search"]["clicks"] == 30 and d["visitors"] is None
+    assert d["needs"] == [{"text": "The Google Analytics service is switched off in your Google project. Open the link, press "
+                                   "Enable, wait a minute, then press Refresh here.",
+                           "link": "https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=12"}]
+    assert biz.act({"biz": "harbour-homes", "action": "stats_disconnect"})["ok"] and not sitestats.connected()

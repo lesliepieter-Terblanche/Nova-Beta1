@@ -42,6 +42,13 @@ PROVIDERS = [
 ]
 APP_PASSWORD = re.compile(r"google|gmail|outlook|office365|icloud|me\.com|yahoo")
 ROBOT = re.compile(r"^(no-?reply|do-?not-?reply|mailer-daemon|postmaster|bounces?|notifications?)[\w.+-]*@", re.I)
+# v2.38: mail that says money came in (the shop's "new order" notice, a payment provider's "payment received")
+SALE = re.compile(r"new (customer )?order|order received|new sale|you('ve| have)? (received|got|made) (a |an )?(new )?"
+                  r"(order|payment|sale)|payment (received|confirmation|notification|successful|complete)|"
+                  r"successful payment|payment from|funds received", re.I)
+NOT_SALE = re.compile(r"\b(your order|refund|failed|declined|cancel|unsuccessful|reversed|chargeback|abandon|shipped|"
+                      r"dispatch|out for delivery|invoice from|quote|reminder)", re.I)
+AMOUNT = r"(?:R|ZAR)\s?(\d[\d  ,]*(?:\.\d{1,2})?)"
 FIELDS = "MESSAGE-ID FROM REPLY-TO SUBJECT AUTO-SUBMITTED PRECEDENCE LIST-UNSUBSCRIBE LIST-ID"
 
 
@@ -275,6 +282,38 @@ def _machine(msg) -> bool:
     return bool(ROBOT.match(sender)) and not msg.get("Reply-To")       # a website form may send as no-reply
 
 
+def _number(text: str) -> float:
+    t = re.sub(r"[  ]", "", text.strip().rstrip(".,"))
+    if re.search(r",\d{2}$", t) and "." not in t:        # 1 234,50
+        t = t[:-3].replace(",", "") + "." + t[-2:]
+    try:
+        return float(t.replace(",", ""))
+    except ValueError:
+        return 0.0
+
+
+def order_of(subject: str, text: str) -> dict | None:
+    """Is this mail a sale? → {"amount", "party", "order"}; None when it isn't, or no amount can be read from it.
+    The amount is the order's total when the mail names one, else the largest rand amount in it."""
+    if not SALE.search(subject or "") or NOT_SALE.search(subject or ""):
+        return None
+    body = text or ""
+    totals = re.findall(r"(?im)\b(?:grand total|order total|total paid|amount paid|amount received|total|amount|"
+                        r"payment of|paid)\b[^\n\dR]{0,30}" + AMOUNT, body)
+    amounts = [_number(a) for a in (totals[-1:] if totals else re.findall(AMOUNT, body + " " + subject))]
+    amount = max(amounts, default=0.0)
+    if amount <= 0:
+        return None
+    num = re.search(r"(?i)\border\s*(?:no\.?|number|id|ref(?:erence)?)?\s*[:#]?\s*#?\s*([A-Z]{0,4}-?\d{3,})", subject + "\n" + body)
+    who = (re.search(r"(?i)order from\s+([^\n:,.]{3,40})", body)
+           or re.search(r"(?im)^\s*(?:customer|billing name|buyer|paid by|from|name)\s*[:\-]\s*([^\n<@]{3,40})$", body))
+    who = who or re.search(r"(?:payment|order|\d)\s+from\s+([A-Z][\w'’-]+(?: [A-Z][\w'’-]+){0,2})", body)
+    order = num.group(1) if num else ""
+    party = re.sub(r"\s+", " ", who.group(1)).strip() if who else ""
+    return {"amount": amount, "order": order,
+            "party": (party + (f" (order {order})" if order else "")) if party else (f"Online order {order}" if order else "Online payment")}
+
+
 def _pairs(data) -> list[tuple[str, bytes]]:
     """imaplib's FETCH answer → [(everything around the literal, the literal)]. Some servers put the flags after
     the message text, so what follows it is kept with it."""
@@ -290,7 +329,8 @@ def _pairs(data) -> list[tuple[str, bytes]]:
 def fetch(biz: str, known=lambda ref: False, limit: int = 40) -> list[dict]:
     """New enquiries in a business's inbox: mail from the last week that is unread, or arrived since the mailbox
     was connected. Nothing is marked as read. `known(ref)` says which ones are logged already.
-    Returns [{"id", "from", "subject", "snippet"}]; "id" is "mbox:<the message's own id>"."""
+    Returns [{"id", "from", "subject", "snippet", "kind"}]; "id" is "mbox:<the message's own id>". kind is
+    "enquiry", or "order" for mail that says money came in (then also "amount", "party", "order")."""
     m = box(biz)
     if not m:
         return []
@@ -321,18 +361,26 @@ def fetch(biz: str, known=lambda ref: False, limit: int = 40) -> list[dict]:
                     continue
                 if "\\seen" in flags and arrived < connected:
                     continue                            # old mail you have already read stays yours
-                if _machine(h) or known(ref):
+                subject = str(h.get("Subject", "") or "")
+                sale = bool(SALE.search(subject)) and not NOT_SALE.search(subject)
+                if known(ref) or (_machine(h) and not sale):      # a shop's own order notice is automatic mail too
                     continue
-                want.append((uid.group(1), ref))
-            for uid, ref in want:
+                want.append((uid.group(1), ref, sale))
+            for uid, ref, sale in want:
                 _, full = c.uid("fetch", uid, f"(BODY.PEEK[]<0.{PEEK}>)")
                 pairs = _pairs(full)
                 if not pairs:
                     continue
                 msg = _parse(pairs[0][1])
                 sender = str(msg.get("Reply-To") or msg.get("From") or "")
-                out.append({"id": ref, "from": sender, "subject": str(msg.get("Subject", "") or "").strip(),
-                            "snippet": _text(msg)[:1500]})
+                subject, text = str(msg.get("Subject", "") or "").strip(), _text(msg)
+                item = {"id": ref, "from": sender, "subject": subject, "snippet": text[:1500], "kind": "enquiry"}
+                if sale:
+                    order = order_of(subject, text)
+                    if not order:
+                        continue                        # looks like a sale but names no amount: not logged as anything
+                    item.update(kind="order", **order)
+                out.append(item)
         _x("UPDATE biz_mailbox SET last_ok=?, error=CASE WHEN smtp_host='' THEN error ELSE '' END WHERE biz=?", (now(), biz))
     finally:
         try:

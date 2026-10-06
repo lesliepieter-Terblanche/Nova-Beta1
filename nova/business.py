@@ -69,6 +69,8 @@ def _db():
             have = {r["name"] for r in s.db.execute("PRAGMA table_info(biz)")}
             if "email" not in have:                   # v2.36.1: the address each business's enquiries arrive at
                 s.db.execute("ALTER TABLE biz ADD COLUMN email TEXT DEFAULT ''")
+            if "ref" not in {r["name"] for r in s.db.execute("PRAGMA table_info(biz_money)")}:
+                s.db.execute("ALTER TABLE biz_money ADD COLUMN ref TEXT DEFAULT ''")       # v2.38: sales read from mail
             s.db.commit()
         s._biz_ready = True
     return s
@@ -357,23 +359,54 @@ def _from_parts(sender: str) -> tuple[str, str]:
     return name, email
 
 
-def scan_inbox(biz: str = "") -> int:
-    """Look for new enquiries for each business and log them as leads: in its own mailbox when that is connected,
-    else in Gmail (its inbox search)."""
+def auto_sale(b: dict, h: dict) -> dict | None:
+    """A sale read from an order or payment email (v2.38). One sale per mail, per order number, and — because the
+    shop and the payment provider often both write about the same sale — per amount within half an hour."""
+    if _q("SELECT id FROM biz_money WHERE ref=?", (h["id"],)):
+        return None
+    recent = (dt.datetime.now() - dt.timedelta(minutes=30)).isoformat(timespec="seconds")
+    twin = [t for t in _q("SELECT note FROM biz_money WHERE biz=? AND kind='sale' AND ref!='' AND amount=? AND ts>=?",
+                          (b["id"], h["amount"], recent))
+            if not h.get("order") or "order ? " in t["note"]]         # two numbered orders are two sales
+    same_order = h.get("order") and _q("SELECT id FROM biz_money WHERE biz=? AND kind='sale' AND ref!='' AND note LIKE ?",
+                                       (b["id"], f"%order {h['order']} %"))
+    if twin or same_order:
+        _x("INSERT INTO biz_money(biz,ts,kind,party,amount,status,note,ref) VALUES(?,?,?,?,?,?,?,?)",
+           (b["id"], now(), "seen", h["party"][:120], 0, "paid", "same sale, second email", h["id"]))
+        return None
+    _, email = _from_parts(h.get("from", ""))
+    m = add_money(b["id"], "sale", h["party"], h["amount"],
+                  note=f"from email — order {h.get('order') or '?'} — {h['subject'][:120]}"
+                       + (f" — {email}" if email and not re.match(r"(no-?reply|orders?|sales|info|admin|wordpress)@", email, re.I) else ""))
+    _x("UPDATE biz_money SET ref=? WHERE id=?", (h["id"], m["id"]))
+    return m
+
+
+def scan(biz: str = "") -> dict:
+    """Look for new enquiries and sales for each business: in its own mailbox when that is connected, else (enquiries
+    only) in Gmail with its inbox search. Returns {"leads": n, "sales": [the sales recorded]}."""
     from . import mailbox
     from .tools import REGISTRY
-    found = 0
+    out = {"leads": 0, "sales": []}
     for b in ([need(biz)] if biz else businesses()):
         if mailbox.box(b["id"]):
+            def known(ref):
+                return bool(_q("SELECT id FROM biz_leads WHERE ref=?", (ref,)) or _q("SELECT id FROM biz_money WHERE ref=?", (ref,)))
             try:
-                hits = mailbox.fetch(b["id"], known=lambda ref: bool(_q("SELECT id FROM biz_leads WHERE ref=?", (ref,))))
+                hits = mailbox.fetch(b["id"], known=known)
             except Exception as e:
                 print(f"[business] couldn't read the {b['name']} mailbox: {e}")
                 continue
             for h in hits:
+                if h.get("kind") == "order":
+                    if cfg().get("sales_from_email", True):
+                        m = auto_sale(b, h)
+                        if m:
+                            out["sales"].append({**m, "business": b["name"], "text": money_text(b, m["amount"])})
+                    continue
                 name, email = _from_parts(h["from"])
                 lead = add_lead(b["id"], name, email, f"{h['subject']}\n{h['snippet']}".strip(), "mailbox", h["id"])
-                found += bool(lead)
+                out["leads"] += bool(lead)
             continue
         if "gmail_search" not in REGISTRY:
             continue
@@ -385,8 +418,12 @@ def scan_inbox(biz: str = "") -> int:
         for h in hits if isinstance(hits, list) else []:
             name, email = _from_parts(h.get("from", ""))
             lead = add_lead(b["id"], name, email, f"{h.get('subject', '')}\n{h.get('snippet', '')}".strip(), "gmail", h["id"])
-            found += bool(lead)
-    return found
+            out["leads"] += bool(lead)
+    return out
+
+
+def scan_inbox(biz: str = "") -> int:
+    return scan(biz)["leads"]
 
 
 # ── money ─────────────────────────────────────────────────
@@ -598,9 +635,12 @@ def cockpit(b: dict, today: dt.date | None = None) -> dict:
     open_leads = [x for x in leads if x["status"] in ("new", "drafted")]
     tasks = _q("SELECT * FROM biz_tasks WHERE biz=? AND status='open' ORDER BY due='' , due, id", (b["id"],))
     fups = _q("SELECT * FROM biz_followups WHERE biz=? AND status IN ('open','queued') ORDER BY due", (b["id"],))
-    from . import mailbox
+    from . import bizplan, mailbox, sitestats, sitewatch
+    people = bizplan.customers(b, today)
     return {"id": b["id"], "name": b["name"], "url": b["url"], "about": b["about"], "currency": b["currency"] or "R",
-            "mailbox": mailbox.status(b["id"]),
+            "mailbox": mailbox.status(b["id"]), "site": sitewatch.summary(b["id"]), "stats": sitestats.stats(b["id"]),
+            "trend": bizplan.trend(b, today), "posts": bizplan.posts(b["id"], today),
+            "customers": {"total": len(people), "repeat": sum(p["repeat"] for p in people), "list": people[:12]},
             "inbox": b["inbox"], "email": b.get("email") or "", "watching": inbox_query(b),
             "gmail": gmail_connected(),
             "kpi": {"sales_week": sales_w, "sales_month": sales_m, "leads_week": sum(x["ts"][:10] >= week for x in leads),
@@ -776,6 +816,38 @@ def offer_response(biz: str, variant: str, count: int = 1) -> dict | None:
 
 
 # ── the weekly business review ────────────────────────────
+def growth_facts(b: dict, c: dict) -> list[str]:
+    """The website, target and customer facts for the review (v2.38–2.41). Only what is actually known."""
+    out = []
+    t, h, seo, st = c["trend"], c["site"]["health"], c["site"]["seo"], c["stats"]
+    if t["target"]:
+        out.append(f"Monthly sales target: {money_text(b, t['target'])}; so far {money_text(b, t['month'])} ({t['pct']}%) on day "
+                   f"{t['day']} of {t['days']}; heading for {money_text(b, t['pace'])} at this pace.")
+    if h.get("state") in ("up", "down"):
+        out.append(f"Website: {'UP' if h['state'] == 'up' else 'DOWN — ' + h['error']}; answered {h['uptime']}% of checks this week; "
+                   f"typical load {h['typical_ms']} ms"
+                   + (f"; security certificate has {h['ssl_days']} days left" if h.get("ssl_days") is not None and h["ssl_days"] <= 30 else "")
+                   + (f"; {len(h['broken'])} broken links on the home page" if h["broken"] else "") + ".")
+    if seo:
+        out.append(f"Google check: {seo['score']}/100" + (f" (was {seo['before']})" if seo.get("before") is not None else "")
+                   + "; top problems: " + ("; ".join(f"{i['page']} {i['text']}" for i in seo["issues"][:3]) or "none") + ".")
+    if st.get("visitors"):
+        v = st["visitors"]
+        out.append(f"Website visitors last 7 days: {v['visitors']}"
+                   + (f" ({v['visitors_change']:+d}% on the week before)" if v["visitors_change"] is not None else "")
+                   + f"; page views {v['views']}.")
+    if st.get("search"):
+        g = st["search"]
+        out.append(f"Google search: shown {g['shown']} times, clicked {g['clicks']} times; top searches: "
+                   + (", ".join(q["q"] for q in g["queries"][:5]) or "none yet") + ".")
+    moved = [f"{r['name']}: {r['summary']}" for r in c["site"]["rivals"] if r["changed"] and r["changed"][:10] >= (dt.date.today() - dt.timedelta(days=7)).isoformat()]
+    if moved:
+        out.append("Competitors this week — " + " | ".join(moved)[:600])
+    if c["customers"]["total"]:
+        out.append(f"Customers on file: {c['customers']['total']}, of whom {c['customers']['repeat']} bought more than once.")
+    return out
+
+
 def review(b: dict, today: dt.date | None = None) -> str:
     today = today or dt.date.today()
     week = (today - dt.timedelta(days=6)).isoformat()
@@ -790,6 +862,7 @@ def review(b: dict, today: dt.date | None = None) -> str:
              f"({k['overdue_n']} invoices). You owe: {money_text(b, k['i_owe'])}.",
              "Open tasks: " + ("; ".join(t["text"] for t in c["tasks"][:8]) or "none") + ".",
              "Follow-ups due: " + ("; ".join(f"{f['who']} ({f['due']})" for f in c["followups"][:6]) or "none") + "."]
+    facts += growth_facts(b, c)
     fallback = ("## What moved\n- " + facts[0] + "\n- " + facts[2] + "\n\n## What stalled\n- " + facts[1] + "\n- " + facts[3]
                 + "\n\n## Do next\n" + ("\n".join(f"{i}. {t['text']}" for i, t in enumerate(c["tasks"][:3], 1))
                                          or "1. Clear the approval queue.\n2. Log this week's sales.\n3. Add the next task."))
@@ -811,23 +884,73 @@ def weekly() -> str:
 
 # ── the worker: enquiries, rules, follow-ups ──────────────
 def tick() -> dict:
-    """One round: read the inbox, carry out the standing instructions, draft what's due. Returns what happened."""
-    out = {"leads": 0, "queued": 0, "sent": 0, "followups": 0}
+    """One round: read the inbox, carry out the standing instructions, draft what's due, watch the websites.
+    Returns what happened."""
+    out = {"leads": 0, "sales": 0, "queued": 0, "sent": 0, "followups": 0, "alerts": 0}
     if not cfg().get("enabled", True) or not businesses():
         return out
     before = len(pending())
     if cfg().get("scan_inbox", True):
         try:
-            out["leads"] = scan_inbox()
+            got = scan()
+            out["leads"], out["sales"] = got["leads"], len(got["sales"])
+            for m in got["sales"][:5]:
+                context.push(f"💰 Sale recorded for {m['business']}: {m['text']} — {m['party']}.")
         except Exception as e:
             print(f"[business] inbox: {e}")
     r = run_rules()
     out.update(queued=r["queued"], sent=r["sent"], followups=due_followups())
+    try:
+        out["alerts"] = websites()
+    except Exception as e:
+        print(f"[business] websites: {e}")
+    try:
+        from . import bizplan
+        if cfg().get("calendar", True):
+            bizplan.plan_due()
+        if cfg().get("win_back", True):
+            bizplan.win_back()
+    except Exception as e:
+        print(f"[business] growth: {e}")
     new = len(pending()) - before
     if new > 0:
         context.push(f"💼 {new} new thing{'' if new == 1 else 's'} waiting for your yes on the Business dashboard"
                      + (f" ({out['leads']} new enquir{'y' if out['leads'] == 1 else 'ies'})" if out["leads"] else "") + ".")
     return out
+
+
+def websites() -> int:
+    """Watch every business's website: health each round, the Google check and the competitors once a week, the
+    visitor numbers twice a day. Returns how many alerts were sent."""
+    from . import sitestats, sitewatch
+    c = cfg()
+    alerts = sitewatch.watch(businesses()) if c.get("health", True) else []
+    for a in alerts:
+        context.push(a)
+    if c.get("seo_weekly", True):
+        for b in businesses():
+            last = sitewatch.seo(b["id"])
+            up = sitewatch.health(b["id"]).get("state") == "up"
+            if up and (not last or sitewatch._age_hours(last["ts"]) >= 24 * 7):
+                seo_now(b)
+    if c.get("rivals", True):
+        moved = sitewatch.check_rivals()
+        if moved:
+            context.push("🔎 Competitors moved: " + " | ".join(moved)[:500])
+    sitestats.refresh_due(businesses())
+    return len(alerts)
+
+
+def seo_now(b: dict) -> dict:
+    """Run the Google check for one business and put the list of fixes in the queue (replacing last week's)."""
+    from . import sitewatch
+    res = sitewatch.seo_check(b)
+    for old in _q("SELECT id FROM biz_queue WHERE biz=? AND status='pending' AND source='seo'", (b["id"],)):
+        _x("UPDATE biz_queue SET status='rejected', done=? WHERE id=?", (now(), old["id"]))
+    if res["issues"]:
+        enqueue(b["id"], "page", f"Google check: {res['score']}/100 — {len(res['issues'])} thing(s) to fix on the website",
+                sitewatch.seo_report(b, res), "", {}, "seo")
+    return res
 
 
 _started = False
@@ -883,11 +1006,62 @@ def act(body: dict) -> dict:
             return {"ok": True, "message": f"Disconnected. The {b['name']} password is deleted from this PC."}
         if a == "scan":
             from . import mailbox
-            n = scan_inbox(bid)
+            got = scan(bid)
+            n, sold = got["leads"], got["sales"]
             r = run_rules()
             where = "the mailbox" if bid and mailbox.box(need(bid)["id"]) else "the inbox"
-            return {"ok": True, "message": f"{n} new enquir{'y' if n == 1 else 'ies'}; {r['queued']} drafts waiting for your yes."
-                    if n or r["queued"] else f"No new enquiries in {where}."}
+            said = [f"{n} new enquir{'y' if n == 1 else 'ies'}"] if n else []
+            said += [f"{len(sold)} sale{'' if len(sold) == 1 else 's'} recorded ({', '.join(m['text'] for m in sold[:4])})"] if sold else []
+            said += [f"{r['queued']} drafts waiting for your yes"] if r["queued"] else []
+            return {"ok": True, "message": ("; ".join(said) + ".") if said else f"Nothing new in {where}."}
+        if a == "money_delete":
+            _x("DELETE FROM biz_money WHERE id=? AND biz=?", (int(body["id"]), need(bid)["id"]))
+            return {"ok": True, "message": "Removed."}
+        if a in ("health_check", "seo_check", "rival_add", "rival_drop", "rivals_check"):
+            from . import sitewatch
+            b = need(bid)
+            if a == "health_check":
+                row = sitewatch.check(b, deep=True)
+                return {"ok": True, "message": f"{b['name']} is up — answered in {row['ms']} ms"
+                        + (f", {len(row['broken'])} broken link(s)" if row["broken"] else ", all home-page links work") + "."
+                        if row["up"] else f"{b['name']} is DOWN — {row['error']}."}
+            if a == "seo_check":
+                try:
+                    res = seo_now(b)
+                except Exception as e:
+                    return {"ok": False, "message": f"I couldn't read the site: {sitewatch._plain(e)}."}
+                return {"ok": True, "message": f"Google check: {res['score']} out of 100, {len(res['issues'])} thing(s) to fix"
+                        + (" — the list is in the queue." if res["issues"] else ".")}
+            if a == "rival_add":
+                r = sitewatch.add_rival(b["id"], str(body.get("name", "")), str(body.get("url", "")))
+                sitewatch.check_rival(r)
+                return {"ok": True, "message": f"Watching {r['name']} — I'll tell you what changes, once a week."}
+            if a == "rival_drop":
+                sitewatch.drop_rival(int(body["id"]))
+                return {"ok": True, "message": "Stopped watching it."}
+            moved = sitewatch.check_rivals(b["id"], force=True)
+            return {"ok": True, "message": ("Changed: " + " | ".join(moved))[:400] if moved else "No changes on the competitor pages."}
+        if a in ("stats_connect", "stats_refresh", "stats_disconnect"):
+            from . import sitestats
+            if a == "stats_connect":
+                return {"ok": True, "message": sitestats.connect_in_background()}
+            if a == "stats_disconnect":
+                sitestats.disconnect()
+                return {"ok": True, "message": "Disconnected from the website numbers."}
+            if not sitestats.connected():
+                return {"ok": False, "message": "Press Connect first."}
+            d = sitestats.refresh(need(bid))
+            return {"ok": True, "message": "Numbers updated." if d["search"] or d["visitors"] else "Connected, but there is something to set up — see the box."}
+        if a in ("target_set", "plan_week", "post_status"):
+            from . import bizplan
+            if a == "target_set":
+                b = bizplan.set_target(bid, float(body.get("amount") or 0))
+                return {"ok": True, "message": f"Target set: {money_text(b, b['target'])} a month." if b["target"] else "Target removed."}
+            if a == "plan_week":
+                n = len([p for p in bizplan.plan_week(need(bid), brief=str(body.get("brief", ""))) if p["status"] == "planned"])
+                return {"ok": True, "message": f"{n} posts drafted for the coming week."}
+            ok = bizplan.set_post(int(body["id"]), str(body.get("status", "")))
+            return {"ok": ok, "message": {"posted": "Marked as posted.", "skipped": "Skipped."}.get(body.get("status"), "Done.")}
         if a == "lead_add":
             lead = add_lead(bid, str(body.get("name", "")), str(body.get("contact", "")), str(body.get("message", "")))
             rule = next((r for r in rules(lead["biz"]) if r["trigger"] == "new_lead" and r["enabled"]), None)

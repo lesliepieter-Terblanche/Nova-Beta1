@@ -366,6 +366,13 @@ Offered to the model when you say things like: _business, businesses, cockpit, e
 | `standing_instruction` | Give Nova a standing instruction for a business that she carries out by herself, e.g. "answer every new enquiry with the price list", "chase unpaid invoices after 7 days", "every week draft three post ideas". | `business`, `when`, `instruction`, `after_days`?, `send_without_asking`?, `max_per_day`? |
 | `follow_up` | Remember to follow up with someone. When it is due Nova drafts the message for the approval queue. | `business`, `who`, `about`, `when`?, `contact`? |
 | `business_review` | The weekly review of a business: what moved, what stalled, and the three things to do next. | `business`? |
+| `website_health` | Is a business's website up, how fast is it, any broken links, how does it score with Google. | `business`? |
+| `google_check` | Check how a business's website looks to Google (SEO): a score out of 100 and what to fix. Takes a minute. | `business` |
+| `watch_competitor` | Watch a competitor's web page for a business (or stop watching): once a week Nova says what changed on it. | `business`, `website`, `name`?, `stop`? |
+| `competitor_changes` | Look at the watched competitor pages now and say what changed since the last look. | `business`? |
+| `sales_target` | Set a business's monthly sales target, or (without an amount) say how the month is going against it. | `business`, `monthly_amount`? |
+| `plan_posts` | Draft a week of social media posts for a business (to copy and post yourself). They appear on its tab of the Business dashboard. | `business`, `focus`? |
+| `customer_list` | Who a business's customers are: how many, who bought more than once, who has gone quiet. | `business` |
 
 ## web_agent
 

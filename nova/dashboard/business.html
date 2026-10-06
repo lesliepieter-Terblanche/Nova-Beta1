@@ -96,6 +96,31 @@
   .conn details { margin-top: 10px; } .conn summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   .conn .state { flex: 1; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; } .conn .note { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
   .btn.setup { border-color: rgba(255,209,102,.7); color: var(--gold); }
+  .light { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 999px; font: 600 12px var(--body); border: 1px solid var(--lc); color: var(--lc); white-space: nowrap; }
+  .light i { width: 9px; height: 9px; border-radius: 50%; background: var(--lc); box-shadow: 0 0 9px var(--lc); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px; margin: 10px 0 4px; }
+  .fact { padding: 9px 10px; border-radius: 12px; background: rgba(8,6,30,.38); border: 1px solid var(--line); }
+  .fact span { display: block; font: 600 10px var(--body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .fact b { font: 700 17px var(--display); } .fact small { display: block; color: var(--muted); font-size: 11px; }
+  .fact.bad b { color: #fda4af; } .fact.warn b { color: var(--gold); } .fact.good b { color: var(--done); }
+  h4.sec { font: 700 12px var(--display); letter-spacing: .06em; text-transform: uppercase; color: #a5f3fc; margin: 16px 0 6px; display: flex; align-items: center; gap: 8px; }
+  h4.sec .btn { margin-left: auto; }
+  .issue { display: grid; grid-template-columns: 10px 1fr; gap: 9px; padding: 6px 0; font-size: 13px; border-top: 1px solid var(--line); }
+  .issue:first-of-type { border-top: 0; } .issue i { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--ic); }
+  .issue .m { color: var(--muted); font-size: 12px; }
+  .up { color: var(--done); } .dn { color: #fda4af; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 92px; margin: 12px 0 2px; }
+  .bars .w { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; min-width: 0; }
+  .bars .bar { width: 100%; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, var(--c), var(--b)); min-height: 2px; opacity: .75; }
+  .bars .w.now .bar { opacity: 1; box-shadow: 0 0 12px rgba(120,160,255,.6); }
+  .bars small { font-size: 9.5px; color: var(--muted); white-space: nowrap; } .bars em { font: 600 10px var(--body); color: var(--text); font-style: normal; }
+  .prog { height: 10px; border-radius: 999px; background: rgba(8,6,30,.5); border: 1px solid var(--line); overflow: hidden; position: relative; margin: 8px 0 4px; }
+  .prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--done), #a5f3fc); border-radius: 999px; }
+  .prog u { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--gold); }
+  .post { padding: 10px 0; border-top: 1px solid var(--line); } .post:first-of-type { border-top: 0; }
+  .post .top { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+  .post p { margin: 5px 0; white-space: pre-wrap; font-size: 13.5px; } .post .idea { color: var(--muted); font-size: 12px; }
+  .post.done { opacity: .5; }
   .review { white-space: pre-wrap; font-size: 13.5px; line-height: 1.6; }
   .review h4 { font: 700 13px var(--display); margin: 12px 0 2px; color: #a5f3fc; }
   .var { border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
@@ -125,7 +150,7 @@ async function api(path, body) {
   const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined);
   return r.json();
 }
-function flash(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(flash.t); flash.t = setTimeout(() => t.classList.remove("show"), 3800); }
+function flash(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(flash.t); flash.t = setTimeout(() => t.classList.remove("show"), Math.max(3800, String(msg).length * 60)); }
 const money = (b, n) => (b.currency || "R") + Math.round(n || 0).toLocaleString("en-ZA").replace(/,/g, " ");
 function ago(ts) {
   const d = (Date.now() - new Date(ts).getTime()) / 1000;
@@ -165,15 +190,58 @@ function render() {
     return `<div class="row"><span class="dot" style="--dc:${m.kind === "i_owe" ? "#fda4af" : late ? "var(--gold)" : "var(--done)"};margin-top:6px"></span>
       <div><div class="t"><b>${esc(m.party)}</b> ${m.kind === "i_owe" ? "— you owe" : "— owes you"}</div><div class="m">${m.due ? (late ? "was due " : "due ") + esc(m.due) : "no due date"}${m.note ? " · " + esc(m.note) : ""}</div></div>
       <div class="r"><span class="amt ${m.kind === "i_owe" ? "out" : late ? "late" : "in"}">${money(b, m.amount)}</span><button class="btn small" data-paid="${m.id}">Paid</button></div></div>`; }).join("")
-    + sales.slice(0, 5).map((m) => `<div class="row"><span class="dot" style="--dc:var(--done);margin-top:6px"></span><div><div class="t">Sale — ${esc(m.party || "customer")}</div><div class="m">${ago(m.ts)}</div></div><div class="r"><span class="amt in">${money(b, m.amount)}</span></div></div>`).join("");
+    + sales.slice(0, 5).map((m) => `<div class="row"><span class="dot" style="--dc:var(--done);margin-top:6px"></span><div><div class="t">Sale — ${esc(m.party || "customer")}</div><div class="m">${ago(m.ts)}${m.ref ? " · read from an email" : ""}</div></div><div class="r"><span class="amt in">${money(b, m.amount)}</span>${m.ref ? `<button class="btn small no" data-nosale="${m.id}" title="This email wasn't a sale">Not a sale</button>` : ""}</div></div>`).join("");
   const tasks = b.tasks.map((t) => `<div class="row"><input type="checkbox" data-task="${t.id}" title="Tick off"><div><div class="t">${esc(t.text)}</div></div><div class="r">${t.due ? esc(t.due) : ""}</div></div>`).join("");
   const fups = b.followups.map((f) => `<div class="row"><span class="dot" style="--dc:${f.due <= today ? "var(--gold)" : "var(--ip)"};margin-top:6px"></span><div><div class="t"><b>${esc(f.who)}</b> — ${esc(f.what)}</div><div class="m">${f.status === "queued" ? "message drafted — in the queue" : "I draft the message on " + esc(f.due)}</div></div><div class="r"><button class="btn small" data-fup="${f.id}">Done</button></div></div>`).join("");
   const rules = b.rules.map((r) => `<div class="row"><input type="checkbox" data-rule="${r.id}" ${r.enabled ? "checked" : ""} title="On / off"><div><div class="t">${esc(r.says)}</div></div><div class="r"><button class="btn small no" data-rule-del="${r.id}">Remove</button></div></div>`).join("");
   const offers = b.offers.map((o) => `<div style="margin-bottom:12px"><div class="t"><b>${esc(o.name)}</b></div>${o.variants.map((v, i) => `<div class="var"><div><b>${i + 1}. ${esc(v.label)}</b><p>${esc(v.text)}</p></div><div style="text-align:center"><div class="cnt">${v.responses}</div><button class="btn small" data-offer="${i + 1}">+1</button></div></div>`).join("")}</div>`).join("");
   const rv = reviews[b.id];
+  const site = b.site || {}, hl = site.health || {}, seo = site.seo || {}, st = b.stats || {}, tr = b.trend || { weeks: [] }, cu = b.customers || { list: [] };
+  const lc = hl.state === "up" ? "var(--done)" : hl.state === "down" ? "#fb7185" : "var(--muted)";
+  const light = b.url ? `<span class="light" style="--lc:${lc}" title="${hl.checked ? "Checked " + ago(hl.checked) : "Not checked yet"}"><i></i>${hl.state === "up" ? "Website up" : hl.state === "down" ? "Website DOWN" : "Website not checked yet"}</span>` : "";
+  const pct = (n) => n == null ? "" : ` <span class="${n >= 0 ? "up" : "dn"}">${n >= 0 ? "▲" : "▼"} ${Math.abs(n)}%</span>`;
+  const sev = { 3: "#fb7185", 2: "var(--gold)", 1: "var(--muted)" };
+  const web = !b.url ? "" : `<section class="glass box"><h3><span class="dot" style="--dc:${lc}"></span>Website<span class="n">${hl.checked ? "checked " + ago(hl.checked) : ""}</span></h3>
+      ${hl.state === "down" ? `<p class="sub" style="color:#fda4af">The site is not answering: ${esc(hl.error || "no answer")}${hl.down_since ? " — since " + ago(hl.down_since) : ""}.</p>` : ""}
+      ${hl.state === "up" && hl.error ? `<p class="note">Up — ${esc(hl.error)}.</p>` : ""}
+      <div class="facts">
+        <div class="fact ${hl.state === "up" ? "good" : hl.state === "down" ? "bad" : ""}"><span>Now</span><b>${hl.state === "up" ? "Up" : hl.state === "down" ? "Down" : "—"}</b><small>${hl.uptime != null ? hl.uptime + "% this week" : ""}</small></div>
+        <div class="fact ${hl.typical_ms > 3000 ? "warn" : ""}"><span>Speed</span><b>${hl.typical_ms ? (hl.typical_ms / 1000).toFixed(1) + " s" : "—"}</b><small>to answer</small></div>
+        <div class="fact ${hl.ssl_days != null && hl.ssl_days <= 14 ? "bad" : ""}"><span>Certificate</span><b>${hl.ssl_days != null ? hl.ssl_days + " d" : "—"}</b><small>until it runs out</small></div>
+        <div class="fact ${(hl.broken || []).length ? "warn" : ""}"><span>Broken links</span><b>${hl.deep_checked ? (hl.broken || []).length : "—"}</b><small>${hl.links ? "of " + hl.links + " checked" : ""}</small></div>
+        <div class="fact ${seo.score == null ? "" : seo.score >= 80 ? "good" : seo.score >= 60 ? "warn" : "bad"}"><span>Google check</span><b>${seo.score != null ? seo.score : "—"}</b><small>${seo.score != null ? "out of 100" + (seo.before != null && seo.before !== seo.score ? ", was " + seo.before : "") : "not run yet"}</small></div>
+      </div>
+      ${(hl.broken || []).map((x) => `<div class="issue"><i style="--ic:var(--gold)"></i><div>Broken link: ${esc(x.url)}<div class="m">${esc(x.why)}</div></div></div>`).join("")}
+      ${hl.deep_checked && !hl.contact ? `<div class="issue"><i style="--ic:var(--gold)"></i><div>No contact form or contact details found on the home page.</div></div>` : ""}
+      <div class="add"><button class="btn" data-go="health">Check the site now</button><button class="btn" data-go="seo">Run the Google check</button></div>
+      ${(seo.issues || []).length ? `<h4 class="sec">What hurts it in Google</h4>${seo.issues.slice(0, 7).map((i) => `<div class="issue"><i style="--ic:${sev[i.sev]}"></i><div><b>${esc(i.page)}</b> ${esc(i.text)}<div class="m">${esc(i.fix)}</div></div></div>`).join("")}${seo.issues.length > 7 ? `<p class="note">+ ${seo.issues.length - 7} more in the queue item.</p>` : ""}` : ""}
+      <h4 class="sec">Visitors and search${st.connected ? `<button class="btn small" data-go="stats-refresh">Refresh</button>` : ""}</h4>
+      ${!st.connected ? `<p class="note">${st.connecting ? "Waiting for you to finish Google's sign-in page in the browser on your PC…" : "Not connected. This reads Google Search Console and Google Analytics (both free, read-only). Each site must be added to them first."}${st.error ? `<br><span style="color:#fda4af">${esc(st.error)}</span>` : ""}</p><div class="add"><button class="btn" data-go="stats-connect">Connect Google's website numbers</button></div>`
+        : `${st.visitors || st.search ? `<div class="facts">
+            ${st.visitors ? `<div class="fact"><span>Visitors</span><b>${st.visitors.visitors}</b><small>7 days${pct(st.visitors.visitors_change)}</small></div><div class="fact"><span>Page views</span><b>${st.visitors.views}</b><small>7 days${pct(st.visitors.views_change)}</small></div>` : ""}
+            ${st.search ? `<div class="fact"><span>Seen in Google</span><b>${st.search.shown}</b><small>7 days${pct(st.search.shown_change)}</small></div><div class="fact"><span>Clicks from Google</span><b>${st.search.clicks}</b><small>7 days${pct(st.search.clicks_change)}</small></div>` : ""}</div>` : ""}
+          ${st.search && st.search.queries.length ? `<p class="note">Searches that found you: ${st.search.queries.map((q) => `<b style="color:var(--text)">${esc(q.q)}</b> (${q.clicks})`).join(" · ")}</p>` : ""}
+          ${st.visitors && st.visitors.pages.length ? `<p class="note">Most viewed: ${st.visitors.pages.map((q) => `${esc(q.path)} (${q.views})`).join(" · ")}</p>` : ""}
+          ${(st.needs || []).map((n) => `<div class="issue"><i style="--ic:var(--gold)"></i><div>${esc(n.text)}${n.link ? ` <a href="${esc(n.link)}" target="_blank" rel="noopener">Open ↗</a>` : ""}</div></div>`).join("")}
+          ${!st.ts ? `<p class="note">Connected — press Refresh to fetch the numbers.</p>` : ""}`}
+      <h4 class="sec">Competitors</h4>
+      ${(site.rivals || []).map((r) => `<div class="row"><span class="dot" style="--dc:${r.changed && (Date.now() - new Date(r.changed)) < 8 * 864e5 ? "var(--gold)" : "var(--muted)"};margin-top:6px"></span><div><div class="t"><b>${esc(r.name)}</b> · <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 40))}</a></div><div class="m">${esc(r.summary || "Not looked at yet.")}${r.checked ? " · " + ago(r.checked) : ""}</div></div><div class="r"><button class="btn small no" data-rival="${r.id}">Stop</button></div></div>`).join("") || `<div class="empty">None yet. Add a competitor's page and I'll tell you weekly what changed on it.</div>`}
+      <div class="add"><input id="r-name" placeholder="Name"><input id="r-url" placeholder="Their web address" style="flex:2"><button class="btn" data-go="rival">Watch</button></div></section>`;
+  const maxS = Math.max(1, ...tr.weeks.map((w) => w.sales));
+  const trend = `<h4 class="sec">Sales, last 8 weeks</h4><div class="bars">${tr.weeks.map((w) => `<div class="w ${w.now ? "now" : ""}" title="${money(b, w.sales)} · ${w.leads} enquiries"><em>${w.sales ? (b.currency || "R") + (w.sales >= 1000 ? (w.sales / 1000).toFixed(w.sales >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : Math.round(w.sales)) : ""}</em><div class="bar" style="height:${Math.round(70 * w.sales / maxS)}%"></div><small>${esc(w.label)}</small><small>${w.leads} enq</small></div>`).join("")}</div>
+      <h4 class="sec">This month's target</h4>${tr.target ? `<div class="prog"><i style="width:${Math.min(100, tr.pct)}%"></i><u style="left:${Math.round(100 * tr.day / tr.days)}%" title="Today"></u></div><p class="note"><b style="color:var(--text)">${money(b, tr.month)}</b> of ${money(b, tr.target)} (${tr.pct}%) on day ${tr.day} of ${tr.days}. At this pace: <b class="${tr.on_track ? "up" : "dn"}">${money(b, tr.pace)}</b> — ${tr.on_track ? "on track" : money(b, tr.target - tr.pace) + " short"}.</p>` : `<p class="note">No target yet. Set one and I'll show how the month is going against it.</p>`}
+      <div class="add"><input id="g-target" placeholder="Monthly sales target (R)" inputmode="decimal" value="${tr.target ? Math.round(tr.target) : ""}"><button class="btn" data-go="target">Set target</button></div>`;
+  const posts = `<section class="glass box"><h3><span class="dot" style="--dc:var(--a)"></span>Posts for the week<span class="n">${b.posts.filter((p) => p.status === "planned").length} to post</span></h3>
+      <p class="sub">Drafted in this business's voice. Copy one, post it yourself, then tick it off.</p>
+      ${b.posts.map((p) => `<div class="post ${p.status === "posted" ? "done" : ""}"><div class="top"><span class="kind">${esc(new Date(p.day + "T12:00").toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }))}</span><b>${esc(p.platform)}</b>${p.status === "posted" ? "<span>✓ posted</span>" : ""}</div><p>${esc(p.text)}</p>${p.idea ? `<div class="idea">Picture or reel: ${esc(p.idea)}</div>` : ""}
+        ${p.status === "planned" ? `<div class="act" style="margin-top:6px;gap:8px"><span class="how"></span><button class="btn small" data-copy="${p.id}">Copy</button><button class="btn small no" data-post="${p.id}" data-to="skipped">Skip</button><button class="btn small yes" data-post="${p.id}" data-to="posted">Posted</button></div>` : ""}</div>`).join("") || `<div class="empty">Nothing planned yet.</div>`}
+      <div class="add"><input id="p-brief" placeholder="This week's focus (optional) — e.g. spring special" style="flex:3"><button class="btn" data-go="plan">Plan the coming week</button></div></section>`;
+  const custs = `<section class="glass box"><h3><span class="dot" style="--dc:var(--b)"></span>Customers<span class="n">${cu.total || 0}${cu.repeat ? " · " + cu.repeat + " repeat" : ""}</span></h3>
+      <p class="sub">Everyone who enquired or bought. When a buyer goes quiet I draft a check-in for your yes.</p>
+      ${cu.list.map((p) => `<div class="row"><span class="dot" style="--dc:${p.repeat ? "var(--gold)" : p.orders ? "var(--done)" : "var(--muted)"};margin-top:6px"></span><div><div class="t"><b>${esc(p.name)}</b>${p.repeat ? ` <span class="pill" style="--pc:var(--gold)">repeat</span>` : ""}</div><div class="m">${esc(p.email || p.phone || "no contact details")} · ${p.orders ? p.orders + " order" + (p.orders === 1 ? "" : "s") : p.enquiries + " enquir" + (p.enquiries === 1 ? "y" : "ies")} · last ${p.quiet_days ? p.quiet_days + " d ago" : "today"}</div></div><div class="r">${p.spent ? `<span class="amt in">${money(b, p.spent)}</span>` : ""}</div></div>`).join("") || `<div class="empty">Nobody yet — they appear as enquiries and sales come in.</div>`}</section>`;
   $("main").innerHTML = `
     <section class="hero glass"><div><h2>${esc(b.name)}</h2><p>${b.url ? `<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.url.replace(/^https?:\/\//, ""))}</a> · ` : ""}${esc(b.about || "")}</p></div>
-      <div class="go">${ready ? "" : `<button class="btn setup" data-go="jump" title="Let Nova read this business's enquiries and reply from its address">⚙ Connect the mailbox</button>`}<button class="btn" data-go="scan" title="Look for new enquiries now">Check for enquiries</button><button class="btn main" data-go="review">This week's review</button></div></section>
+      <div class="go">${light}${ready ? "" : `<button class="btn setup" data-go="jump" title="Let Nova read this business's enquiries and reply from its address">⚙ Connect the mailbox</button>`}<button class="btn" data-go="scan" title="Look for new enquiries now">Check for enquiries</button><button class="btn main" data-go="review">This week's review</button></div></section>
     <section class="kpis">
       <div class="kpi money"><span>Sales this week</span><b>${money(b, k.sales_week)}</b><small>${money(b, k.sales_month)} this month</small></div>
       <div class="kpi wait ${k.waiting ? "has" : ""}"><span>Waiting for your yes</span><b>${k.waiting}</b><small>${k.waiting ? "see the queue below" : "all clear"}</small></div>
@@ -188,6 +256,7 @@ function render() {
       <section class="glass box"><h3><span class="dot" style="--dc:var(--ip)"></span>Enquiries<span class="n">${b.leads.length}</span></h3>
         <p class="sub">Logged from the mailbox or told to Nova, scored 1–5, each with a drafted reply.</p>${leads || `<div class="empty">No enquiries yet. Tell Nova “new enquiry for ${esc(b.name)} from …”, or add one here.</div>`}
         <div class="add"><input id="l-name" placeholder="Name"><input id="l-contact" placeholder="Email or phone"><input id="l-msg" placeholder="What they asked" style="flex:3"><button class="btn" data-go="lead">Add</button></div></section>
+      ${posts}${custs}
       ${rv !== undefined ? `<section class="glass box"><h3><span class="dot" style="--dc:#a5f3fc"></span>This week's review</h3><div class="review">${rv === null ? `<div class="empty">Writing it…</div>` : esc(rv).replace(/^## (.+)$/gm, "<h4>$1</h4>")}</div></section>` : ""}
     </div><div class="col">
       <section class="glass box conn ${ready ? "" : "todo"}" id="conn"><h3><span class="dot" style="--dc:${ready ? "var(--done)" : "var(--gold)"}"></span>Connections<span class="n">${mb.connected ? "mailbox connected" : ready ? "through Gmail" : "to set up"}</span></h3>
@@ -209,8 +278,9 @@ function render() {
           ${mb.connected ? `<button class="btn no" data-go="mb-off">Disconnect</button>` : ""}<button class="btn main" data-go="setup">${mb.connected ? "Save" : "Connect"}</button></div>
         ${connMsg[b.id] ? `<div class="res" style="color:#fda4af">${esc(connMsg[b.id])}</div>` : ""}
         <p class="note">The password stays on this PC (in Nova's own settings file) and is never shown again. Google and Microsoft mailboxes need an “app password”. Payments aren't connected: tell Nova about a sale, or add it under Money.</p></section>
+      ${web}
       <section class="glass box"><h3><span class="dot" style="--dc:var(--done)"></span>Money<span class="n">${open.length} open</span></h3>
-        <p class="sub">Sales, who owes you, what you owe.</p>${moneyRows || `<div class="empty">Nothing recorded yet.</div>`}
+        <p class="sub">Sales, who owes you, what you owe.${(b.mailbox || {}).connected ? " Order and payment emails are recorded as sales by themselves." : ""}</p>${trend}<h4 class="sec">Open and recent</h4>${moneyRows || `<div class="empty">Nothing recorded yet.</div>`}
         <div class="add"><select id="m-kind"><option value="sale">Sale</option><option value="owed_to_me">Owes me</option><option value="i_owe">I owe</option></select><input id="m-party" placeholder="Who"><input id="m-amt" placeholder="Amount" inputmode="decimal" style="max-width:110px"><input id="m-due" placeholder="Due (e.g. Friday)" style="max-width:150px"><button class="btn" data-go="money">Add</button></div></section>
       <section class="glass box"><h3><span class="dot" style="--dc:var(--c)"></span>Tasks<span class="n">${b.tasks.length}</span></h3>${tasks || `<div class="empty">No open tasks.</div>`}
         <div class="add"><input id="t-text" placeholder="New task" style="flex:3"><button class="btn" data-go="task">Add</button></div></section>
@@ -246,6 +316,11 @@ $("main").addEventListener("click", async (e) => {
   if (t.dataset.fup) return act({ action: "followup_done", id: +t.dataset.fup });
   if (t.dataset.ruleDel) { if (confirm("Remove this standing instruction?")) act({ action: "rule_delete", id: +t.dataset.ruleDel }); return; }
   if (t.dataset.offer) return act({ action: "offer", version: t.dataset.offer });
+  if (t.dataset.nosale) return act({ action: "money_delete", id: +t.dataset.nosale });
+  if (t.dataset.rival) return act({ action: "rival_drop", id: +t.dataset.rival });
+  if (t.dataset.post) return act({ action: "post_status", id: +t.dataset.post, status: t.dataset.to });
+  if (t.dataset.copy) { const p = (DATA.businesses.find((x) => x.id === current)?.posts || []).find((x) => x.id === +t.dataset.copy);
+    try { await navigator.clipboard.writeText(p.text); flash("Copied — paste it into " + p.platform + "."); } catch { flash("Couldn't copy — select the text instead."); } return; }
   const go = t.closest("[data-go]")?.dataset.go, v = (id) => ($(id)?.value || "").trim();
   if (go === "jump") { $("conn").scrollIntoView({ behavior: "smooth", block: "center" }); return $("c-email").focus({ preventScroll: true }); }
   if (go === "setup") {
@@ -261,6 +336,13 @@ $("main").addEventListener("click", async (e) => {
     return act({ action: "setup", email: v("c-email"), inbox: v("c-inbox") });
   }
   if (go === "mb-off") { if (confirm("Disconnect this mailbox? Nova deletes its password from this PC.")) act({ action: "mailbox_disconnect" }); return; }
+  if (go === "health") { flash("Checking the site and its links…"); return act({ action: "health_check" }); }
+  if (go === "seo") { flash("Reading the site the way Google does — about a minute…"); return act({ action: "seo_check" }); }
+  if (go === "rival") { if (!v("r-url")) return flash("Type their web address."); flash("Taking a first look…"); return act({ action: "rival_add", name: v("r-name"), url: v("r-url") }); }
+  if (go === "stats-connect") return act({ action: "stats_connect" });
+  if (go === "stats-refresh") { flash("Asking Google…"); return act({ action: "stats_refresh" }); }
+  if (go === "target") return act({ action: "target_set", amount: parseFloat(v("g-target").replace(/[^\d.]/g, "")) || 0 });
+  if (go === "plan") { flash("Drafting the week's posts…"); return act({ action: "plan_week", brief: v("p-brief") }); }
   if (go === "scan") { flash("Checking for enquiries…"); return act({ action: "scan" }); }
   if (go === "review") { reviews[current] = null; render(); const r = await api("/api/business/review?biz=" + encodeURIComponent(current)); reviews[current] = r.text || "Nothing to review yet."; return render(); }
   if (go === "lead") { if (!v("l-name") && !v("l-msg")) return flash("Give me a name or what they asked."); return act({ action: "lead_add", name: v("l-name"), contact: v("l-contact"), message: v("l-msg") }); }

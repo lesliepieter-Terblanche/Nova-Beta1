@@ -41,9 +41,6 @@ SECRETS = [
      "link": "https://github.com/settings/personal-access-tokens/new", "test": "github"},
     {"key": "XAI_API_KEY", "label": "xAI Grok API key", "group": "AI models",
      "help": "Paid — Grok models (starts with xai-)", "link": "https://console.x.ai", "test": "xai"},
-    {"key": "POSTIZ_API_KEY", "label": "Postiz API key", "group": "Social media",
-     "help": "Postiz → Settings → Public API. Lets Nova schedule posts (she always asks first)",
-     "link": "https://docs.postiz.com/public-api/introduction", "test": "postiz"},
     {"key": "NOVA_BACKUP_PASSPHRASE", "label": "Backup passphrase", "group": "Backups",
      "help": "Encrypts the nightly backups. Made for you if empty — keep a copy, you need it to restore"},
     {"key": "TELEGRAM_BOT_TOKEN", "label": "Telegram bot token", "group": "Remote",
@@ -196,9 +193,6 @@ SCHEMA = [
     {"id": "files", "title": "Files & web", "icon": "folder", "fields": [
         {"path": "files.allowed_roots", "label": "Folders Nova may use", "type": "list", "help": "One folder per line"},
         {"path": "web.searxng_url", "label": "SearXNG URL (private search)", "type": "text", "help": "e.g. http://localhost:8888"},
-        {"path": "social.postiz_url", "label": "Postiz address (social media posting)", "type": "text",
-         "default": "https://api.postiz.com/public/v1",
-         "help": "Your own Postiz, e.g. http://localhost:4007/api — or the cloud address. See docs/POSTIZ.md"},
         {"path": "media.captions", "label": "Captions in videos", "type": "bool"},
         {"path": "media.broll", "label": "Stock footage in videos (Pexels)", "type": "bool"},
         {"path": "media.look", "label": "Cinematic look on narrated videos", "type": "select", "default": "",
@@ -846,15 +840,6 @@ def run_test(kind: str) -> dict:
                 apply({"values": {f"llm.providers.{kind}.model": prov.model}})
                 msg += f" ('{prov.switched_from}' was retired by {kind}, so I switched to {prov.model} and saved it.)"
             return {"ok": True, "message": msg}
-        if kind == "postiz":
-            from .skills import social
-            os.environ["POSTIZ_API_KEY"] = env.get("POSTIZ_API_KEY", "")
-            try:
-                have = social.channels()
-            except RuntimeError as e:
-                return {"ok": False, "message": str(e)[:1].upper() + str(e)[1:] + "."}
-            return {"ok": True, "message": (f"Connected. {len(have)} channel(s): " + ", ".join(social.label(c) for c in have))
-                    if have else "Connected, but no social accounts are added in Postiz yet."}
         if kind == "telegram":
             token = env.get("TELEGRAM_BOT_TOKEN", "")
             if not token:

@@ -89,7 +89,6 @@ It remembers everything permanently and shows its whole second brain as a live m
 | ◎ **Focus & wellbeing** | Made for ADHD and bipolar II: one thing at a time, "I'm stuck" first steps, brain dump, calm visuals, routine anchors, night guardrails, private encrypted check-ins and a summary for your doctor |
 | 📥 **Forward to file** | Forward links, PDFs, photos, business cards or voice notes to the Telegram bot — summarised and filed in your brain |
 | 🎬 **Cinematic mode** | Film-look reels from your photos and clips, free on this PC: 3D camera moves on photos, colour grades, brand intro/outro, highlighted captions, cuts on the beat; small photos sharpened with Real-ESRGAN |
-| 📣 **Social posting** | Schedule or publish reels and posts to Instagram, TikTok, LinkedIn, X, YouTube… through [Postiz](docs/POSTIZ.md) — always asks first |
 | 📚 **Skills library** | The open-source skills from [anthropics/skills](https://github.com/anthropics/skills) as playbooks: web design, internal comms, themes, posters, MCP servers |
 | ♻ **More free AI** | Gemini, Groq, Cerebras, Mistral and GitHub Models in a chain — when one hits its free limit Nova rests it and the next answers |
 | 👤 **People cards** | Everyone you deal with on one card — company, role, contact details, deals and every mention, linked on the dashboard |

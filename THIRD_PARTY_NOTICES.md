@@ -10,5 +10,4 @@
 | [Playwright MCP](https://github.com/microsoft/playwright-mcp) (Microsoft) | Browser automation add-on, fetched by `npx` | Apache-2.0 | npm cache |
 
 The Anthropic document skills (`docx`, `pdf`, `pptx`, `xlsx`) are source-available, not open source, and are **not**
-downloaded. [Postiz](https://github.com/gitroomhq/postiz-app) (AGPL-3.0) is a separate program you install yourself;
-Nova only talks to its public API.
+downloaded.

@@ -269,10 +269,6 @@ web:
   sites_dir: workspace/sites
   searxng_url: ""            # your private search engine, e.g. http://localhost:8888 (docs/ENHANCEMENTS.md)
 
-# Social media posting through Postiz (open source: github.com/gitroomhq/postiz-app). Key: POSTIZ_API_KEY in .env.
-social:
-  postiz_url: https://api.postiz.com/public/v1   # your own Postiz: http://localhost:4007/api  (docs/POSTIZ.md)
-
 media:
   output_dir: workspace/videos
   # Optional local AI images (Stable Diffusion 1.5, ~3 GB VRAM). Needs requirements-imagegen.txt

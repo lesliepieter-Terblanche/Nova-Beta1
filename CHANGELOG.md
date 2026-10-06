@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.34.1] — 2026-10-06
+### Removed
+- **Postiz social posting**, added in 2.34.0: running it for free needs Docker and a developer app with every social
+  network, which isn't wanted here. The `social_*` tools, the Postiz key and address in Settings, and docs/POSTIZ.md
+  are gone. Nothing was ever installed for it, so there is nothing to clean up on the PC.
+
 ## [2.34.0] — 2026-10-06
 ### Added
 - **More free AI use.** Three more free model providers join Gemini and Groq: **Cerebras** (the fastest),

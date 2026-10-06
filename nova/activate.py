@@ -2,7 +2,7 @@
 
 v2.34: the skills library and Real-ESRGAN are downloaded, Playwright MCP is added (when Node.js is there), and
 God's Eye View — removed in this version — is cleaned off the PC. Each step runs once; a step that can't run yet
-(no internet, no Node.js) is tried again at the next start. What still needs you (API keys, Postiz) is listed in
+(no internet, no Node.js) is tried again at the next start. What still needs you (API keys) is listed in
 one message on the dashboard and Telegram.
 """
 from __future__ import annotations
@@ -129,8 +129,6 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
         missing = [name for name, key in FREE_KEYS if not os.environ.get(key, "").strip()]
         if missing and not done.get("told_keys"):
             todo.append(f"add a free key for {', '.join(missing)} in Settings → API keys for more free AI use")
-        if not os.environ.get("POSTIZ_API_KEY", "").strip() and not done.get("told_keys"):
-            todo.append("social posting needs Postiz set up once (docs/POSTIZ.md)")
         if said or todo:
             done["told_keys"] = True
             _save(mark_dir, done)

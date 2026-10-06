@@ -322,16 +322,6 @@ Offered to the model when you say things like: _cinematic, cinema, film look, mo
 | `save_brand_kit` | Save (or update) a brand kit, used for the intro sting, lower third, watermark, caption highlight and outro of cinematic reels. Only the fields you give are changed. | `name`, `handle`?, `tagline`?, `colour`?, `accent`?, `logo_path`?, `look`?, `call_to_action`?, `make_default`? |
 | `brand_kits` | List the saved brand kits and the cinematic looks available. | — |
 
-## social
-
-Offered to the model when you say things like: _postiz, social media, social post, schedule a post, schedule the post, schedule this, post to, post this, post it, post the, publish, linkedin post_
-
-| Tool | What it does | Parameters |
-|---|---|---|
-| `social_channels` | List the social media accounts connected in Postiz that Nova can post to. | — |
-| `social_post` 🔒 | Publish or schedule a social media post through Postiz, with optional photos or a video. Always confirmed with the user first, because it is public. | `text`, `channels_to_post`?, `media`?, `when`?, `title`?, `draft`? |
-| `social_scheduled` | What is queued in Postiz: the posts scheduled over the next days. | `days`? |
-
 ## library
 
 Offered to the model when you say things like: _skills library, skill library, library of skills, anthropic skills, install skills, install the skills, update the skills, library skills_

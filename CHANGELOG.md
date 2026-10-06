@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.36.2] — 2026-10-06
+### Added
+- **VapeEssence** (www.vapeessence.co.za) is a third business on the Business dashboard, with its own tab and the
+  same two approve-first standing instructions. Its enquiry address is filled in from the website
+  (info@vapeessence.co.za — change it in the *Connections* box if that's wrong). Because it sells nicotine, Nova's
+  drafts for it are told: adults (18+) only and no health claims. It is added once, also on a PC that already has
+  TrueHome and TackleTrail.
+
 ## [2.36.1] — 2026-10-06
 ### Added
 - **A place for each business's enquiry address.** Every tab of the Business dashboard has a *Connections* box:

@@ -215,10 +215,14 @@ def test_one_time_switch_on(nova, monkeypatch):
     doc["mcp_servers"] = {"excel": {"enabled": False, "command": "uvx", "args": ["excel-mcp-server", "stdio"]}}
     cfg["mcp_servers"] = {"excel": {"enabled": False, "command": "uvx", "args": ["excel-mcp-server", "stdio"]}}
     done = activate.run(cfg, tmp, wait=0, background=False)
-    assert done == {"globe_removed": True, "playwright": True, "businesses": True, "addons": True, "library": True,
+    assert done == {"globe_removed": True, "playwright": True, "businesses": True, "vapeessence": True, "addons": True,
+                    "library": True,
                     "upscaler": True, "told_keys": True}
     from nova import business
-    assert [b["id"] for b in business.businesses()] == ["truehome", "tackletrail"]
+    assert [b["id"] for b in business.businesses()] == ["truehome", "tackletrail", "vapeessence"]
+    assert business.find("vape essence")["email"] == "info@vapeessence.co.za"
+    assert [r["trigger"] for r in business.rules("vapeessence")] == ["new_lead", "invoice_overdue"]
+    assert activate.add_vape_essence() is False                                   # never added twice
     assert [r["trigger"] for r in business.rules("truehome")] == ["new_lead", "invoice_overdue"]
     assert not any(r["auto"] for r in business.rules())                           # everything asks first
     assert "Business dashboard is ready" in told[0]

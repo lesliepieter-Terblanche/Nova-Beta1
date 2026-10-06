@@ -94,6 +94,28 @@ BUSINESSES = [
 ]
 
 
+# v2.36.2: added on its own, so it also arrives on a PC that already has the first two
+VAPE_ESSENCE = ("VapeEssence", "https://www.vapeessence.co.za",
+                "South African online shop (Roodepoort, Johannesburg) selling disposable vapes and nicotine pouches "
+                "to adults of 18 and over, delivered countrywide in 48-72 hours. Earns from product sales; has "
+                "loyalty points and a refer-a-friend reward. Nicotine is addictive: never sell or market to under-18s.",
+                "info@vapeessence.co.za")
+
+
+def add_vape_essence() -> bool:
+    """Add VapeEssence with the same two approve-first standing instructions. False when it is already there."""
+    from . import business
+    name, url, about, email = VAPE_ESSENCE
+    if any(b["id"] == business.slug(name) for b in business.businesses()):
+        return False
+    b = business.add_business(name, url, about)
+    business.set_up(b["id"], email=email)
+    business.add_rule(b["id"], "new_lead", "Thank them, answer what they asked, and offer one clear next step. "
+                                           "Adults (18+) only; make no health claims.")
+    business.add_rule(b["id"], "invoice_overdue", "Polite and firm; ask for a payment date.", after_days=7)
+    return True
+
+
 def set_up_businesses() -> list[str]:
     """Add the first businesses (only when none exist yet). Returns the names added."""
     from . import business
@@ -159,6 +181,13 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
                 said.append(f"The Business dashboard is ready (💼 on the main one) with {' and '.join(added)}.")
         except Exception as e:
             print(f"[activate] businesses not set up: {e}")
+    if not done.get("vapeessence"):
+        try:
+            if add_vape_essence():
+                said.append("VapeEssence is added to the Business dashboard, with its own tab.")
+            done["vapeessence"] = True
+        except Exception as e:
+            print(f"[activate] VapeEssence not added: {e}")
     if not done.get("addons"):
         try:
             on = [title for name, title in ADDONS if switch_on_addon(cfg, name)]

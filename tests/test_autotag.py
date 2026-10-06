@@ -182,3 +182,26 @@ def test_older_databases_get_the_auto_column(tmp_path):
     assert s.get_tracking("memory:1")["auto"] == 0
     assert not s.auto_status("memory:1", "waiting")                       # set before the upgrade = yours
     time.sleep(0)
+
+
+def test_a_command_is_never_left_on_none(nova):
+    """v2.32.1: opening a request showed "None" in Track this — Nova's own tag is shown instead."""
+    cfg, _ = nova
+    s, agent = context.store, Agent(cfg, context.llm)
+    d = Dashboard(cfg, agent)
+    context.llm.queue = [LLMReply("Four.")]
+    agent.handle("what is two plus two?", "voice")
+    tid = s.db.execute("SELECT MAX(id) i FROM activity WHERE kind='user'").fetchone()["i"]
+    t = d.turn(tid)["tracking"]
+    assert t["status"] == "done" and t["auto"] == 1                        # completed, tagged by Nova
+    assert s.get_tracking(f"turn:{tid}")["status"] == ""                    # nothing saved on your behalf
+    n = _node(d, f"turn:{tid}")
+    assert n["tag"] == "done" and n["status"] == "COMPLETED" and n["fresh"]
+    row = next(i for i in d.topic("action")["items"] if i["id"] == f"turn:{tid}")
+    assert row["tag"] == "done" and row["auto"] and row["track"] == ""
+    assert autotag.turn_tracking(tid, "running")["status"] == "doing"
+    assert autotag.turn_tracking(tid, "waiting")["status"] == autotag.turn_tracking(tid, "error")["status"] == "waiting"
+    s.set_tracking(f"turn:{tid}", status="todo")                           # your own tag wins
+    t = d.turn(tid)["tracking"]
+    assert t["status"] == "todo" and not t["auto"]
+    assert _node(d, f"turn:{tid}")["tag"] == "todo"

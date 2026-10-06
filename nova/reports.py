@@ -219,6 +219,13 @@ def run_due(now: dt.datetime | None = None) -> list[str]:
                     draft(r, to)
             else:
                 context.push("🔎 My week with you\n\n" + review_text(activity_review(now=now)))
+                try:                                   # …and how she'd get better: self-review + playbook drafts
+                    from . import evolve
+                    grow = evolve.weekly(now=now)
+                    if grow:
+                        context.push(grow)
+                except Exception as e:
+                    print(f"[evolve] weekly self-review skipped: {e}")
             ran.append(kind)
         except Exception as e:
             print(f"[reports] {kind} failed: {e}")

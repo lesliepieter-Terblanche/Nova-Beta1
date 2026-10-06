@@ -331,6 +331,17 @@ Offered to the model when you say things like: _skills library, skill library, l
 | `install_skill_library` | Download (or update) the public skills library from github.com/anthropics/skills and turn its open-source skills into Nova playbooks: web design, internal comms, themes, posters, generative art, MCP servers and more. | — |
 | `skill_library_status` | Which skills from the public skills library are installed, and how to call one up. | — |
 
+## evolve
+
+Offered to the model when you say things like: _self review, self-review, review yourself, how did you do, how are you doing at, what did you struggle, struggle with, improve yourself, get better, evolve, playbook draft, drafted playbook_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `self_review` | Nova's honest look back at her own work: what went well, what failed or she couldn't do, what was slow, what the user corrected, and what she would change. Also drafts playbooks for jobs asked several times. | `days`? |
+| `playbook_drafts` | The playbooks Nova has drafted for repeated jobs and that wait for approval, and the ones already approved. | — |
+| `approve_playbook` | Approve a playbook Nova drafted, so she follows it from now on. | `name`? |
+| `drop_playbook_draft` | Drop a playbook draft the user doesn't want. Nova won't propose that job again. | `name`? |
+
 ## web_agent
 
 Offered to the model when you say things like: _web agent, browser agent, on the website, on the site, portal, go to the site, fill in the form, fill out, find me the cheapest, compare prices, book a, look up on_

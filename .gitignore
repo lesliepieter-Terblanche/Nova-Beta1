@@ -36,3 +36,5 @@ config.yaml.bak
 config.yaml.tmp
 # skills downloaded from github.com/anthropics/skills onto this PC (not ours to redistribute)
 playbooks/library/
+# playbooks Nova wrote for you and you approved (yours, kept out of the repo)
+playbooks/mine/

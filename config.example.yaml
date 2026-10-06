@@ -142,6 +142,13 @@ reports:
   review_day: sun
   review_time: "18:00"
 
+# Nova improving herself: a weekly self-review (sent with the review above) and playbooks she drafts for jobs you
+# keep asking for. Drafts are plain steps, never code, and are only used once you say "approve the playbook …".
+evolve:
+  enabled: true
+  draft_playbooks: true
+  repeat_times: 3            # draft a playbook after this many similar requests (on at least two different days)
+
 # Screen time from ActivityWatch (free, activitywatch.net — keeps its data on this PC)
 activitywatch:
   enabled: true

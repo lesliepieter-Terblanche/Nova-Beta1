@@ -1053,6 +1053,13 @@ def bottlenecks() -> list[dict]:
     except Exception:
         pass
     try:
+        from . import evolve
+        out += [{"id": "", "text": f"Playbook draft: {d['name']}", "domain": WORK,
+                 "why": f"say “approve the playbook {d['name']}” or “drop the playbook {d['name']}”"}
+                for d in evolve.pending()]
+    except Exception:
+        pass
+    try:
         with s.lock:
             ms = [dict(r) for r in s.db.execute("SELECT id, title FROM missions WHERE status IN ('failed','stuck')")]
         out += [{"id": f"mission:{m['id']}", "text": f"Mission: {m['title']}", "why": "it got stuck",

@@ -348,6 +348,12 @@ SCHEMA = [
         {"path": "reports.review_day", "label": "…on", "type": "select", "default": "sun",
          "options": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]},
         {"path": "reports.review_time", "label": "…at", "type": "text", "default": "18:00"},
+        {"path": "evolve.enabled", "label": "Weekly self-review: what Nova struggled with and would change",
+         "type": "bool", "default": True, "help": "Sent together with the weekly review"},
+        {"path": "evolve.draft_playbooks", "label": "Draft playbooks for jobs I keep asking for", "type": "bool",
+         "default": True, "help": "Plain steps, never code. Nothing is used until you approve it"},
+        {"path": "evolve.repeat_times", "label": "…after this many requests", "type": "number", "min": 2, "max": 10,
+         "default": 3},
     ]},
     {"id": "activitywatch", "title": "Screen time", "icon": "clock", "fields": [
         {"path": "activitywatch.enabled", "label": "Use ActivityWatch screen time", "type": "bool", "default": True,

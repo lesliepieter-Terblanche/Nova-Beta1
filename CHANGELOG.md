@@ -4,6 +4,20 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.35.0] — 2026-10-06
+### Added
+- **Nova gets better by herself**, in two safe ways:
+  - **Weekly self-review.** With the weekly review (Sunday 18:00 by default) she now also sends *how she did*: what
+    went well, what failed, what she had to say "I can't" to, what was slow, what you corrected — and what she
+    would change. Any time: "how did you do this week?". Saved in `workspace/evolve/`.
+  - **Playbooks she writes herself.** When you have asked for the same kind of job three times (on at least two
+    days) and it took real steps, she drafts a playbook for it — plain numbered steps with the tools she used,
+    never code — and asks. "Approve the playbook <name>" puts it in `playbooks/mine/` and she follows it from then
+    on; "drop the playbook <name>" and she never suggests that job again. Drafts waiting for you show under
+    *waiting on you* on the dashboard. The phrases that call a playbook up are only ever ones you really said.
+  - Settings → Reports has the switches (and how many requests make a pattern).
+  Nothing here changes Nova's own code, and nothing is used without your yes.
+
 ## [2.34.2] — 2026-10-06
 ### Changed
 - **Three add-ons are switched on for you** at the first start after this update: **Windows control** (open and

@@ -470,6 +470,7 @@ Offered to the model when you say things like: _in progress, mark , tag , status
 |---|---|---|
 | `set_status` | Tag a project (or mission) with a status because the user says so: "mark the Harbour Homes project as completed", "Riverbend is on hold", "put Orchard back in the backlog". | `item`, `status` |
 | `work_status` | What is in progress right now, what is waiting on the user, and how much is in the backlog or completed. Use for "what are you working on", "what's in progress", "what's waiting on me", "what's outstanding". | — |
+| `startup_report` | How long Nova took to start and what was slow — for "why do you take so long to start up?". | — |
 
 ## Updates, rollback & extensions
 

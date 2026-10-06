@@ -95,9 +95,12 @@ class VoiceLoop:
     # ── main loop ─────────────────────────────────────────
     def run(self) -> None:
         import sounddevice as sd
+        from . import startup
+        startup.mark("", "voice")
         oww = self._load_wakeword()
         name = self.cfg.assistant.name
         hk = self._start_hotkey()
+        startup.mark("listening for the wake word", "voice")
         print(f"[voice] {name} is listening for '{self.v.wake_word}'" + (f" (or press {hk})" if hk else "") + "…")
         self.speech.speak(f"{name} is online.")
         with sd.InputStream(samplerate=RATE, channels=1, dtype="int16", blocksize=BLOCK) as stream:

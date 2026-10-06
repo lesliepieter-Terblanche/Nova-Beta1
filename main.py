@@ -25,6 +25,8 @@ from nova.store import Store
 
 
 def build():
+    from nova import startup
+    startup.mark("program loaded")
     cfg = load_config()
     try:                                    # one time: a fast cloud model for everyday use if a key is there
         from nova import settings as _settings
@@ -37,6 +39,7 @@ def build():
     context.store = Store(resolve(b.db_file), cfg.llm.providers.ollama.base_url, b.embed_model)
     context.store.vault = resolve(b.vault_dir)
     context.store.close_stale()             # nothing from before the restart is still "in progress"
+    startup.mark("memory opened")
     try:
         from nova import roadmap
         r = roadmap.sync(context.store)
@@ -48,9 +51,11 @@ def build():
     context.store.keep_alive = context.llm.keep_alive
     threading.Thread(target=keep_warm, daemon=True, name="keep-warm").start()
     context.speech = Speech(cfg)
+    startup.mark("AI and voice set up")
     skills = load_all()
     plugins = load_plugins()
     books = load_playbooks()
+    startup.mark("skills loaded")
     print(f"[nova] skills: {', '.join(skills)}" + (f" | plugins: {', '.join(plugins)}" if plugins else "")
           + (f" | playbooks: {len(books)}" if books else ""))
     try:                                    # one time after an update: switch the new things on, clean the old out
@@ -60,6 +65,7 @@ def build():
         print(f"[activate] skipped: {e}")
     context.mcp = MCPManager(cfg)
     context.mcp.start(timeout=3)          # keeps connecting in the background; never delays start-up
+    startup.mark("add-ons started")
     agent = Agent(cfg, context.llm)
     context.agent = agent
     # index any notes added/edited in the vault while Nova was off
@@ -91,6 +97,13 @@ def startup_summary(cfg, use_voice, tg, remote_state) -> None:
     print(f"  Voice       {'on — say the wake word or press the hotkey' if use_voice else 'off'}")
     print(f"  Telegram    {tg_line}")
     print(f"  Phone       {ph_line}")
+    try:
+        from nova import startup
+        print("  " + startup.report().replace(" Slowest:", "\n  Slowest:").replace(" Why:", "\n  Why:"))
+        threading.Timer(120, lambda: startup.save(resolve("data/startup.json"))).start()   # once voice and model are in
+        startup.save(resolve("data/startup.json"))
+    except Exception as e:
+        print(f"  (start-up timing skipped: {e})")
     print("[nova] ─────────────────────────────────────────────────\n")
 
 
@@ -98,10 +111,14 @@ def keep_warm() -> None:
     """Load the local model + embeddings at start-up and keep them in memory, so typed and spoken
     commands answer straight away instead of waiting for the model to load (can take 10-30 s)."""
     import time
+    from nova import startup
+    startup.mark("", "warm")
     context.llm.warm_up()
     context.store.embed(["warm up"])
+    startup.mark("AI model loaded", "warm")
     if context.speech:
         context.speech.warm()             # first spoken reply starts straight away too
+        startup.mark("voice ready to speak", "warm")
     while True:           # Ollama unloads idle models; a tiny ping every 4 minutes keeps them ready
         time.sleep(240)
         try:
@@ -262,6 +279,8 @@ def main() -> None:
     if cfg.dashboard.get("enabled", True):
         from nova.dashboard.server import Dashboard
         Dashboard(cfg, agent).start()
+    from nova import startup
+    startup.mark("dashboard up")
 
     from nova.skills.system import reminder_worker
     from nova.routines import worker as routines_worker
@@ -291,6 +310,7 @@ def main() -> None:
         rt = threading.Thread(target=_remote, daemon=True, name="remote")
         rt.start()
         rt.join(timeout=15)                             # so Telegram's 🟢 message can include the phone link
+        startup.mark("phone link (Tailscale)")
     if tg and tg.token:
         threading.Thread(target=guarded, args=("Telegram", tg.run), daemon=True, name="telegram").start()
     threading.Thread(target=startup_summary, args=(cfg, use_voice, tg, remote_state), daemon=True).start()

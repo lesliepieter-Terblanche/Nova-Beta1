@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.38.1] — 2026-10-07
+### Added
+- **Start-up timing.** Nova now times each stage of starting up. The "Nova is ready" block in her window shows how
+  long the window took, how long until the AI model and voice were ready, the slowest stages and the likely reason.
+  Ask "why do you take so long to start up?" to hear it. Kept in `data/startup.json`.
+
 ## [2.38.0] — 2026-10-07
 ### Added — eight upgrades to the Business dashboard, for each website
 1. **Website health watch.** Every round (15 minutes) Nova checks that each site answers, how fast, and when its

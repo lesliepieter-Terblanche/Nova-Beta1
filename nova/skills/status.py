@@ -11,7 +11,8 @@ from ..tools import register_group, tool
 register_group("status", ["in progress", "mark ", "tag ", "status of", "status to", "as completed", "as complete",
                           "as done", "is done", "is finished", "is complete", "backlog", "waiting on", "on hold",
                           "what are you working on", "what are you busy with", "outstanding", "bottleneck",
-                          "what's open", "whats open", "still open", "park "])
+                          "what's open", "whats open", "still open", "park ", "start up", "startup", "start-up",
+                          "slow to start", "so long to start", "long to load"])
 
 
 @tool(group="status")
@@ -71,3 +72,12 @@ def work_status() -> str:
     parts.append(("Waiting on you: " + "; ".join(waiting[:8]) + ".") if waiting else "Nothing is waiting on you.")
     parts.append(f"{len(by['todo'])} in the backlog, {len(by['done'])} completed.")
     return " ".join(parts)
+
+
+@tool(group="status")
+def startup_report() -> str:
+    """How long Nova took to start and what was slow — for "why do you take so long to start up?"."""
+    from .. import startup
+    from ..config import resolve
+    rows = startup.stages()
+    return startup.report(rows if len(rows) >= 3 else startup.last(resolve("data/startup.json")))

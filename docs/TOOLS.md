@@ -349,7 +349,7 @@ Offered to the model when you say things like: _business, businesses, cockpit, e
 | Tool | What it does | Parameters |
 |---|---|---|
 | `business_overview` | How a business is doing right now: sales this week, open enquiries, open tasks, money owed and what is waiting for the user's yes. With no name, every business. | `business`? |
-| `add_business` | Add a business for Nova to help run (or update one). | `name`, `website`?, `about`?, `inbox_search`? |
+| `add_business` | Add a business for Nova to help run, or update one — e.g. set the email address its enquiries arrive at ("Harbour Homes enquiries go to hello@harbourhomes.example"). | `name`, `website`?, `about`?, `enquiry_email`? |
 | `validate_business_idea` | Research a business idea — demand, competitors, pricing, risks — and give a one-page GO / NO-GO with the sources. Takes a minute. | `idea`, `market`? |
 | `launch_kit` | Make a launch kit for a business: tagline and positioning, brand colours, a landing-page brief, a week of posts, a 20-second reel storyboard and a launch email. Everything sendable goes to the approval queue. | `business`, `brief`? |
 | `offer_test` | Write a few different versions of an offer to try against each other. Responses are then counted per version with count_offer_response. | `business`, `offer` |

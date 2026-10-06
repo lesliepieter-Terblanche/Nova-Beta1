@@ -273,3 +273,29 @@ def test_business_dashboard_is_served_and_linked_from_the_main_one(shop):
     tid = st["businesses"][1]["tasks"][0]["id"]
     assert json.loads(get("/api/business/act", {"biz": "riverbend", "action": "task_done", "id": tid}))["message"] == "Ticked off."
     assert "## Do next" in json.loads(get("/api/business/review?biz=riverbend"))["text"]
+
+
+def test_a_place_for_each_business_enquiry_address(shop):
+    """v2.36.1: set where enquiries arrive (page or voice); until then Nova looks for mail that mentions the name."""
+    from nova.skills.business import add_business
+    seen = []
+    REGISTRY["gmail_search"].func = lambda query="", max_results=5: seen.append(query) or []
+    h = biz.cockpit(biz.find("harbour"))
+    assert h["email"] == "" and h["gmail"] is False and '"Harbour Homes" OR harbourhomes.example' in h["watching"]
+    assert biz.act({"biz": "harbour-homes", "action": "setup", "email": "not an address"}) == \
+        {"ok": False, "message": "'not an address' doesn't look like an email address"}
+    r = biz.act({"biz": "harbour-homes", "action": "setup", "email": " Hello@HarbourHomes.example ", "inbox": ""})
+    assert r == {"ok": True, "message": "Saved — I'll watch hello@harbourhomes.example for Harbour Homes enquiries."}
+    assert add_business("Riverbend", enquiry_email="shop@riverbend.example") == \
+        "Saved — I'll watch shop@riverbend.example for Riverbend enquiries."
+    assert biz.find("riverbend")["about"] == "A fishing app with a gear shop."            # nothing else was touched
+    biz.scan_inbox()
+    assert seen == ["is:unread newer_than:14d (to:hello@harbourhomes.example OR deliveredto:hello@harbourhomes.example OR cc:hello@harbourhomes.example)",
+                    "is:unread newer_than:14d (to:shop@riverbend.example OR deliveredto:shop@riverbend.example OR cc:shop@riverbend.example)"]
+    biz.act({"biz": "riverbend", "action": "setup", "email": "shop@riverbend.example", "inbox": "label:website-forms is:unread"})
+    assert biz.cockpit(biz.find("riverbend"))["watching"] == "label:website-forms is:unread"     # your own search wins
+    assert "No enquiry address yet" in biz.act({"biz": "harbour-homes", "action": "setup", "email": "", "inbox": ""})["message"]
+    assert "ERROR" in add_business("Orchard", enquiry_email="nope") and biz.find("orchard") is None
+    (shop["tmp"] / "token.json").write_text("{}")                                # Google gets connected
+    shop["cfg"]["google"]["token_file"] = "token.json"
+    assert biz.cockpit(biz.find("harbour"))["gmail"] is True

@@ -50,16 +50,24 @@ def business_overview(business: str = "") -> str:
 
 
 @tool(group="business")
-def add_business(name: str, website: str = "", about: str = "", inbox_search: str = "") -> str:
-    """Add a business for Nova to help run (or update one).
+def add_business(name: str, website: str = "", about: str = "", enquiry_email: str = "") -> str:
+    """Add a business for Nova to help run, or update one — e.g. set the email address its enquiries arrive at
+    ("Harbour Homes enquiries go to hello@harbourhomes.example").
     Args:
         name: the business name
         website: its web address
         about: one or two sentences on what it sells and to whom
-        inbox_search: optional Gmail search that finds its enquiries, e.g. "to:hello@harbourhomes.example is:unread"
+        enquiry_email: the email address its website forms and customers write to; Nova watches it for enquiries
     """
+    if enquiry_email and not biz.EMAIL.fullmatch(enquiry_email.strip()):
+        return f"ERROR: '{enquiry_email}' doesn't look like an email address. Nothing was changed."
     try:
-        b = biz.add_business(name, website, about, inbox_search)
+        b = biz.find(name) if not (website or about) else None      # only setting the address: don't rename anything
+        b = b or biz.add_business(name, website, about)
+        if enquiry_email:
+            b = biz.set_up(b["id"], email=enquiry_email)
+            refresh_keywords()
+            return f"Saved — I'll watch {b['email']} for {b['name']} enquiries."
     except ValueError as e:
         return _err(e)
     refresh_keywords()

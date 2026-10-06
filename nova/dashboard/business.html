@@ -89,6 +89,13 @@
   .add input, .add select { flex: 1; min-width: 90px; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--line); background: rgba(8,6,30,.45); }
   .add input:focus, .add select:focus { outline: none; border-color: var(--c); }
   .add select option { background: #1a1446; }
+  .conn.todo { border-color: rgba(255,209,102,.6); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 0 0 1px rgba(255,209,102,.25), 0 22px 40px -20px rgba(5,0,30,.8); }
+  .fl { display: grid; gap: 5px; font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 10px; }
+  .fl input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(8,6,30,.45); font: 14px var(--body); letter-spacing: 0; text-transform: none; color: var(--text); }
+  .fl input:focus { outline: none; border-color: var(--c); }
+  .conn details { margin-top: 10px; } .conn summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+  .conn .state { flex: 1; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; } .conn .note { color: var(--muted); font-size: 12px; margin: 10px 0 0; }
+  .btn.setup { border-color: rgba(255,209,102,.7); color: var(--gold); }
   .review { white-space: pre-wrap; font-size: 13.5px; line-height: 1.6; }
   .review h4 { font: 700 13px var(--display); margin: 12px 0 2px; color: #a5f3fc; }
   .var { border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
@@ -166,7 +173,7 @@ function render() {
   const rv = reviews[b.id];
   $("main").innerHTML = `
     <section class="hero glass"><div><h2>${esc(b.name)}</h2><p>${b.url ? `<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.url.replace(/^https?:\/\//, ""))}</a> · ` : ""}${esc(b.about || "")}</p></div>
-      <div class="go"><button class="btn" data-go="scan" title="Look in Gmail for new enquiries now">Check for enquiries</button><button class="btn main" data-go="review">This week's review</button></div></section>
+      <div class="go">${b.email ? "" : `<button class="btn setup" data-go="jump" title="Tell Nova where this business's enquiries arrive">⚙ Set the enquiry address</button>`}<button class="btn" data-go="scan" title="Look in Gmail for new enquiries now">Check for enquiries</button><button class="btn main" data-go="review">This week's review</button></div></section>
     <section class="kpis">
       <div class="kpi money"><span>Sales this week</span><b>${money(b, k.sales_week)}</b><small>${money(b, k.sales_month)} this month</small></div>
       <div class="kpi wait ${k.waiting ? "has" : ""}"><span>Waiting for your yes</span><b>${k.waiting}</b><small>${k.waiting ? "see the queue below" : "all clear"}</small></div>
@@ -183,6 +190,14 @@ function render() {
         <div class="add"><input id="l-name" placeholder="Name"><input id="l-contact" placeholder="Email or phone"><input id="l-msg" placeholder="What they asked" style="flex:3"><button class="btn" data-go="lead">Add</button></div></section>
       ${rv !== undefined ? `<section class="glass box"><h3><span class="dot" style="--dc:#a5f3fc"></span>This week's review</h3><div class="review">${rv === null ? `<div class="empty">Writing it…</div>` : esc(rv).replace(/^## (.+)$/gm, "<h4>$1</h4>")}</div></section>` : ""}
     </div><div class="col">
+      <section class="glass box conn ${b.email ? "" : "todo"}" id="conn"><h3><span class="dot" style="--dc:${b.email ? "var(--done)" : "var(--gold)"}"></span>Connections<span class="n">${b.email ? "set" : "to set up"}</span></h3>
+        <p class="sub">Where this business's enquiries arrive. Point your website's contact form at this address and Nova picks every enquiry up, scores it and drafts the reply.</p>
+        <label class="fl">Enquiry email address<input id="c-email" type="email" placeholder="e.g. hello@${esc((b.url || "yourbusiness.co.za").replace(/^https?:\/\/(www\.)?/, "").split("/")[0])}" value="${esc(b.email)}"></label>
+        <details ${b.inbox ? "open" : ""}><summary>Advanced: my own Gmail search</summary>
+          <label class="fl">Gmail search (leave empty to use the address above)<input id="c-inbox" placeholder='e.g. label:website-forms is:unread' value="${esc(b.inbox)}"></label></details>
+        <div class="add" style="align-items:center"><span class="state">${!b.gmail ? "⚠ Gmail isn't connected to Nova yet — connect Google in Settings first."
+          : b.inbox ? "✓ Watching Gmail with your search: " + esc(b.inbox) : b.email ? "✓ Watching Gmail for mail sent to " + esc(b.email) : "Not set yet — until then I look for unread mail that mentions " + esc(b.name) + "."}</span><button class="btn main" data-go="setup">Save</button></div>
+        <p class="note">This address must deliver into the Gmail account Nova is connected to (directly, or by forwarding). Payments aren't connected: tell Nova about a sale, or add it under Money.</p></section>
       <section class="glass box"><h3><span class="dot" style="--dc:var(--done)"></span>Money<span class="n">${open.length} open</span></h3>
         <p class="sub">Sales, who owes you, what you owe.</p>${moneyRows || `<div class="empty">Nothing recorded yet.</div>`}
         <div class="add"><select id="m-kind"><option value="sale">Sale</option><option value="owed_to_me">Owes me</option><option value="i_owe">I owe</option></select><input id="m-party" placeholder="Who"><input id="m-amt" placeholder="Amount" inputmode="decimal" style="max-width:110px"><input id="m-due" placeholder="Due (e.g. Friday)" style="max-width:150px"><button class="btn" data-go="money">Add</button></div></section>
@@ -221,6 +236,8 @@ $("main").addEventListener("click", async (e) => {
   if (t.dataset.ruleDel) { if (confirm("Remove this standing instruction?")) act({ action: "rule_delete", id: +t.dataset.ruleDel }); return; }
   if (t.dataset.offer) return act({ action: "offer", version: t.dataset.offer });
   const go = t.closest("[data-go]")?.dataset.go, v = (id) => ($(id)?.value || "").trim();
+  if (go === "jump") { $("conn").scrollIntoView({ behavior: "smooth", block: "center" }); return $("c-email").focus({ preventScroll: true }); }
+  if (go === "setup") return act({ action: "setup", email: v("c-email"), inbox: v("c-inbox") });
   if (go === "scan") { flash("Checking Gmail…"); return act({ action: "scan" }); }
   if (go === "review") { reviews[current] = null; render(); const r = await api("/api/business/review?biz=" + encodeURIComponent(current)); reviews[current] = r.text || "Nothing to review yet."; return render(); }
   if (go === "lead") { if (!v("l-name") && !v("l-msg")) return flash("Give me a name or what they asked."); return act({ action: "lead_add", name: v("l-name"), contact: v("l-contact"), message: v("l-msg") }); }

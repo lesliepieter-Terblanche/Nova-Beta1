@@ -4,6 +4,14 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.36.1] — 2026-10-06
+### Added
+- **A place for each business's enquiry address.** Every tab of the Business dashboard has a *Connections* box:
+  type the email address that business's website form and customers write to and Save — Nova then watches Gmail for
+  mail to that address. It is marked gold, with a *Set the enquiry address* button at the top, until it's filled
+  in; until then she looks for unread mail that mentions the business. By voice: "TrueHome enquiries go to …".
+  An optional *own Gmail search* is there for anything unusual (a label, a form service).
+
 ## [2.36.0] — 2026-10-06
 ### Added
 - **Business mode** — Nova runs the day-to-day of your businesses and you only step in to approve or decide. It has

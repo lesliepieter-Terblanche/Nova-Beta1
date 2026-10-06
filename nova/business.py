@@ -66,6 +66,9 @@ def _db():
     if not getattr(s, "_biz_ready", False):
         with s.lock:
             s.db.executescript(_SCHEMA)
+            have = {r["name"] for r in s.db.execute("PRAGMA table_info(biz)")}
+            if "email" not in have:                   # v2.36.1: the address each business's enquiries arrive at
+                s.db.execute("ALTER TABLE biz ADD COLUMN email TEXT DEFAULT ''")
             s.db.commit()
         s._biz_ready = True
     return s
@@ -117,6 +120,31 @@ def add_business(name: str, url: str = "", about: str = "", inbox: str = "", cur
         _x("INSERT INTO biz(id,name,url,about,inbox,currency,created) VALUES(?,?,?,?,?,?,?)",
            (bid, name.strip(), url, about.strip(), inbox.strip(), currency, now()))
     return _q("SELECT * FROM biz WHERE id=?", (bid,))[0]
+
+
+def inbox_query(b: dict) -> str:
+    """The Gmail search that finds this business's enquiries: your own search if you gave one, else mail sent to
+    its enquiry address, else (nothing set yet) unread mail that mentions the business."""
+    if (b.get("inbox") or "").strip():
+        return b["inbox"].strip()
+    if (b.get("email") or "").strip():
+        e = b["email"].strip()
+        return f"is:unread newer_than:14d (to:{e} OR deliveredto:{e} OR cc:{e})"
+    host = re.sub(r"^https?://(www\.)?", "", b.get("url") or "").split("/")[0]
+    return f"is:unread newer_than:7d ({json.dumps(b['name'])}" + (f" OR {host}" if host else "") + ")"
+
+
+def set_up(biz: str, email: str | None = None, inbox: str | None = None) -> dict:
+    """Set where a business's enquiries arrive (its email address) and, optionally, your own Gmail search."""
+    b = need(biz)
+    if email is not None:
+        email = email.strip()
+        if email and not EMAIL.fullmatch(email):
+            raise ValueError(f"'{email}' doesn't look like an email address")
+        _x("UPDATE biz SET email=? WHERE id=?", (email.lower(), b["id"]))
+    if inbox is not None:
+        _x("UPDATE biz SET inbox=? WHERE id=?", (inbox.strip()[:300], b["id"]))
+    return _q("SELECT * FROM biz WHERE id=?", (b["id"],))[0]
 
 
 def businesses() -> list[dict]:
@@ -319,10 +347,8 @@ def scan_inbox(biz: str = "") -> int:
         return 0
     found = 0
     for b in ([need(biz)] if biz else businesses()):
-        host = re.sub(r"^https?://(www\.)?", "", b["url"] or "").split("/")[0]
-        query = b["inbox"] or f"is:unread newer_than:7d ({json.dumps(b['name'])}" + (f" OR {host}" if host else "") + ")"
         try:
-            hits = REGISTRY["gmail_search"].func(query=query, max_results=10)
+            hits = REGISTRY["gmail_search"].func(query=inbox_query(b), max_results=10)
         except Exception as e:
             print(f"[business] couldn't read Gmail for {b['name']}: {e}")
             continue
@@ -545,7 +571,8 @@ def cockpit(b: dict, today: dt.date | None = None) -> dict:
     tasks = _q("SELECT * FROM biz_tasks WHERE biz=? AND status='open' ORDER BY due='' , due, id", (b["id"],))
     fups = _q("SELECT * FROM biz_followups WHERE biz=? AND status IN ('open','queued') ORDER BY due", (b["id"],))
     return {"id": b["id"], "name": b["name"], "url": b["url"], "about": b["about"], "currency": b["currency"] or "R",
-            "inbox": b["inbox"],
+            "inbox": b["inbox"], "email": b.get("email") or "", "watching": inbox_query(b),
+            "gmail": gmail_connected(),
             "kpi": {"sales_week": sales_w, "sales_month": sales_m, "leads_week": sum(x["ts"][:10] >= week for x in leads),
                     "leads_open": len(open_leads), "tasks_open": len(tasks), "waiting": len(pending(b["id"])),
                     "owed": sum(m["amount"] for m in owed), "overdue": sum(m["amount"] for m in late),
@@ -555,6 +582,16 @@ def cockpit(b: dict, today: dt.date | None = None) -> dict:
             "rules": [{**r, "says": describe_rule(r)} for r in rules(b["id"])],
             "offers": [{**o, "variants": json.loads(o["variants"] or "[]")}
                        for o in _q("SELECT * FROM biz_offers WHERE biz=? ORDER BY id DESC LIMIT 6", (b["id"],))]}
+
+
+def gmail_connected() -> bool:
+    """Has Google been connected (Settings → Google)? Without it Nova can't read or send the businesses' mail."""
+    try:
+        from .tools import REGISTRY
+        token = str(((context.cfg or {}).get("google") or {}).get("token_file") or "secrets/token.json")
+        return "gmail_search" in REGISTRY and resolve(token).exists()
+    except Exception:
+        return False
 
 
 def overview_text(b: dict) -> str:
@@ -797,6 +834,11 @@ def act(body: dict) -> dict:
             return {"ok": r["ok"], "message": ("Approved — " + r["message"]) if r["ok"] else r["message"]}
         if a == "reject":
             return reject(int(body["id"]))
+        if a == "setup":
+            b = set_up(bid, body.get("email"), body.get("inbox"))
+            return {"ok": True, "message": (f"Saved — I'll watch {b['email']} for {b['name']} enquiries." if b["email"]
+                                            else "Saved. No enquiry address yet, so I'll look for mail that mentions "
+                                                 f"{b['name']}.")}
         if a == "scan":
             n = scan_inbox(bid)
             r = run_rules()

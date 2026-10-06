@@ -838,6 +838,9 @@
   .hero .k { display: grid; justify-items: center; padding: 8px 16px; border-radius: 14px; font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase;
     min-width: 104px; background: rgba(255,255,255,.12); }
   .hero .k b { font: 700 24px var(--display); letter-spacing: 0; }
+  .hero button.k { border: 1px solid transparent; color: inherit; cursor: pointer; transition: transform .15s, border-color .15s, background .15s; }
+  .hero button.k:hover, .hero button.k:focus-visible { border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.22); transform: translateY(-2px); outline: none; }
+  .hero button.k:active { transform: translateY(0); }
   .hero .k.ip b { color: var(--st-ip); } .hero .k.wt b { color: var(--st-wait); } .hero .k.ok b { color: var(--st-done); }
   .chipi { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; flex: none; background: color-mix(in srgb, var(--cc) 34%, transparent); }
   ul.tree > li { border-left: 4px solid var(--cc, var(--dc)); padding-left: 12px; border-radius: 14px; }
@@ -1251,8 +1254,11 @@ function dirHtml(dir, depth) {
   return h + `</li>`;
 }
 let lastHtml = "";
+// what each counter at the top counts — click a counter to see exactly these items
+let STATUS_LISTS = { ip: [], wt: [], od: [], ok: [], bl: [] };
 function renderTree() {
   const model = treeModel(), flows = {}, tally = { "IN-PROGRESS": 0, "WAITING-ON-USER": 0, "COMPLETED": 0, "BACKLOG": 0 };
+  const lists = { ip: [], wt: [], od: [], ok: [], bl: [] };
   let h = "";
   for (const d of DOMAINS) {
     const m = model[d], dirs = [...m.dirs.values()];
@@ -1262,8 +1268,10 @@ function renderTree() {
     const work = rowsAll.filter((r) => r.track || r.isProject || r.kind === "project" || r.kind === "mission");
     const open = work.filter((r) => r.status !== "COMPLETED" && r.track !== "done").length;
     const flow = flows[d] = worst(sts), n = sts.length + m.unfiled.length;
-    const own = rowsAll.filter((r) => !r.live).map((r) => r.status);   // a project lit up by its own command isn't counted twice
+    const ownRows = rowsAll.filter((r) => !r.live), own = ownRows.map((r) => r.status);   // a project lit up by its own command isn't counted twice
     for (const st of own) if (st in tally && st !== "COMPLETED") tally[st]++;
+    for (const r of ownRows) { const key = { "IN-PROGRESS": "ip", "WAITING-ON-USER": "wt", "BACKLOG": "bl" }[r.status]; if (key) lists[key].push(r); }
+    for (const r of work) lists[r.status !== "COMPLETED" && r.track !== "done" ? "od" : "ok"].push(r);
     tally.COMPLETED += work.length - open; tally.OPEN = (tally.OPEN || 0) + open; tally.WORK = (tally.WORK || 0) + work.length;
     const pct = work.length ? Math.round(open / work.length * 100) : 0;
     const seg = (st) => work.filter((r) => r.status === st).length / (work.length || 1) * 100;      // the ring in the status colours
@@ -1279,10 +1287,16 @@ function renderTree() {
       dirs.map((x) => dirHtml(x, 0)).join("") + `</ul></section>`;
   }
   const hr = new Date().getHours(), hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
-  const ip = tally["IN-PROGRESS"], wt = tally["WAITING-ON-USER"], nb = (data.bottlenecks || []).length;
-  const line = [ip ? `${ip} thing${ip === 1 ? "" : "s"} in progress` : "", (wt || nb) ? `${Math.max(wt, nb)} waiting on you` : "", (!ip && !wt && !nb) ? "Nothing is waiting on you" : ""].filter(Boolean).join(" · ");
+  // waiting on you = the red rows on the map plus everything else Nova is waiting for (held sends, filing, drafts…)
+  const onMap = new Set(lists.wt.map((r) => r.id));
+  for (const b of data.bottlenecks || []) if (!b.id || !onMap.has(b.id)) { lists.wt.push({ ...(b.id && nodeById.get(b.id) || {}), bneck: b }); if (b.id) onMap.add(b.id); }
+  STATUS_LISTS = lists;
+  const ip = lists.ip.length, wt = lists.wt.length;
+  const line = [ip ? `${ip} thing${ip === 1 ? "" : "s"} in progress` : "", wt ? `${wt} waiting on you` : "Nothing is waiting on you"].filter(Boolean).join(" · ");
+  const tile = (key, cls, n, label) => `<button class="k ${cls}" data-list="${key}" title="Show the ${n} item${n === 1 ? "" : "s"} counted here"><b>${n}</b>${label}</button>`;
   const root = `<div class="hero"><div><h2>${hello}${OWNER ? ", " + esc(OWNER) : ""}</h2><p>${line}</p></div><div class="kp">` +
-    `<span class="k ip"><b>${ip}</b>In progress</span><span class="k wt"><b>${Math.max(wt, nb)}</b>Waiting on you</span><span class="k od"><b>${tally.OPEN || 0}</b>Outstanding</span><span class="k ok"><b>${tally.COMPLETED}</b>Completed</span><span class="k bl"><b>${tally.BACKLOG}</b>Backlog</span></div></div>`;
+    tile("ip", "ip", ip, "In progress") + tile("wt", "wt", wt, "Waiting on you") + tile("od", "od", lists.od.length, "Outstanding") +
+    tile("ok", "ok", lists.ok.length, "Completed") + tile("bl", "bl", lists.bl.length, "Backlog") + `</div></div>`;
   const html = root + `<section class="flow" id="flow" aria-label="Live work flow"></section><div class="panes">${h}</div>`;
   if (html !== lastHtml) {
     const keep = [...treeEl.querySelectorAll(".pane")].map((p) => p.scrollTop), top = treeEl.scrollTop;
@@ -1302,7 +1316,8 @@ function schedule() { if (queued) return; queued = true; requestAnimationFrame((
 function buildBlocks() {}
 treeEl.addEventListener("click", (e) => {
   const more = e.target.closest("[data-more]"), filing = e.target.closest("[data-filing]"), dom = e.target.closest("[data-dom]");
-  const fold = e.target.closest("[data-fold]");
+  const fold = e.target.closest("[data-fold]"), counter = e.target.closest("button[data-list]");
+  if (counter) return openView({ type: "status", kind: counter.dataset.list });      // a counter at the top: list what it counts
   if (fold) {                                          // every folder of this side at once
     const ids = [...fold.closest(".pane").querySelectorAll("li.d[data-dir]")].map((li) => li.dataset.dir);
     const m = treeModel()[fold.dataset.fold];
@@ -1514,6 +1529,7 @@ async function loadGraph() {
   if (focusSet && selected?.isProject) focusSet = clusterOf(selected.id);
   else if (focusSet && selected?.isPerson) focusSet = personCluster(selected.id);
   renderTree(); renderBottlenecks();
+  if (view?.type === "status" && $("panel").classList.contains("open")) renderStatusList(view);   // an open counter list stays current
   $("empty").classList.toggle("show", !g.nodes.some((n) => !STRUCT.has(n.kind)));
 }
 
@@ -2091,10 +2107,45 @@ async function renderView() {
   if (!view) return;
   const keep = $("p-body").scrollTop, same = renderView.last === JSON.stringify([view.type, view.id, view.kind]);
   if (view.type === "topic") await renderTopic(view);
+  else if (view.type === "status") renderStatusList(view);
   else if (view.type === "skills") await renderSkills(view);
   else await renderItem(view);
   renderView.last = JSON.stringify([view.type, view.id, view.kind]);
   if (same) $("p-body").scrollTop = keep;
+}
+
+// everything behind one of the counters at the top (In progress, Waiting on you, Outstanding, Completed, Backlog)
+const STATUS_VIEW = {
+  ip: ["In progress", "var(--st-ip)", "Nova is working on these right now, or you marked them in progress.", "Nothing is in progress."],
+  wt: ["Waiting on you", "var(--st-wait)", "These can't move until you answer, approve or decide.", "Nothing is waiting on you."],
+  od: ["Outstanding", "#ffd166", "Every project, mission and tracked item that isn't completed yet.", "Nothing is outstanding."],
+  ok: ["Completed", "var(--st-done)", "Projects, missions and tracked items that are done.", "Nothing is completed yet."],
+  bl: ["Backlog", "#8f97bf", "Not started yet.", "The backlog is empty."],
+};
+function renderStatusList(v) {
+  const [title, color, about, empty] = STATUS_VIEW[v.kind] || STATUS_VIEW.od, list = STATUS_LISTS[v.kind] || [];
+  panelHead(color, "Status", title, `${list.length} item${list.length === 1 ? "" : "s"}`);
+  $("p-open").parentElement.style.display = "none";
+  const rank = { "WAITING-ON-USER": 0, "IN-PROGRESS": 1, "BACKLOG": 2, "COMPLETED": 3 };
+  const sorted = [...list].sort((a, b) => (rank[a.status] ?? 1) - (rank[b.status] ?? 1) || String(b.created || "").localeCompare(String(a.created || "")));
+  const rows = sorted.map((n) => {
+    const b = n.bneck, id = n.id || b?.id || "", name = n.id ? fileName(n) : (b?.text || "");
+    const what = n.id ? (n.isProject ? "Project" : labelFor(n.kind)) : "Needs you";
+    const side = (n.domain || b?.domain) === DOMAINS[0] ? "Personal" : "Work";
+    const proj = n.project && nodeById.get(n.project) ? ` · in ${esc(nodeById.get(n.project).short || nodeById.get(n.project).label)}` : "";
+    const why = b?.why ? b.why : n.tstatus === "error" ? "it failed — ask again, or mark it completed" : n.tstatus === "waiting" ? "say yes or no" : "";
+    const st = n.status || (b ? "WAITING-ON-USER" : "");
+    const sc = { "IN-PROGRESS": "var(--st-ip)", "WAITING-ON-USER": "var(--st-wait)", "COMPLETED": "var(--st-done)", "BACKLOG": "#a0b0d8" }[st];   // the same colours as the map
+    const pill = st ? `<span class="pill" style="color:${sc};border-color:${sc}">${PILL[st].replace(/^[●✓○] /, "")}</span>` : "";
+    const attr = id === "filing" ? `data-filing="1"` : id ? `data-id="${esc(id)}"` : `disabled style="cursor:default"`;
+    return `<button class="row" ${attr} style="--c:${color}${id ? "" : ";cursor:default"}"><i></i><div><div class="tt">${esc(name)}</div>
+      <div class="mm">${esc(what)} · ${side}${proj}${n.created ? ` · <span title="${esc(n.created)}">${ago(n.created)}</span>` : ""}</div>
+      ${why ? `<div class="mm" style="color:var(--st-wait)">→ ${esc(why)}</div>` : ""}</div><div class="rt">${pill}</div></button>`;
+  }).join("");
+  const tabs = Object.entries(STATUS_VIEW).map(([k, x]) =>      // the panel covers the counters, so they are here too
+    `<button data-st="${k}" class="${k === v.kind ? "on" : ""}" style="--c:${x[1]}">${x[0]}<small>${(STATUS_LISTS[k] || []).length}</small></button>`).join("");
+  $("p-body").innerHTML = `<div class="filters">${tabs}</div><div class="muted" style="margin:0 0 10px">${about}${list.length ? " Click one to open it." : ""}</div>
+    <div class="list">${rows || `<div class="muted" style="padding:10px 4px">${empty}</div>`}</div>`;
 }
 
 // every item in one topic
@@ -2354,6 +2405,8 @@ $("p-body").addEventListener("click", (e) => {
       if (ma.dataset.mact === "delete") { closePanel(); loadGraph(); } else setTimeout(renderView, 600); });
     return;
   }
+  if (e.target.closest("[data-filing]")) return loadFiling(true);
+  const st = e.target.closest("button[data-st]"); if (st) { view.kind = st.dataset.st; $("p-body").scrollTop = 0; return renderView(); }
   const b = e.target.closest("[data-id]");
   if (b) { e.preventDefault(); openItem(b.dataset.id, true); }
 });

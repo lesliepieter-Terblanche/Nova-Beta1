@@ -160,3 +160,16 @@ def test_dashboard_item_topic_now_and_skills(nova):
     assert web["description"] and web["tools"] and sk["active"] >= 5
     assert next(x for x in sk["skills"] if x["name"] == "files")["uses"] == 1
     assert d.stats()["projects"]["active"] == 1
+
+
+def test_top_counters_open_a_list_of_what_they_count():
+    """v2.35.1: the five counters are buttons, and the panel lists exactly the rows each one counted."""
+    from pathlib import Path
+    page = (Path(__file__).resolve().parent.parent / "nova" / "dashboard" / "index.html").read_text(encoding="utf-8")
+    for key, label in (("ip", "In progress"), ("wt", "Waiting on you"), ("od", "Outstanding"), ("ok", "Completed"),
+                       ("bl", "Backlog")):
+        assert f'tile("{key}", "{key}", ' in page and f'{key}: ["{label}"' in page
+    assert '<button class="k ${cls}" data-list="${key}"' in page                 # a real button, with what it opens
+    assert 'openView({ type: "status", kind: counter.dataset.list })' in page
+    assert 'view.type === "status") renderStatusList(view)' in page
+    assert "lists.wt.length" in page and "Math.max(wt, nb)" not in page          # the number is the length of the list

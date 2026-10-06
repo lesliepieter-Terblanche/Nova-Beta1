@@ -4,6 +4,16 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.35.1] — 2026-10-06
+### Added
+- **The counters at the top of the dashboard open.** Click *In progress*, *Waiting on you*, *Outstanding*, *Completed*
+  or *Backlog* and a panel lists exactly the items that number counts — what each one is, which side and project
+  it belongs to, and for anything waiting on you, what it needs ("say yes or no", "approve the playbook …"). Click
+  an item to open it; Back returns to the list; tabs in the panel switch between the five.
+### Changed
+- *Waiting on you* now counts every distinct thing that waits on you (the red rows on the map plus held sends,
+  filing questions and playbook drafts), so the number always equals the list.
+
 ## [2.35.0] — 2026-10-06
 ### Added
 - **Nova gets better by herself**, in two safe ways:

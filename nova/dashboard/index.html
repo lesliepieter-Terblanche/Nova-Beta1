@@ -1211,7 +1211,7 @@ function treeModel() {
       } else dir.rows.push(n);
       continue;
     }
-    const tracked = n.isProject || n.kind === "project" || n.kind === "mission" || (n.status && n.kind !== "action") || (n.kind === "action" && (n.track || n.tstatus === "running" || n.tstatus === "waiting" || (n.fresh && (n.project || n.tstatus === "error"))));
+    const tracked = n.isProject || n.kind === "project" || n.kind === "mission" || (n.status && n.kind !== "action") || (n.kind === "action" && (n.track || n.tstatus === "running" || n.tstatus === "waiting" || n.fresh));
     if (!tracked) continue;
     const c = (n.cat && m.dirs.has(n.cat)) ? n.cat : n.kind === "mission" ? catOf(n.domain, /Meetings|Interests/) : catOf(n.domain, /Projects/);
     if (m.dirs.get(c)) m.dirs.get(c).rows.push(n);
@@ -1336,7 +1336,7 @@ function openMenu(n, x, y) {
       `<button data-a="move" data-d="${d}" data-c="${esc(c)}"${n.domain === d && here === c ? " disabled" : ""}>${esc(c)}${n.domain === d && here === c ? " ✓" : ""}</button>`).join("");
   }
   if (/^(note|memory|mission|artifact|turn):/.test(n.id)) h += `<div class="gp">Status</div>` + [["doing", "In progress"], ["waiting", "Waiting on you"], ["done", "Completed"], ["todo", "Backlog"]]
-    .map(([k, l]) => `<button data-a="status" data-s="${k}"${n.track === k ? " disabled" : ""}>${l}${n.track === k ? " ✓" : ""}</button>`).join("");
+    .map(([k, l]) => `<button data-a="status" data-s="${k}"${(n.tag || n.track) === k ? " disabled" : ""}>${l}${(n.tag || n.track) === k ? (n.track ? " ✓" : " ✓ (Nova)") : ""}</button>`).join("");
   if (canMove) h += `<div class="gp"></div><button data-a="delete" class="danger">Delete…</button>`;
   menu.innerHTML = h; menu._n = n; menu.classList.add("show");
   const r = menu.getBoundingClientRect();
@@ -2124,8 +2124,8 @@ async function renderTopic(v) {
     }
     bits.push(`<span title="${esc(i.created || "")}">${ago(i.last || i.created)}</span>`);
     const right = (i.pinned ? `<span class="pin">★</span>` : "") +
-      (i.track ? `<span class="pill ${i.track}">${TRACK_TXT[i.track]}</span>` : "") +
-      (i.kind === "action" && i.status && i.status !== "done" ? `<span class="pill ${i.status === "error" ? "error" : i.status === "running" ? "doing" : "waiting"}">${esc(i.status)}</span>` : "");
+      (i.track || i.tag ? `<span class="pill ${i.track || i.tag}" title="${i.track ? "tagged by you" : "tagged by Nova"}">${TRACK_TXT[i.track || i.tag]}</span>` : "") +
+      (i.kind === "action" && i.status === "error" ? `<span class="pill ${i.status === "error" ? "error" : i.status === "running" ? "doing" : "waiting"}">${esc(i.status)}</span>` : "");
     return `<button class="row" data-id="${esc(i.id)}" style="--c:${i.color}"><i></i><div><div class="tt">${esc(i.title)}</div>
       <div class="mm">${bits.join(" · ")}${i.note ? ` · <span title="${esc(i.note)}">📝 note</span>` : ""}</div></div><div class="rt">${right}</div></button>`;
   }).join("");
@@ -2302,7 +2302,7 @@ function missionBody(m) {
 }
 
 function trackBox(id, tr) {
-  return `<div class="track"><div class="top"><b>Track this</b><span class="saved" id="tr-saved">saved ✓</span>
+  return `<div class="track"><div class="top"><b>Track this${tr.auto && tr.status ? ` <span id="tr-by" style="text-transform:none;letter-spacing:0;font-weight:400">· tagged by Nova</span>` : ""}</b><span class="saved" id="tr-saved">saved ✓</span>
       <button class="star ${tr.pinned ? "on" : ""}" id="tr-pin" title="Pin to the top of lists">${tr.pinned ? "★ Pinned" : "☆ Pin"}</button></div>
     <div class="seg" id="tr-seg">${TRACK.map(([k, l]) => `<button data-s="${k}" class="${(tr.status || "") === k ? "on" : ""}">${l}</button>`).join("")}</div>
     <textarea id="tr-note" placeholder="Your note — next step, deadline, who's involved…">${esc(tr.note || "")}</textarea></div>`;
@@ -2312,7 +2312,7 @@ function bindTrack(id) {
   $("tr-seg").onclick = async (e) => {
     const b = e.target.closest("button[data-s]"); if (!b) return;
     await api("/api/track", { id, status: b.dataset.s });
-    $("tr-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); saved();
+    $("tr-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); $("tr-by")?.remove(); saved();
   };
   $("tr-pin").onclick = async () => {
     const on = !$("tr-pin").classList.contains("on");

@@ -19,6 +19,7 @@ import re
 from . import context
 
 TURN_TAG = {"running": "IN-PROGRESS", "waiting": "WAITING-ON-USER", "error": "WAITING-ON-USER"}
+TURN_TRACK = {"running": "doing", "waiting": "waiting", "error": "waiting"}      # the same, as a tracking status
 FRESH_HOURS = 24                      # a failed command is listed as a bottleneck for a day, then it is just history
 
 # tools that only look something up — using one of these alone doesn't mean a project is being worked on
@@ -41,6 +42,17 @@ SAY = {"backlog": "todo", "todo": "todo", "to do": "todo", "not started": "todo"
 def tag_of_turn(status: str) -> str:
     """The four-status tag of a command, from how the request went."""
     return TURN_TAG.get(status or "done", "COMPLETED")
+
+
+def turn_tracking(tid: int, status: str, saved: dict | None = None) -> dict:
+    """The tracking of a command as the dashboard shows it: the status you gave it by hand if you did, else the
+    tag Nova gives it from how the request went (auto=1) — so a command is never left on "None"."""
+    cur = dict(saved) if saved is not None else context.store.get_tracking(f"turn:{tid}")
+    cur.setdefault("auto", 0)
+    if not cur.get("status"):
+        cur["status"] = TURN_TRACK.get(status or "done", "done")
+        cur["auto"] = 1
+    return cur
 
 
 def is_fresh(ts: str, hours: int = FRESH_HOURS) -> bool:

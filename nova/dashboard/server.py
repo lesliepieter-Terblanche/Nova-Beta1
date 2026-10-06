@@ -186,6 +186,7 @@ class Dashboard:
                 status=autotag.tag_of_turn(tstatus))
             if not nodes[-1]["track"]:
                 nodes[-1]["auto"] = True
+            nodes[-1]["tag"] = nodes[-1]["track"] or autotag.TURN_TRACK.get(tstatus, "done")
             if tstatus == "running":
                 nodes[-1]["hot"] = True
 
@@ -462,10 +463,11 @@ class Dashboard:
         recalled = [{"id": u["item"], "title": self.title_of(u["item"])} for u in used]
         req = r["detail"] or r["title"]
         status = r["status"] or "done"
+        from .. import autotag
         return {"id": f"turn:{tid}", "type": "action", "title": req, "created": r["ts"], "status": status,
                 "how": _how(r["session"]), "ms": r["ms"], "reply": reply,
                 "steps": steps, "made": made, "recalled": [x for x in recalled if x["title"]], "timing": timing,
-                "tracking": s.get_tracking(f"turn:{tid}"),
+                "tracking": autotag.turn_tracking(tid, status),
                 "meta": {"channel": r["session"], "status": status,
                          "took": f"{r['ms'] / 1000:.1f} s" if r["ms"] else "—"}}
 
@@ -600,6 +602,7 @@ class Dashboard:
 
     def topic(self, kind: str, limit: int = 300) -> dict:
         """Every item in one topic, with when it was made, last touched, times recalled and your tracking."""
+        from ..autotag import TURN_TRACK as _TURN_TRACK
         s = context.store
         with s.lock:
             track = {r["item"]: dict(r) for r in s.db.execute("SELECT * FROM tracking")}
@@ -666,6 +669,8 @@ class Dashboard:
                     push(f"turn:{t['id']}", t["title"], "action", t["ts"],
                          {"status": t["status"] or "done", "ms": t["ms"], "tools": t["tools"],
                           "sub": _how(t["session"])})
+                    if not items[-1]["track"]:               # Nova's own tag, from how the request went
+                        items[-1].update(tag=_TURN_TRACK.get(t["status"] or "done", "done"), auto=True)
         if kind in ("mission", "missions", "tracked", "doing"):
             from ..missions import missions as _missions
             for ms in _missions().all():

@@ -1,6 +1,6 @@
 [project]
 name = "nova-agent"
-version = "2.32.0"
+version = "2.32.1"
 description = "Voice-first, local-first personal AI agent with permanent memory, a 3D second-brain dashboard, MCP support and Telegram remote control."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"

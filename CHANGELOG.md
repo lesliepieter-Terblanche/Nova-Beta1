@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.32.1] — 2026-10-06
+### Fixed
+- **A request no longer shows "None".** Nova worked out each command's tag, but the *Track this* box, the right-click
+  status menu and the topic lists only showed a status you had set yourself — so every request looked untagged. They
+  now show Nova's own tag (in progress / waiting on you / completed), marked "tagged by Nova"; a status you pick
+  yourself still wins.
+- **Finished requests stay on the master index** with their *Completed* tag for a day. Before, a finished command
+  that didn't belong to a project dropped off the index the moment it was done.
+
 ## [2.32.0] — 2026-10-03
 ### Added
 - **Nova tags her own work.** Every command and every project now carries one of the four statuses without you

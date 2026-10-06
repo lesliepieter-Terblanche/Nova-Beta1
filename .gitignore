@@ -27,6 +27,7 @@ tools/browser-use/
 tools/platform-tools/
 tools/docling/
 models/vad/
+models/depth/
 models/vision/
 backups/
 restore/

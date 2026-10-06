@@ -318,7 +318,7 @@ def build_video(title: str, slides: list[dict], fmt: str = "landscape", images: 
 
 @tool(group="media")
 def make_video(topic: str, style: str = "", slides: int = 6, format: str = "landscape", music_path: str = "",
-               captions: bool = True, stock_footage: bool = True) -> str:
+               captions: bool = True, stock_footage: bool = True, look: str = "") -> str:
     """Create a narrated explainer / promo video about a topic: script, scenes, voice-over, burned-in captions
     and (with a free Pexels key) matching stock footage behind each scene.
     Args:
@@ -329,12 +329,20 @@ def make_video(topic: str, style: str = "", slides: int = 6, format: str = "land
         music_path: optional background music file
         captions: burn subtitles into the video
         stock_footage: use Pexels stock video behind scenes (needs PEXELS_API_KEY)
+        look: optional cinematic finish — teal_orange, warm_film, moody, golden_hour, noir or clean
     """
     raw = context.llm.complete(SCRIPT_PROMPT.format(topic=topic, style=style or "clear, friendly, professional",
                                                     n=max(3, min(12, slides))), prefer_smart=True, temperature=0.7)
     data = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
     out = build_video(data.get("title", topic), data["slides"], format, music=music_path, captions=captions,
                       broll=stock_footage)
+    look = look or str((context.cfg.get("media") or {}).get("look") or "")
+    if look and look.lower() not in ("none", "off"):          # the cinematic finish: grade, vignette, grain
+        from .. import cinema
+        graded = out.with_name(out.stem + "_" + cinema.look_name(look) + ".mp4")
+        cinema.finish(out, graded, look, bars=False)
+        out.unlink()
+        graded.replace(out)
     context.attach(out)
     note = "" if os.environ.get("PEXELS_API_KEY") or not stock_footage else \
         " (Add a free PEXELS_API_KEY to .env for stock footage.)"

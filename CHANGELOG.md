@@ -4,6 +4,26 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.33.0] — 2026-10-06
+### Added
+- **Cinematic mode** — film-look videos made on this PC, free (no cloud video model, no cost per clip):
+  - **Cinematic reel** ("make a cinematic reel from the photos in Pictures/Harbour"): photos and clips become one
+    reel with a film colour grade, fine grain, smooth transitions, music faded in and out, and a thumbnail.
+  - **3D photo motion**: a still photo becomes a moving camera shot. A small depth model (MiDaS, 66 MB, downloaded
+    once, runs on the CPU) works out what is near and far, and the camera pushes in, pulls out, orbits or rises with
+    real parallax. Also on its own: "turn this photo into a 3D shot".
+  - **Looks**: teal & orange, warm film, moody, golden hour, noir, clean — with vignette, film grain and widescreen
+    bars. "Give drone.mp4 the moody look, half speed" works on any video (phone footage, AI clips, stock).
+  - **Brand kits**: save a name, colours, logo, handle, tagline and call to action per brand ("save a brand kit for
+    Harbour Homes: navy and gold, @harbourhomes"). Reels then get an animated intro sting, a lower third with the
+    title, a logo watermark and an outro. The first kit is the default; name another to use it.
+  - **Highlighted captions**: the word being spoken lights up in the brand's accent colour — in reels with a
+    voice-over, and now in "add captions to this video" too.
+  - **Sound**: cuts land on the beat of the music, the music dips under the voice, and loudness is evened out for
+    social platforms.
+- Narrated videos (`make_video`) can be finished with a look: say it, or set one for all of them in
+  Settings → Files & web → *Cinematic look on narrated videos*.
+
 ## [2.32.1] — 2026-10-06
 ### Fixed
 - **A request no longer shows "None".** Nova worked out each command's tag, but the *Track this* box, the right-click

@@ -134,7 +134,7 @@ Offered to the model when you say things like: _video, clip, reel, tiktok, short
 
 | Tool | What it does | Parameters |
 |---|---|---|
-| `make_video` | Create a narrated explainer / promo video about a topic: script, scenes, voice-over, burned-in captions and (with a free Pexels key) matching stock footage behind each scene. | `topic`, `style`?, `slides`?, `format`?, `music_path`?, `captions`?, `stock_footage`? |
+| `make_video` | Create a narrated explainer / promo video about a topic: script, scenes, voice-over, burned-in captions and (with a free Pexels key) matching stock footage behind each scene. | `topic`, `style`?, `slides`?, `format`?, `music_path`?, `captions`?, `stock_footage`?, `look`? |
 | `photos_to_video` | Turn a folder of photos into a video slideshow with optional voice-over. | `folder`, `narration`?, `seconds_per_photo`?, `format`?, `music_path`? |
 | `make_voiceover` | Create an MP3 voice-over from text in Nova's (ElevenLabs) voice. | `text`, `name`? |
 | `transcribe_file` | Transcribe an audio or video file (meeting recording, voice memo) to text, saved next to it. | `path` |
@@ -318,9 +318,21 @@ Offered to the model when you say things like: _shorts, short, reel, reels, tikt
 | Tool | What it does | Parameters |
 |---|---|---|
 | `video_to_shorts` | Turn a long video (talk, webinar, podcast, YouTube video) into vertical Shorts / Reels / TikToks: finds the best moments from what's said, crops to 9:16 and burns in bold word-by-word captions. | `path`, `count`?, `seconds`?, `captions`? |
-| `add_captions` | Burn bold, word-by-word captions into a video (transcribed on this PC). | `path`, `uppercase`? |
+| `add_captions` | Burn bold, word-by-word captions into a video (transcribed on this PC). The word being spoken lights up in the brand's accent colour. | `path`, `uppercase`?, `highlight`?, `brand`? |
 | `make_vertical` | Make a landscape video vertical (9:16) for TikTok / Reels / Shorts / Stories. | `path`, `mode`? |
 | `join_videos` | Join several videos into one, with a short cross-fade between them. | `paths`, `fade`?, `name`? |
+
+## cinematic
+
+Offered to the model when you say things like: _cinematic, cinema, film look, movie look, colour grade, color grade, grading, teal and orange, widescreen, letterbox, film grain, brand kit_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `cinematic_reel` | Make a cinematic reel from photos and video clips: every photo becomes a 3D camera move (push-in, orbit, pull-out with real depth), clips are graded with a film look, cuts land on the beat of the music, and the brand kit adds an intro sting, lower third, watermark and outro. Free, made on this PC. | `files`, `title`?, `subtitle`?, `narration`?, `music_path`?, `brand`?, `look`?, `format`?, `seconds_per_shot`?, `transition`?, `call_to_action`?, `widescreen_bars`? |
+| `cinematic_look` | Give any video the cinematic finish: a film colour grade, soft vignette, film grain and widescreen bars — optionally slowed down and steadied. Use for phone footage, AI clips, stock clips or a finished video. | `path`, `look`?, `widescreen_bars`?, `film_grain`?, `slow_motion`?, `steady`?, `brand`? |
+| `photo_to_3d_shot` | Turn one still photo into a moving cinematic shot: Nova works out what is near and far in the picture and moves the camera through it with real parallax (the "3D photo" effect). | `photo`, `move`?, `seconds`?, `format`?, `look`? |
+| `save_brand_kit` | Save (or update) a brand kit, used for the intro sting, lower third, watermark, caption highlight and outro of cinematic reels. Only the fields you give are changed. | `name`, `handle`?, `tagline`?, `colour`?, `accent`?, `logo_path`?, `look`?, `call_to_action`?, `make_default`? |
+| `brand_kits` | List the saved brand kits and the cinematic looks available. | — |
 
 ## web_agent
 

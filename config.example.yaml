@@ -265,6 +265,7 @@ media:
   # Optional local AI images (Stable Diffusion 1.5, ~3 GB VRAM). Needs requirements-imagegen.txt
   captions: true             # burn subtitles into videos
   broll: true                # stock footage behind scenes when PEXELS_API_KEY is set (free at pexels.com/api)
+  look: ""                   # cinematic finish on narrated videos: teal_orange · warm_film · moody · golden_hour · noir · clean
   image_gen_enabled: false
   image_model: runwayml/stable-diffusion-v1-5
   image_provider: auto       # auto = ComfyUI when it's running · comfyui · local (the Stable Diffusion above)

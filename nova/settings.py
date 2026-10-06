@@ -180,6 +180,9 @@ SCHEMA = [
         {"path": "web.searxng_url", "label": "SearXNG URL (private search)", "type": "text", "help": "e.g. http://localhost:8888"},
         {"path": "media.captions", "label": "Captions in videos", "type": "bool"},
         {"path": "media.broll", "label": "Stock footage in videos (Pexels)", "type": "bool"},
+        {"path": "media.look", "label": "Cinematic look on narrated videos", "type": "select", "default": "",
+         "options": ["", "teal_orange", "warm_film", "moody", "golden_hour", "noir", "clean"],
+         "help": "Colour grade, vignette and film grain. Empty = off."},
         {"path": "media.image_gen_enabled", "label": "Local image generation", "type": "bool", "help": "Needs requirements-imagegen.txt"},
     ]},
     {"id": "gestures", "title": "Gestures", "icon": "hand", "fields": [

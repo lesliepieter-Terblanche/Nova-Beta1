@@ -189,15 +189,30 @@ def video_to_shorts(path: str, count: int = 3, seconds: int = 40, captions: bool
 
 
 @tool(group="video_edit")
-def add_captions(path: str, uppercase: bool = True) -> str:
-    """Burn bold, word-by-word captions into a video (transcribed on this PC).
+def add_captions(path: str, uppercase: bool = True, highlight: bool = True, brand: str = "") -> str:
+    """Burn bold, word-by-word captions into a video (transcribed on this PC). The word being spoken lights up in
+    the brand's accent colour.
     Args:
         path: the video file
         uppercase: SHOUTY social-media style captions
+        highlight: light up each word as it is spoken (false = plain white captions)
+        brand: brand kit whose accent colour to use ("" = the default kit)
     """
-    from moviepy import VideoFileClip
     from .files import safe
     p = safe(path)
+    if highlight:
+        from .. import cinema
+        words = _words(p)
+        if not words:
+            return "I couldn't hear any speech in that video to caption."
+        kit = cinema.brand(brand) or cinema.BRAND_DEFAULTS
+        out = _out(p.stem + " captions")
+        cinema.burn_captions(p, out, words, accent=cinema.rgb_of(kit["accent"], "#ffcd3c"), upper=uppercase,
+                             font_path=kit.get("font", ""))
+        context.record("video", out.stem, out, "captions")
+        context.attach(out)
+        return f"Captioned video saved: {out}"
+    from moviepy import VideoFileClip
     src = VideoFileClip(str(p))
     try:
         words = _words(p)

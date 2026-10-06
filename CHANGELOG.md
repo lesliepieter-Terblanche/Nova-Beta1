@@ -4,6 +4,30 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.36.0] — 2026-10-06
+### Added
+- **Business mode** — Nova runs the day-to-day of your businesses and you only step in to approve or decide. It has
+  its own **Business dashboard** (💼 on the main dashboard, or /business), one tab per business:
+  - **Cockpit:** sales this week and month, open enquiries, money owed and overdue, open tasks, and how much is
+    waiting for your yes.
+  - **Approval queue:** every reply, follow-up, payment reminder, post, page or email Nova prepares waits here.
+    Change the wording, then Approve or Drop. Approve sends the email (through your Gmail) or does the job; things
+    she can't send herself (a post, a message to a phone number) are yours to send and tick off. By voice: "what's
+    waiting for my yes?", "approve number 3". The queue also shows under *waiting on you* on the main dashboard.
+  - **Enquiries:** told to Nova ("new enquiry for … from Sam: …") or found in Gmail every 15 minutes, scored 1–5 and
+    each given a drafted reply. One email is only ever one lead.
+  - **Money watch:** sales, invoices owed to you, bills you owe; a paid invoice counts as a sale.
+  - **Follow-ups:** "follow up with … about … on Friday" — the message is drafted when it's due.
+  - **Standing instructions:** rules she carries out by herself — on a new enquiry, on an invoice N days overdue,
+    daily or weekly. They put drafts in the queue; only if you say so do they send by themselves, capped per day.
+  - **Creating:** *validate this business idea* (demand, competitors, pricing, risks → GO / NO-GO with sources),
+    *launch kit* (tagline, brand colours, landing-page brief, a week of posts, reel storyboard, launch email — each
+    sendable piece in the queue) and *offer test* (versions of an offer, responses counted per version).
+  - **Weekly business review** per business with the Sunday review: what moved, what stalled, three things to do.
+- On the first start after the update the Business dashboard is set up with two businesses, each with two
+  approve-first standing instructions (reply to new enquiries; chase invoices 7 days overdue).
+- Settings → Reports has the switches (business mode, Gmail check, how often).
+
 ## [2.35.1] — 2026-10-06
 ### Added
 - **The counters at the top of the dashboard open.** Click *In progress*, *Waiting on you*, *Outstanding*, *Completed*

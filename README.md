@@ -91,6 +91,7 @@ It remembers everything permanently and shows its whole second brain as a live m
 | 🎬 **Cinematic mode** | Film-look reels from your photos and clips, free on this PC: 3D camera moves on photos, colour grades, brand intro/outro, highlighted captions, cuts on the beat; small photos sharpened with Real-ESRGAN |
 | 📚 **Skills library** | The open-source skills from [anthropics/skills](https://github.com/anthropics/skills) as playbooks: web design, internal comms, themes, posters, MCP servers |
 | ♻ **More free AI** | Gemini, Groq, Cerebras, Mistral and GitHub Models in a chain — when one hits its free limit Nova rests it and the next answers |
+| 💼 **Business mode** | A separate Business dashboard per business: sales, enquiries, money owed, tasks and an **approval queue** — Nova drafts replies, follow-ups and payment reminders and nothing goes out without your yes. Plus an idea validator, launch kit, offer tester, standing instructions and a weekly business review |
 | 🌱 **Gets better by herself** | A weekly self-review of what she struggled with and would change, and playbooks she drafts for jobs you keep asking for — used only after your yes |
 | 👤 **People cards** | Everyone you deal with on one card — company, role, contact details, deals and every mention, linked on the dashboard |
 | 🧠 **Ask the brain** | Answers only from your own brain, with clickable sources · weekly "what's new" digest · 🕘 timeline replay |

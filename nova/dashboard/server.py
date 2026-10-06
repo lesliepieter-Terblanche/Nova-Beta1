@@ -1044,6 +1044,15 @@ class Dashboard:
                                            "here": self.headers.get("Host", "")})
                     if u.path in ("/settings", "/settings.html"):
                         return self._file(HERE / "settings.html")
+                    if u.path in ("/business", "/business.html"):        # the Business dashboard
+                        return self._file(HERE / "business.html")
+                    if u.path == "/api/business":
+                        from .. import business
+                        return self._json(business.state())
+                    if u.path == "/api/business/review":
+                        from .. import business
+                        b = business.find(q.get("biz", ""))
+                        return self._json({"text": business.review(b) if b else ""})
                     if u.path == "/api/settings":
                         return self._json(settings.snapshot())
                     if u.path == "/api/theme":
@@ -1273,6 +1282,9 @@ class Dashboard:
                             return self._json(taxonomy.delete_item(nid))
                         except (ValueError, KeyError) as e:
                             return self._json({"error": str(e)}, 400)
+                    if self.path == "/api/business/act":
+                        from .. import business
+                        return self._json(business.act(body))
                     if self.path == "/api/track":
                         nid = str(body.get("id", ""))
                         if not re.fullmatch(r"(memory|artifact|turn|mission):\d+|note:.+", nid):

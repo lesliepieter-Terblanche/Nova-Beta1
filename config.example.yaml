@@ -142,6 +142,13 @@ reports:
   review_day: sun
   review_time: "18:00"
 
+# Business mode: Nova runs the day-to-day of your businesses (Business dashboard, 💼 on the main one). Nothing is sent
+# without your yes unless a standing instruction of yours says so.
+business:
+  enabled: true
+  scan_inbox: true           # look in Gmail for new enquiries
+  scan_minutes: 15
+
 # Nova improving herself: a weekly self-review (sent with the review above) and playbooks she drafts for jobs you
 # keep asking for. Drafts are plain steps, never code, and are only used once you say "approve the playbook …".
 evolve:

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova · Business</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #f4f2ff; --muted: #b9b3e0; --line: rgba(255,255,255,.14); --line-strong: rgba(255,255,255,.28);
+    --card: rgba(255,255,255,.07); --card-2: rgba(20,16,56,.55); --ip: #38bdf8; --wait: #fb7185; --done: #4ade80; --gold: #ffd166;
+    --a: #7c5cff; --b: #ff5fa2; --c: #2dd4bf;
+    --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif; --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: #0f2147; }
+  html, body { margin: 0; min-height: 100vh; color: var(--text); font: 14px/1.5 var(--body); }
+  body { background: radial-gradient(700px 520px at 22% 18%, rgba(150,110,255,.7), transparent 62%), radial-gradient(760px 560px at 82% 12%, rgba(255,90,170,.5), transparent 62%),
+      radial-gradient(900px 620px at 70% 96%, rgba(40,220,200,.5), transparent 62%), linear-gradient(160deg, #1a1446, #0f2147 60%, #0b2c3d); background-attachment: fixed; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  a { color: #a5f3fc; }
+  .glass { background: var(--card); border: 1px solid var(--line); border-radius: 20px; backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 22px 40px -20px rgba(5,0,30,.8); }
+
+  header { display: flex; align-items: center; gap: 14px; padding: 16px 26px; flex-wrap: wrap; }
+  .back { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; padding: 9px 14px; border-radius: 12px;
+    border: 1px solid var(--line-strong); background: var(--card); font-weight: 600; font-size: 13px; }
+  .back:hover { background: rgba(255,255,255,.16); }
+  header h1 { font: 700 22px var(--display); margin: 0; }
+  header h1 small { font: 400 13px var(--body); color: var(--muted); margin-left: 10px; }
+  .tabs { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .tabs button { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--card); cursor: pointer; font-weight: 600; }
+  .tabs button.on { background: linear-gradient(100deg, var(--a), var(--b)); border-color: transparent; box-shadow: 0 8px 24px -8px var(--b); }
+  .tabs button b { margin-left: 7px; padding: 1px 8px; border-radius: 999px; background: var(--wait); color: #3b0613; font-size: 11.5px; }
+
+  main { max-width: 1500px; margin: 0 auto; padding: 4px 26px 90px; }
+  .hero { display: flex; gap: 18px; align-items: center; padding: 20px 24px; margin-bottom: 18px; flex-wrap: wrap;
+    background: linear-gradient(110deg, rgba(124,92,255,.42), rgba(236,72,153,.3) 60%, rgba(45,212,191,.32)); }
+  .hero h2 { font: 700 26px var(--display); margin: 0; }
+  .hero p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+  .hero .go { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 18px; }
+  .kpi { padding: 14px 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+  .kpi b { display: block; font: 700 26px var(--display); letter-spacing: -.01em; }
+  .kpi span { font: 600 10.5px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .kpi small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; min-height: 17px; }
+  .kpi.money b { color: var(--done); } .kpi.wait b { color: var(--wait); } .kpi.lead b { color: var(--ip); } .kpi.late b { color: var(--gold); }
+  .kpi.wait.has { background: linear-gradient(140deg, rgba(251,113,133,.3), rgba(255,255,255,.06)); border-color: rgba(251,113,133,.55); }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .col { display: grid; gap: 18px; }
+  .box { padding: 18px 20px; }
+  .box > h3 { font: 700 15px var(--display); margin: 0 0 4px; display: flex; align-items: center; gap: 9px; }
+  .box > h3 .n { margin-left: auto; font: 600 12px var(--body); color: var(--muted); }
+  .box > .sub { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dc, var(--ip)); box-shadow: 0 0 10px var(--dc, var(--ip)); flex: none; }
+  .empty { color: var(--muted); padding: 10px 2px; font-size: 13px; }
+
+  .q { border: 1px solid var(--line); border-left: 4px solid var(--wait); border-radius: 14px; padding: 13px 14px; margin-bottom: 11px; background: var(--card-2); }
+  .q .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .q .top b { font-size: 14px; } .q .kind { font: 600 10px var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
+    background: rgba(255,255,255,.14); }
+  .q .when { margin-left: auto; color: var(--muted); font-size: 11.5px; }
+  .q textarea { width: 100%; margin: 9px 0; min-height: 96px; resize: vertical; padding: 10px 12px; border-radius: 11px; border: 1px solid var(--line);
+    background: rgba(8,6,30,.5); line-height: 1.5; font-size: 13px; }
+  .q textarea:focus { outline: none; border-color: var(--c); }
+  .q .how { color: var(--muted); font-size: 12px; margin-right: auto; }
+  .q .act { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .q .res { margin-top: 8px; font-size: 12.5px; color: var(--gold); }
+  .btn { padding: 8px 15px; border-radius: 11px; border: 1px solid var(--line-strong); background: rgba(255,255,255,.08); cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .btn:hover:not(:disabled) { background: rgba(255,255,255,.18); transform: translateY(-1px); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.yes { background: linear-gradient(100deg, #22c55e, #2dd4bf); border: 0; color: #03231a; }
+  .btn.no { color: #fecdd3; border-color: rgba(251,113,133,.5); }
+  .btn.main { background: linear-gradient(100deg, var(--a), var(--b)); border: 0; }
+  .btn.small { padding: 5px 10px; font-size: 12px; border-radius: 9px; }
+
+  .row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 10px 2px; border-top: 1px solid var(--line); }
+  .row:first-of-type { border-top: 0; }
+  .row .t { font-size: 13.5px; } .row .m { color: var(--muted); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+  .row .r { text-align: right; font-size: 12px; color: var(--muted); display: grid; gap: 5px; justify-items: end; }
+  .heat { display: inline-flex; gap: 3px; margin-top: 5px; } .heat i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.2); }
+  .heat i.on { background: var(--gold); box-shadow: 0 0 7px var(--gold); }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; border: 1px solid var(--pc, var(--line-strong)); color: var(--pc, var(--muted)); white-space: nowrap; }
+  .amt { font: 700 14px var(--display); color: var(--text); } .amt.in { color: var(--done); } .amt.late { color: var(--gold); } .amt.out { color: #fda4af; }
+  input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--c); margin-top: 2px; cursor: pointer; }
+  .add { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .add input, .add select { flex: 1; min-width: 90px; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--line); background: rgba(8,6,30,.45); }
+  .add input:focus, .add select:focus { outline: none; border-color: var(--c); }
+  .add select option { background: #1a1446; }
+  .review { white-space: pre-wrap; font-size: 13.5px; line-height: 1.6; }
+  .review h4 { font: 700 13px var(--display); margin: 12px 0 2px; color: #a5f3fc; }
+  .var { border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+  .var b { font-size: 13px; } .var p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; } .var .cnt { font: 700 20px var(--display); color: var(--done); }
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px); padding: 11px 18px; border-radius: 12px; background: rgba(20,16,56,.96);
+    border: 1px solid var(--line-strong); opacity: 0; transition: all .25s; pointer-events: none; max-width: 80vw; z-index: 50; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+  @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(3, 1fr); } .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 620px) { .kpis { grid-template-columns: repeat(2, 1fr); } main, header { padding-left: 14px; padding-right: 14px; } .tabs { margin-left: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/" title="Back to the Second Brain dashboard">← Second Brain</a>
+  <h1>Business <small>Nova runs the day-to-day — you approve</small></h1>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main id="main"><div class="glass box"><div class="empty">Loading…</div></div></main>
+<div class="toast" id="toast"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let DATA = { businesses: [] }, current = localStorage.getItem("nova.biz") || "", busy = false;
+const reviews = {};
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined);
+  return r.json();
+}
+function flash(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(flash.t); flash.t = setTimeout(() => t.classList.remove("show"), 3800); }
+const money = (b, n) => (b.currency || "R") + Math.round(n || 0).toLocaleString("en-ZA").replace(/,/g, " ");
+function ago(ts) {
+  const d = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (d < 90) return "just now"; if (d < 3600) return Math.round(d / 60) + " min ago"; if (d < 86400) return Math.round(d / 3600) + " h ago";
+  return Math.round(d / 86400) + " d ago";
+}
+const KIND = { reply: "Reply", email: "Email", "follow-up": "Follow-up", chase: "Payment reminder", post: "Post", page: "Web page", other: "For you" };
+const HOW = { gmail_send: "Approve = I send this email", gmail_reply: "Approve = I send this reply", gmail_draft: "Approve = I save it as a Gmail draft",
+  build_website: "Approve = I build the page and open a preview" };
+const LEAD = { new: ["New", "var(--wait)"], drafted: ["Reply drafted", "var(--gold)"], replied: ["Replied", "var(--done)"], won: ["Won", "var(--done)"], lost: ["Lost", "var(--muted)"] };
+
+function render() {
+  const all = DATA.businesses;
+  if (!all.length) {
+    $("tabs").innerHTML = "";
+    $("main").innerHTML = `<div class="glass box"><h3>No businesses yet</h3><p class="sub">Tell Nova: “add a business called Harbour Homes, website harbourhomes.example” — it gets its own tab here.</p></div>`;
+    return;
+  }
+  const b = all.find((x) => x.id === current) || all[0]; current = b.id; localStorage.setItem("nova.biz", current);
+  $("tabs").innerHTML = all.map((x) => `<button data-tab="${esc(x.id)}" class="${x.id === b.id ? "on" : ""}">${esc(x.name)}${x.kpi.waiting ? `<b>${x.kpi.waiting}</b>` : ""}</button>`).join("");
+  const k = b.kpi;
+  const queue = b.queue.map((q) => `<div class="q" data-q="${q.id}">
+      <div class="top"><span class="kind">${esc(KIND[q.kind] || q.kind)}</span><b>${esc(q.title)}</b><span class="when">#${q.id} · ${ago(q.ts)}</span></div>
+      <textarea spellcheck="true">${esc(q.body)}</textarea>
+      <div class="act"><span class="how">${esc(HOW[q.tool] || (q.kind === "post" ? "Copy and post it yourself, then Approve to tick it off"
+          : ["reply", "follow-up", "chase"].includes(q.kind) ? "No email address for them — send it yourself, then Approve to tick it off" : "Approve = ticked off as done"))}</span>
+        <button class="btn no" data-act="reject">Drop</button><button class="btn yes" data-act="approve">Approve</button></div>
+      ${q.result ? `<div class="res">${esc(q.result)}</div>` : ""}</div>`).join("");
+  const leads = b.leads.map((l) => { const [txt, col] = LEAD[l.status] || [l.status, "var(--muted)"];
+    return `<div class="row"><div><div class="heat" title="${l.score} out of 5">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= l.score ? "on" : ""}"></i>`).join("")}</div></div>
+      <div><div class="t"><b>${esc(l.name || "Someone")}</b>${l.contact ? ` · ${esc(l.contact)}` : ""}</div><div class="m">${esc((l.message || "").slice(0, 220))}</div></div>
+      <div class="r"><span class="pill" style="--pc:${col}">${txt}</span><span>${ago(l.ts)}</span>
+        ${["replied", "drafted", "new"].includes(l.status) ? `<span><button class="btn small" data-lead="${l.id}" data-to="won">Won</button> <button class="btn small" data-lead="${l.id}" data-to="lost">Lost</button></span>` : ""}</div></div>`; }).join("");
+  const today = new Date().toISOString().slice(0, 10);
+  const open = b.money.filter((m) => m.status === "open"), sales = b.money.filter((m) => m.kind === "sale");
+  const moneyRows = open.map((m) => { const late = m.kind === "owed_to_me" && m.due && m.due < today;
+    return `<div class="row"><span class="dot" style="--dc:${m.kind === "i_owe" ? "#fda4af" : late ? "var(--gold)" : "var(--done)"};margin-top:6px"></span>
+      <div><div class="t"><b>${esc(m.party)}</b> ${m.kind === "i_owe" ? "— you owe" : "— owes you"}</div><div class="m">${m.due ? (late ? "was due " : "due ") + esc(m.due) : "no due date"}${m.note ? " · " + esc(m.note) : ""}</div></div>
+      <div class="r"><span class="amt ${m.kind === "i_owe" ? "out" : late ? "late" : "in"}">${money(b, m.amount)}</span><button class="btn small" data-paid="${m.id}">Paid</button></div></div>`; }).join("")
+    + sales.slice(0, 5).map((m) => `<div class="row"><span class="dot" style="--dc:var(--done);margin-top:6px"></span><div><div class="t">Sale — ${esc(m.party || "customer")}</div><div class="m">${ago(m.ts)}</div></div><div class="r"><span class="amt in">${money(b, m.amount)}</span></div></div>`).join("");
+  const tasks = b.tasks.map((t) => `<div class="row"><input type="checkbox" data-task="${t.id}" title="Tick off"><div><div class="t">${esc(t.text)}</div></div><div class="r">${t.due ? esc(t.due) : ""}</div></div>`).join("");
+  const fups = b.followups.map((f) => `<div class="row"><span class="dot" style="--dc:${f.due <= today ? "var(--gold)" : "var(--ip)"};margin-top:6px"></span><div><div class="t"><b>${esc(f.who)}</b> — ${esc(f.what)}</div><div class="m">${f.status === "queued" ? "message drafted — in the queue" : "I draft the message on " + esc(f.due)}</div></div><div class="r"><button class="btn small" data-fup="${f.id}">Done</button></div></div>`).join("");
+  const rules = b.rules.map((r) => `<div class="row"><input type="checkbox" data-rule="${r.id}" ${r.enabled ? "checked" : ""} title="On / off"><div><div class="t">${esc(r.says)}</div></div><div class="r"><button class="btn small no" data-rule-del="${r.id}">Remove</button></div></div>`).join("");
+  const offers = b.offers.map((o) => `<div style="margin-bottom:12px"><div class="t"><b>${esc(o.name)}</b></div>${o.variants.map((v, i) => `<div class="var"><div><b>${i + 1}. ${esc(v.label)}</b><p>${esc(v.text)}</p></div><div style="text-align:center"><div class="cnt">${v.responses}</div><button class="btn small" data-offer="${i + 1}">+1</button></div></div>`).join("")}</div>`).join("");
+  const rv = reviews[b.id];
+  $("main").innerHTML = `
+    <section class="hero glass"><div><h2>${esc(b.name)}</h2><p>${b.url ? `<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.url.replace(/^https?:\/\//, ""))}</a> · ` : ""}${esc(b.about || "")}</p></div>
+      <div class="go"><button class="btn" data-go="scan" title="Look in Gmail for new enquiries now">Check for enquiries</button><button class="btn main" data-go="review">This week's review</button></div></section>
+    <section class="kpis">
+      <div class="kpi money"><span>Sales this week</span><b>${money(b, k.sales_week)}</b><small>${money(b, k.sales_month)} this month</small></div>
+      <div class="kpi wait ${k.waiting ? "has" : ""}"><span>Waiting for your yes</span><b>${k.waiting}</b><small>${k.waiting ? "see the queue below" : "all clear"}</small></div>
+      <div class="kpi lead"><span>Open enquiries</span><b>${k.leads_open}</b><small>${k.leads_week} new this week</small></div>
+      <div class="kpi money"><span>Owed to you</span><b>${money(b, k.owed)}</b><small>${k.i_owe ? "you owe " + money(b, k.i_owe) : ""}</small></div>
+      <div class="kpi late"><span>Overdue</span><b>${money(b, k.overdue)}</b><small>${k.overdue_n ? k.overdue_n + " invoice" + (k.overdue_n === 1 ? "" : "s") : "nothing late"}</small></div>
+      <div class="kpi"><span>Open tasks</span><b>${k.tasks_open}</b><small></small></div>
+    </section>
+    <div class="grid"><div class="col">
+      <section class="glass box"><h3><span class="dot" style="--dc:var(--wait)"></span>Waiting for your yes<span class="n">${b.queue.length}</span></h3>
+        <p class="sub">Nothing goes out until you approve it. Change the wording first if you like.</p>${queue || `<div class="empty">Nothing is waiting on you. 🎉</div>`}</section>
+      <section class="glass box"><h3><span class="dot" style="--dc:var(--ip)"></span>Enquiries<span class="n">${b.leads.length}</span></h3>
+        <p class="sub">Logged from Gmail or told to Nova, scored 1–5, each with a drafted reply.</p>${leads || `<div class="empty">No enquiries yet. Tell Nova “new enquiry for ${esc(b.name)} from …”, or add one here.</div>`}
+        <div class="add"><input id="l-name" placeholder="Name"><input id="l-contact" placeholder="Email or phone"><input id="l-msg" placeholder="What they asked" style="flex:3"><button class="btn" data-go="lead">Add</button></div></section>
+      ${rv !== undefined ? `<section class="glass box"><h3><span class="dot" style="--dc:#a5f3fc"></span>This week's review</h3><div class="review">${rv === null ? `<div class="empty">Writing it…</div>` : esc(rv).replace(/^## (.+)$/gm, "<h4>$1</h4>")}</div></section>` : ""}
+    </div><div class="col">
+      <section class="glass box"><h3><span class="dot" style="--dc:var(--done)"></span>Money<span class="n">${open.length} open</span></h3>
+        <p class="sub">Sales, who owes you, what you owe.</p>${moneyRows || `<div class="empty">Nothing recorded yet.</div>`}
+        <div class="add"><select id="m-kind"><option value="sale">Sale</option><option value="owed_to_me">Owes me</option><option value="i_owe">I owe</option></select><input id="m-party" placeholder="Who"><input id="m-amt" placeholder="Amount" inputmode="decimal" style="max-width:110px"><input id="m-due" placeholder="Due (e.g. Friday)" style="max-width:150px"><button class="btn" data-go="money">Add</button></div></section>
+      <section class="glass box"><h3><span class="dot" style="--dc:var(--c)"></span>Tasks<span class="n">${b.tasks.length}</span></h3>${tasks || `<div class="empty">No open tasks.</div>`}
+        <div class="add"><input id="t-text" placeholder="New task" style="flex:3"><button class="btn" data-go="task">Add</button></div></section>
+      <section class="glass box"><h3><span class="dot" style="--dc:var(--gold)"></span>Follow-ups<span class="n">${b.followups.length}</span></h3>${fups || `<div class="empty">None. Tell Nova “follow up with … about … on Friday”.</div>`}</section>
+      <section class="glass box"><h3><span class="dot" style="--dc:var(--b)"></span>Standing instructions<span class="n">${b.rules.length}</span></h3>
+        <p class="sub">What Nova does by herself for this business. Untick to pause one.</p>${rules || `<div class="empty">None yet. Tell Nova e.g. “standing instruction for ${esc(b.name)}: chase unpaid invoices after 7 days”.</div>`}</section>
+      ${offers ? `<section class="glass box"><h3><span class="dot" style="--dc:var(--a)"></span>Offer tests</h3><p class="sub">Count a response for the version it came from.</p>${offers}</section>` : ""}
+    </div></div>`;
+  document.querySelectorAll(".q textarea").forEach(grow);          // show the whole draft, not a scrolling slit
+}
+function grow(t) { t.style.height = "auto"; t.style.height = Math.min(420, t.scrollHeight + 4) + "px"; }
+document.addEventListener("input", (e) => { if (e.target.matches?.(".q textarea")) grow(e.target); });
+
+async function load(quiet) {
+  if (busy) return;
+  if (quiet && document.activeElement && ["TEXTAREA", "INPUT", "SELECT"].includes(document.activeElement.tagName)) return;   // don't redraw under your typing
+  try { DATA = await api("/api/business"); render(); } catch { if (!quiet) flash("Nova is offline."); }
+}
+async function act(body, okMsg) {
+  busy = true;
+  try { const r = await api("/api/business/act", { biz: current, ...body }); flash(r.message || okMsg || "Done."); return r; }
+  catch { flash("That didn't go through — is Nova running?"); return {}; }
+  finally { busy = false; await load(); }
+}
+$("tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) { current = b.dataset.tab; render(); } });
+$("main").addEventListener("click", async (e) => {
+  const q = e.target.closest("[data-act]");
+  if (q) { const card = q.closest(".q"), id = +card.dataset.q; card.querySelectorAll("button").forEach((x) => x.disabled = true);
+    return act({ action: q.dataset.act, id, body: card.querySelector("textarea").value }, q.dataset.act === "approve" ? "Approved." : "Dropped."); }
+  const t = e.target;
+  if (t.dataset.paid) return act({ action: "paid", id: +t.dataset.paid }, "Marked as paid.");
+  if (t.dataset.lead) return act({ action: "lead_status", id: +t.dataset.lead, status: t.dataset.to });
+  if (t.dataset.fup) return act({ action: "followup_done", id: +t.dataset.fup });
+  if (t.dataset.ruleDel) { if (confirm("Remove this standing instruction?")) act({ action: "rule_delete", id: +t.dataset.ruleDel }); return; }
+  if (t.dataset.offer) return act({ action: "offer", version: t.dataset.offer });
+  const go = t.closest("[data-go]")?.dataset.go, v = (id) => ($(id)?.value || "").trim();
+  if (go === "scan") { flash("Checking Gmail…"); return act({ action: "scan" }); }
+  if (go === "review") { reviews[current] = null; render(); const r = await api("/api/business/review?biz=" + encodeURIComponent(current)); reviews[current] = r.text || "Nothing to review yet."; return render(); }
+  if (go === "lead") { if (!v("l-name") && !v("l-msg")) return flash("Give me a name or what they asked."); return act({ action: "lead_add", name: v("l-name"), contact: v("l-contact"), message: v("l-msg") }); }
+  if (go === "money") { const n = parseFloat(v("m-amt").replace(/[^\d.]/g, "")); if (!n) return flash("How much?"); return act({ action: "money_add", kind: v("m-kind"), party: v("m-party"), amount: n, due: v("m-due") }); }
+  if (go === "task") { if (!v("t-text")) return; return act({ action: "task_add", text: v("t-text") }); }
+});
+$("main").addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset.task) act({ action: "task_done", id: +t.dataset.task }, "Ticked off.");
+  if (t.dataset.rule) act({ action: "rule_toggle", id: +t.dataset.rule, enabled: t.checked });
+});
+$("main").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") e.target.closest(".add")?.querySelector("button")?.click(); });
+load(); setInterval(() => load(true), 20000);
+</script>
+</body>
+</html>

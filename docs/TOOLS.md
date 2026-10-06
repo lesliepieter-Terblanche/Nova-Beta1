@@ -342,6 +342,30 @@ Offered to the model when you say things like: _self review, self-review, review
 | `approve_playbook` | Approve a playbook Nova drafted, so she follows it from now on. | `name`? |
 | `drop_playbook_draft` | Drop a playbook draft the user doesn't want. Nova won't propose that job again. | `name`? |
 
+## business
+
+Offered to the model when you say things like: _business, businesses, cockpit, enquiry, enquiries, inquiry, new lead, leads, made a sale, sold a, invoice, owes me_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `business_overview` | How a business is doing right now: sales this week, open enquiries, open tasks, money owed and what is waiting for the user's yes. With no name, every business. | `business`? |
+| `add_business` | Add a business for Nova to help run (or update one). | `name`, `website`?, `about`?, `inbox_search`? |
+| `validate_business_idea` | Research a business idea — demand, competitors, pricing, risks — and give a one-page GO / NO-GO with the sources. Takes a minute. | `idea`, `market`? |
+| `launch_kit` | Make a launch kit for a business: tagline and positioning, brand colours, a landing-page brief, a week of posts, a 20-second reel storyboard and a launch email. Everything sendable goes to the approval queue. | `business`, `brief`? |
+| `offer_test` | Write a few different versions of an offer to try against each other. Responses are then counted per version with count_offer_response. | `business`, `offer` |
+| `count_offer_response` | Count a response (a reply, a sign-up, a sale) for one version of the running offer test, and say which leads. | `business`, `version`, `count`? |
+| `add_enquiry` | Log a new enquiry or lead for a business. Nova scores it and drafts a reply for the approval queue. | `business`, `name`, `message`, `contact`? |
+| `check_enquiries` | Look in Gmail for new enquiries for the businesses, log them and draft replies for approval. | `business`? |
+| `record_money` | Record money for a business: a sale that came in, an invoice someone owes, or a bill to pay. | `business`, `kind`, `party`, `amount`, `due`?, `note`? |
+| `mark_as_paid` | Mark an open invoice or bill as paid. A paid invoice is counted as a sale. | `business`, `party` |
+| `business_task` | Add a task for a business, or tick one off. | `business`, `task`, `done`?, `due`? |
+| `approval_queue` | What is waiting for the user's yes: replies, emails, follow-ups, payment reminders, posts and pages Nova has prepared for the businesses. | `business`? |
+| `approve_and_send` 🔒 | Approve an item from the approval queue: Nova then sends or does it (an email, a reply, a page…). Use only when the user clearly says to approve it. | `item`?, `edited_text`? |
+| `drop_queue_item` | Drop an item from the approval queue without sending it. | `item`? |
+| `standing_instruction` | Give Nova a standing instruction for a business that she carries out by herself, e.g. "answer every new enquiry with the price list", "chase unpaid invoices after 7 days", "every week draft three post ideas". | `business`, `when`, `instruction`, `after_days`?, `send_without_asking`?, `max_per_day`? |
+| `follow_up` | Remember to follow up with someone. When it is due Nova drafts the message for the approval queue. | `business`, `who`, `about`, `when`?, `contact`? |
+| `business_review` | The weekly review of a business: what moved, what stalled, and the three things to do next. | `business`? |
+
 ## web_agent
 
 Offered to the model when you say things like: _web agent, browser agent, on the website, on the site, portal, go to the site, fill in the form, fill out, find me the cheapest, compare prices, book a, look up on_

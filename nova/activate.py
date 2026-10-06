@@ -83,6 +83,27 @@ def add_playwright(cfg) -> bool:
 
 
 ADDONS = [("windows", "Windows control"), ("excel", "Excel"), ("elevenlabs", "ElevenLabs studio")]   # v2.34.2
+# v2.36: the first two businesses on the Business dashboard, each with two approve-first standing instructions
+BUSINESSES = [
+    ("TrueHome", "https://www.truehome.co.za",
+     "South African property sales and rental platform for buyers, renters, private sellers, landlords and estate "
+     "agents. Earns from agent listing fees and private seller fees."),
+    ("TackleTrail", "https://www.tackletrail.co.za",
+     "South African outdoor adventure platform: fishing and outdoor spots on a map, a community forum and a shop. "
+     "Growing traffic and member registrations."),
+]
+
+
+def set_up_businesses() -> list[str]:
+    """Add the first businesses (only when none exist yet). Returns the names added."""
+    from . import business
+    if business.businesses():
+        return []
+    for name, url, about in BUSINESSES:
+        b = business.add_business(name, url, about)
+        business.add_rule(b["id"], "new_lead", "Thank them, answer what they asked, and offer one clear next step.")
+        business.add_rule(b["id"], "invoice_overdue", "Polite and firm; ask for a payment date.", after_days=7)
+    return [name for name, _, _ in BUSINESSES]
 
 
 def switch_on_addon(cfg, name: str) -> bool:
@@ -130,6 +151,14 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
                 said.append("Playwright browser control is on — say \"use Playwright to…\".")
         except Exception as e:
             print(f"[activate] Playwright not added: {e}")
+    if not done.get("businesses"):
+        try:
+            added = set_up_businesses()
+            done["businesses"] = True
+            if added:
+                said.append(f"The Business dashboard is ready (💼 on the main one) with {' and '.join(added)}.")
+        except Exception as e:
+            print(f"[activate] businesses not set up: {e}")
     if not done.get("addons"):
         try:
             on = [title for name, title in ADDONS if switch_on_addon(cfg, name)]

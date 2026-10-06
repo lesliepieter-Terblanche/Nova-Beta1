@@ -327,6 +327,8 @@ def main() -> None:
     try:
         from nova import reports
         reports.start()                  # Friday's weekly report and Sunday's activity review
+        from nova import business
+        business.start()                 # enquiries, standing instructions and follow-ups for your businesses
     except Exception as e:
         print(f"[reports] not started: {e}")
     try:

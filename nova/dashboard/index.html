@@ -1021,6 +1021,7 @@
     <button class="gear glass" id="focus-btn" title="Focus mode — one thing at a time (F)" aria-label="Focus mode" style="border:1px solid var(--line);cursor:pointer;font-size:20px;color:var(--text)">◎</button>
     <button class="gear glass" id="ph-open" hidden title="Your phone: battery, storage, ring, where, screenshot, routines" aria-label="Phone card" style="border:1px solid var(--line);cursor:pointer;font-size:18px;color:var(--text);position:relative">📱<span class="phpip" id="ph-pip"></span></button>
     <button class="gear glass" id="phone-btn" title="Open Nova on your phone (Tailscale)" aria-label="Open on phone" style="border:1px solid var(--line);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
+    <a class="gear glass" id="biz-link" href="/business" title="Business dashboard — sales, enquiries, money and what's waiting for your yes" aria-label="Business dashboard" style="font-size:19px;text-decoration:none;position:relative">💼<b id="biz-n" hidden style="position:absolute;top:-5px;right:-5px;min-width:18px;padding:0 5px;border-radius:999px;background:var(--st-wait,#fb7185);color:#3b0613;font:700 11px/18px var(--body);text-align:center"></b></a>
     <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
   </div>
 </header>
@@ -1289,7 +1290,8 @@ function renderTree() {
   const hr = new Date().getHours(), hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
   // waiting on you = the red rows on the map plus everything else Nova is waiting for (held sends, filing, drafts…)
   const onMap = new Set(lists.wt.map((r) => r.id));
-  for (const b of data.bottlenecks || []) if (!b.id || !onMap.has(b.id)) { lists.wt.push({ ...(b.id && nodeById.get(b.id) || {}), bneck: b }); if (b.id) onMap.add(b.id); }
+  for (const b of data.bottlenecks || []) if (!b.id || b.id === "business" || !onMap.has(b.id)) {      // each business item is its own row
+    lists.wt.push({ ...(b.id && nodeById.get(b.id) || {}), bneck: b }); if (b.id && b.id !== "business") onMap.add(b.id); }
   STATUS_LISTS = lists;
   const ip = lists.ip.length, wt = lists.wt.length;
   const line = [ip ? `${ip} thing${ip === 1 ? "" : "s"} in progress` : "", wt ? `${wt} waiting on you` : "Nothing is waiting on you"].filter(Boolean).join(" · ");
@@ -1415,6 +1417,8 @@ function renderBottlenecks() {
   el.classList.toggle("has", list.length > 0);
   document.body.classList.toggle("has-bneck", list.length > 0);
   $("bneck-n").textContent = list.length;
+  const bizN = list.filter((b) => b.id === "business").length;            // what waits for your yes on the Business dashboard
+  $("biz-n").hidden = !bizN; $("biz-n").textContent = bizN;
   $("bneck-list").innerHTML = list.length ? list.map((b, i) =>
     `<li data-i="${i}" class="${b.id ? "link" : ""}"><span class="dm">${b.domain === DOMAINS[0] ? "Personal" : "Work"}</span><span class="t">${esc(b.text)}${b.why ? `<small>${esc(b.why)}</small>` : ""}</span></li>`).join("")
     : `<li class="none">Nothing is waiting on you.</li>`;
@@ -1430,6 +1434,7 @@ function renderBottlenecks() {
 function openBottleneck(i) {
   const b = (data.bottlenecks || [])[i]; if (!b?.id) return;
   if (b.id === "filing") return loadFiling(true);
+  if (b.id === "business") { location.href = "/business"; return; }
   const n = nodeById.get(b.id); if (n) { flyTo(n); select(n); } else openById(b.id);
 }
 $("bneck-list").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) openBottleneck(+li.dataset.i); });
@@ -2137,7 +2142,7 @@ function renderStatusList(v) {
     const st = n.status || (b ? "WAITING-ON-USER" : "");
     const sc = { "IN-PROGRESS": "var(--st-ip)", "WAITING-ON-USER": "var(--st-wait)", "COMPLETED": "var(--st-done)", "BACKLOG": "#a0b0d8" }[st];   // the same colours as the map
     const pill = st ? `<span class="pill" style="color:${sc};border-color:${sc}">${PILL[st].replace(/^[●✓○] /, "")}</span>` : "";
-    const attr = id === "filing" ? `data-filing="1"` : id ? `data-id="${esc(id)}"` : `disabled style="cursor:default"`;
+    const attr = id === "filing" ? `data-filing="1"` : id === "business" ? `data-business="1"` : id ? `data-id="${esc(id)}"` : `disabled style="cursor:default"`;
     return `<button class="row" ${attr} style="--c:${color}${id ? "" : ";cursor:default"}"><i></i><div><div class="tt">${esc(name)}</div>
       <div class="mm">${esc(what)} · ${side}${proj}${n.created ? ` · <span title="${esc(n.created)}">${ago(n.created)}</span>` : ""}</div>
       ${why ? `<div class="mm" style="color:var(--st-wait)">→ ${esc(why)}</div>` : ""}</div><div class="rt">${pill}</div></button>`;
@@ -2406,6 +2411,7 @@ $("p-body").addEventListener("click", (e) => {
     return;
   }
   if (e.target.closest("[data-filing]")) return loadFiling(true);
+  if (e.target.closest("[data-business]")) { location.href = "/business"; return; }
   const st = e.target.closest("button[data-st]"); if (st) { view.kind = st.dataset.st; $("p-body").scrollTop = 0; return renderView(); }
   const b = e.target.closest("[data-id]");
   if (b) { e.preventDefault(); openItem(b.dataset.id, true); }

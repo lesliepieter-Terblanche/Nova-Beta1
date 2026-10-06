@@ -1053,6 +1053,13 @@ def bottlenecks() -> list[dict]:
     except Exception:
         pass
     try:
+        from . import business
+        names = {b["id"]: b["name"] for b in business.businesses()}
+        out += [{"id": "business", "text": f"{names.get(q['biz'], q['biz'])}: {q['title']}", "domain": WORK,
+                 "why": "approve or drop it on the Business dashboard"} for q in business.pending()[:12]]
+    except Exception:
+        pass
+    try:
         from . import evolve
         out += [{"id": "", "text": f"Playbook draft: {d['name']}", "domain": WORK,
                  "why": f"say “approve the playbook {d['name']}” or “drop the playbook {d['name']}”"}

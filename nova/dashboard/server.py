@@ -64,7 +64,7 @@ STEP_LABEL = {"user": "You asked", "reply": "Nova replied", "tool": "Action", "m
 SKILL_TITLES = {"system": "PC control", "memory": "Second brain", "files": "Files & folders", "web": "Web & websites",
                 "browser": "Browser control", "google_ws": "Google Workspace", "media": "Video & media",
                 "camera_ads": "Webcam & ads", "meetings": "Meeting recorder", "weather": "Weather",
-                "maintenance": "Updates & upkeep", "currency": "Currency", "globe": "God's Eye View globe"}
+                "maintenance": "Updates & upkeep", "currency": "Currency"}
 
 
 def _dream_state() -> dict:
@@ -972,8 +972,6 @@ class Dashboard:
                             return self._json(weather.fetch(""))
                         cached = json.loads(latest.read_text(encoding="utf-8"))
                         return self._json(weather.fetch(cached["place"]) if q.get("refresh") else cached)
-                    if u.path in ("/globe", "/globe.html"):
-                        return self._file(HERE / "globe.html")
                     if u.path == "/api/gesture":
                         from ..gestures import engine
                         e = engine()
@@ -1044,9 +1042,6 @@ class Dashboard:
                         st = remote.finish_setup() if q.get("fresh") else remote.status()
                         return self._json({**st, "qr": remote.qr_svg(st["url"]) if st["url"] else "",
                                            "here": self.headers.get("Host", "")})
-                    if u.path == "/api/globe/status":
-                        from ..skills import globe
-                        return self._json(globe.status())
                     if u.path in ("/settings", "/settings.html"):
                         return self._file(HERE / "settings.html")
                     if u.path == "/api/settings":
@@ -1235,13 +1230,6 @@ class Dashboard:
                         if not self.headers.get("Host", "").lower().startswith(("localhost", "127.0.0.1")):
                             return self._json({"ok": False, "message": "Change remote access from the PC itself."}, 403)
                         return self._json(remote.enable() if body.get("on") else remote.disable())
-                    if self.path == "/api/globe/start":
-                        from ..skills import globe
-                        msg = globe.start(wait=90)
-                        return self._json({"message": msg, "running": globe.running()})
-                    if self.path == "/api/globe/install":
-                        from ..skills import globe
-                        return self._json({"message": globe.install()})
                     if self.path == "/api/phone/do":             # the phone card's buttons
                         from ..tools import REGISTRY
                         what = str(body.get("do", ""))

@@ -31,8 +31,19 @@ SECRETS = [
      "help": "Free — smart model + vision", "link": "https://aistudio.google.com/apikey", "test": "gemini"},
     {"key": "GROQ_API_KEY", "label": "Groq API key", "group": "AI models",
      "help": "Free — very fast backup model (starts with gsk_)", "link": "https://console.groq.com/keys", "test": "groq"},
+    {"key": "CEREBRAS_API_KEY", "label": "Cerebras API key", "group": "AI models",
+     "help": "Free — the fastest replies (starts with csk-)", "link": "https://cloud.cerebras.ai", "test": "cerebras"},
+    {"key": "MISTRAL_API_KEY", "label": "Mistral API key", "group": "AI models",
+     "help": "Free 'Experiment' plan — a large monthly allowance, good for long writing",
+     "link": "https://console.mistral.ai/api-keys", "test": "mistral"},
+    {"key": "GITHUB_MODELS_TOKEN", "label": "GitHub Models token", "group": "AI models",
+     "help": "Free with your GitHub account — a fine-grained token with the 'Models' permission (read)",
+     "link": "https://github.com/settings/personal-access-tokens/new", "test": "github"},
     {"key": "XAI_API_KEY", "label": "xAI Grok API key", "group": "AI models",
      "help": "Paid — Grok models (starts with xai-)", "link": "https://console.x.ai", "test": "xai"},
+    {"key": "POSTIZ_API_KEY", "label": "Postiz API key", "group": "Social media",
+     "help": "Postiz → Settings → Public API. Lets Nova schedule posts (she always asks first)",
+     "link": "https://docs.postiz.com/public-api/introduction", "test": "postiz"},
     {"key": "NOVA_BACKUP_PASSPHRASE", "label": "Backup passphrase", "group": "Backups",
      "help": "Encrypts the nightly backups. Made for you if empty — keep a copy, you need it to restore"},
     {"key": "TELEGRAM_BOT_TOKEN", "label": "Telegram bot token", "group": "Remote",
@@ -137,14 +148,21 @@ SCHEMA = [
         {"path": "tts.kokoro.speed", "label": "Kokoro speed", "type": "number", "min": 0.7, "max": 1.4, "step": 0.05},
     ]},
     {"id": "brain", "title": "AI brain", "icon": "brain", "fields": [
-        {"path": "llm.primary", "label": "Everyday model", "type": "select", "options": ["ollama", "gemini", "groq", "xai"],
-         "help": "ollama = private and free but slower on a 4 GB card; gemini/groq = much faster replies"},
-        {"path": "llm.smart", "label": "Smart models (in order)", "type": "list", "help": "One per line, e.g. gemini, groq, xai"},
+        {"path": "llm.primary", "label": "Everyday model", "type": "select", "options": ["ollama", "gemini", "groq", "cerebras", "mistral", "github", "xai"],
+         "help": "ollama = private and free but slower on a 4 GB card; gemini/groq/cerebras = much faster replies"},
+        {"path": "llm.smart", "label": "Smart models (in order)", "type": "list",
+         "help": "One per line: gemini, groq, cerebras, mistral, github, xai. When one runs out of free use, the next answers"},
         {"path": "llm.providers.ollama.model", "label": "Local model (Ollama)", "type": "text"},
         {"path": "llm.providers.gemini.model", "label": "Gemini model", "type": "select",
          "options": ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"], "free": True},
         {"path": "llm.providers.groq.model", "label": "Groq model", "type": "text", "default": "auto",
          "help": "auto = Nova picks the best model your key can use (and switches when Groq retires one)"},
+        {"path": "llm.providers.cerebras.model", "label": "Cerebras model", "type": "text", "default": "auto",
+         "help": "auto = Nova picks the best model your key can use"},
+        {"path": "llm.providers.mistral.model", "label": "Mistral model", "type": "text", "default": "mistral-small-latest",
+         "help": "e.g. mistral-small-latest, mistral-medium-latest, mistral-large-latest"},
+        {"path": "llm.providers.github.model", "label": "GitHub Models model", "type": "text",
+         "default": "openai/gpt-4o-mini", "help": "publisher/model, e.g. openai/gpt-4o-mini or openai/gpt-4.1"},
         {"path": "llm.providers.xai.model", "label": "Grok model", "type": "text", "default": "auto",
          "help": "auto, or e.g. grok-4-fast"},
         {"path": "llm.keep_alive", "label": "Keep local model loaded", "type": "select", "default": "24h",
@@ -178,11 +196,16 @@ SCHEMA = [
     {"id": "files", "title": "Files & web", "icon": "folder", "fields": [
         {"path": "files.allowed_roots", "label": "Folders Nova may use", "type": "list", "help": "One folder per line"},
         {"path": "web.searxng_url", "label": "SearXNG URL (private search)", "type": "text", "help": "e.g. http://localhost:8888"},
+        {"path": "social.postiz_url", "label": "Postiz address (social media posting)", "type": "text",
+         "default": "https://api.postiz.com/public/v1",
+         "help": "Your own Postiz, e.g. http://localhost:4007/api — or the cloud address. See docs/POSTIZ.md"},
         {"path": "media.captions", "label": "Captions in videos", "type": "bool"},
         {"path": "media.broll", "label": "Stock footage in videos (Pexels)", "type": "bool"},
         {"path": "media.look", "label": "Cinematic look on narrated videos", "type": "select", "default": "",
          "options": ["", "teal_orange", "warm_film", "moody", "golden_hour", "noir", "clean"],
          "help": "Colour grade, vignette and film grain. Empty = off."},
+        {"path": "media.upscale", "label": "Sharpen small photos in reels (Real-ESRGAN)", "type": "select", "default": "auto",
+         "options": ["auto", "off"], "help": "Free, on the graphics card. Downloads once (45 MB)."},
         {"path": "media.image_gen_enabled", "label": "Local image generation", "type": "bool", "help": "Needs requirements-imagegen.txt"},
     ]},
     {"id": "gestures", "title": "Gestures", "icon": "hand", "fields": [
@@ -389,12 +412,6 @@ SCHEMA = [
         {"path": "presence.lock_after_seconds", "label": "Lock after (seconds away)", "type": "number", "min": 30,
          "max": 3600, "default": 120},
     ]},
-    {"id": "globe", "title": "God's Eye View", "icon": "globe", "fields": [
-        {"path": "globe.auto_start", "label": "Start the globe with Nova", "type": "bool", "default": False,
-         "help": "Otherwise it starts the first time you ask for it"},
-        {"path": "globe.port", "label": "Port", "type": "number", "min": 1024, "max": 65535, "default": 4173},
-        {"path": "globe.dir", "label": "Install folder", "type": "text", "default": "tools/gods-eye-view"},
-    ]},
     {"id": "appearance", "title": "Appearance", "icon": "palette", "fields": [
         {"path": "dashboard.theme.accent", "label": "Accent colour", "type": "color", "default": "#8b7bff"},
         {"path": "dashboard.theme.accent2", "label": "Second accent", "type": "color", "default": "#4cc9f0"},
@@ -567,6 +584,12 @@ MCP_CATALOG = [
      "spec": {"command": "uvx", "args": ["elevenlabs-mcp"], "env": {"ELEVENLABS_API_KEY": "${ELEVENLABS_API_KEY}",
                                                                      "ELEVENLABS_MCP_BASE_PATH": "{workspace}/audio"},
               "confirm": "auto", "keywords": ["sound effect", "voice design", "clone voice", "elevenlabs", "design a voice"]}},
+    {"name": "playwright", "title": "Playwright browser", "desc": "A second, sturdier way to work websites: opens "
+     "pages, clicks, fills in forms and reads them by their structure, not screenshots (Microsoft, needs Node.js 18+)",
+     "spec": {"command": "npx", "args": ["-y", "@playwright/mcp@latest", "--browser", "msedge",
+                                         "--user-data-dir", "{workspace}/.playwright-profile"], "timeout": 300,
+              "confirm": "auto", "keywords": ["playwright", "fill in the form", "fill out the form", "web form",
+                                              "log in to the site", "sign in to the site"]}},
     {"name": "youtube", "title": "YouTube transcripts", "desc": "Read any YouTube video's transcript — "
      "'summarise this video'", "spec": {"command": "uvx", "args": ["mcp-youtube-transcript"], "confirm": "never",
                                   "keywords": ["youtube", "video transcript", "summarise this video", "summarize this video"]}},
@@ -798,7 +821,7 @@ def run_test(kind: str) -> dict:
     cfg = load_config()
     env = read_env()
     try:
-        if kind in ("ollama", "gemini", "groq", "xai"):
+        if kind in ("ollama", "gemini", "groq", "xai", "cerebras", "mistral", "github"):
             import time
 
             from .llm import Provider, provider_config
@@ -814,7 +837,7 @@ def run_test(kind: str) -> dict:
             if kind == "xai" and key.startswith("gsk_"):
                 return {"ok": False, "message": "That's a Groq key (starts with gsk_). Paste it in the "
                         "'Groq API key' box instead — xAI keys start with xai-."}
-            prov = Provider(kind, p["base_url"], p["model"], key, 30)
+            prov = Provider(kind, p["base_url"], p["model"], key, 30, p.get("catalog_url", ""))
             t = time.perf_counter()
             reply = prov.chat([{"role": "user", "content": "Reply with just: OK"}])
             secs = time.perf_counter() - t
@@ -823,6 +846,15 @@ def run_test(kind: str) -> dict:
                 apply({"values": {f"llm.providers.{kind}.model": prov.model}})
                 msg += f" ('{prov.switched_from}' was retired by {kind}, so I switched to {prov.model} and saved it.)"
             return {"ok": True, "message": msg}
+        if kind == "postiz":
+            from .skills import social
+            os.environ["POSTIZ_API_KEY"] = env.get("POSTIZ_API_KEY", "")
+            try:
+                have = social.channels()
+            except RuntimeError as e:
+                return {"ok": False, "message": str(e)[:1].upper() + str(e)[1:] + "."}
+            return {"ok": True, "message": (f"Connected. {len(have)} channel(s): " + ", ".join(social.label(c) for c in have))
+                    if have else "Connected, but no social accounts are added in Postiz yet."}
         if kind == "telegram":
             token = env.get("TELEGRAM_BOT_TOKEN", "")
             if not token:
@@ -874,8 +906,7 @@ def run_test(kind: str) -> dict:
                 return {"ok": True, "message": remote.disable()["message"]}
             st = remote.status(fresh=True)
             if st["url"]:
-                return {"ok": True, "message": f"On — open {st['url']} on your phone (Tailscale on)."
-                        + (f" Globe: {st['globe_url']}" if st["globe_url"] else "")}
+                return {"ok": True, "message": f"On — open {st['url']} on your phone (Tailscale on)."}
             return {"ok": st["running"], "message": st["message"] or "Tailscale is connected but not serving Nova yet."}
         if kind in ("loadshedding", "news"):
             import importlib.util
@@ -968,21 +999,6 @@ def run_test(kind: str) -> dict:
             if not s["enabled"]:
                 return {"ok": False, "message": msg}
             return {"ok": True, "message": f"{msg} Watch the preview on the dashboard (click the ✋ chip)."}
-        if kind == "globe":
-            from .skills import globe
-            st = globe.status()
-            if not st["node_ok"]:
-                return {"ok": False, "message": st["node"]}
-            if st["installing"]:
-                return {"ok": True, "message": "Installing now — see data/logs/globe.log."}
-            if not st["installed"]:
-                return {"ok": False, "message": f"Node {st['node']} is fine, but God's Eye View isn't installed yet — "
-                        "click Install, or say 'install God's Eye View'."}
-            return {"ok": True, "message": f"Installed (Node {st['node']}), "
-                    + (f"running at {st['url']}." if st["running"] else "not running — it starts when you ask for it.")}
-        if kind == "globe_install":
-            from .skills import globe
-            return {"ok": True, "message": globe.install()}
         if kind == "google":
             from .skills import google_ws
             if not (ROOT / "secrets" / "token.json").exists():

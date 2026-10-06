@@ -134,7 +134,6 @@ run.bat --check
 | Set up asks to enable HTTPS | Click the link it shows (Tailscale admin → DNS → enable MagicDNS + HTTPS Certificates), then Set up again. |
 | Phone can't open the address | Tailscale must be switched **on** in the phone app, and Nova running on the PC. |
 | 403 on the phone | Update Nova (the PC's Tailscale name is allowed automatically since 2.2). |
-| Globe doesn't open on the phone | Start it once on the PC (🌐), then use the `:8443` address. |
 
 ## Backups & dreaming
 

@@ -60,13 +60,13 @@ def test_needs_login(nova, ts):
     assert not remote.enable()["ok"]
 
 
-def test_enable_serves_dashboard_and_globe_then_disable(nova, ts):
+def test_enable_serves_dashboard_then_disable(nova, ts):
     st = remote.status(fresh=True)
     assert st["running"] and st["dns_name"] == "alex-pc.tail1234.ts.net" and not st["serving"]
     r = remote.enable()
     assert r["ok"] and r["url"] == "https://alex-pc.tail1234.ts.net/"
-    assert r["globe_url"] == "https://alex-pc.tail1234.ts.net:8443/"
-    assert ts["served"] == {"443": "http://127.0.0.1:8765", "8443": "http://127.0.0.1:4173"}
+    assert "globe_url" not in r                                   # God's Eye View is gone (v2.34)
+    assert ts["served"] == {"443": "http://127.0.0.1:8765"}
     assert remote.allowed_host("alex-pc.tail1234.ts.net") and remote.allowed_host("ALEX-PC.tail1234.ts.net:443")
     assert not remote.allowed_host("evil.tail9999.ts.net") and not remote.allowed_host("example.com")
     assert remote.qr_svg(r["url"]).startswith("<svg")
@@ -83,7 +83,7 @@ def test_https_not_enabled_gives_the_link_then_check_finishes(nova, ts):
     ts["https_enabled"] = True
     ts["served"]["443"] = "http://127.0.0.1:8765"
     st = remote.finish_setup()
-    assert st["url"] and st["globe_url"] and ts["served"]["8443"] == "http://127.0.0.1:4173"
+    assert st["url"] and "8443" not in ts["served"]
 
 
 def test_real_serve_returns_link_without_waiting(monkeypatch, tmp_path):
@@ -144,12 +144,6 @@ def test_remote_tool(nova, ts):
     assert "Remote access is on" in REGISTRY["remote_access"].run({})
 
 
-def test_globe_allows_the_tailscale_host(nova, ts):
-    from nova.skills import globe
-    remote.enable()
-    assert globe._remote_env() == {"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS": ".ts.net,alex-pc.tail1234.ts.net"}
-
-
 _ = threading
 
 
@@ -172,7 +166,7 @@ def test_setup_is_remembered_and_restored_on_start(nova, ts):
     finally:
         mp.undo()
     assert ["up"] in ts["calls"][calls_before:]
-    assert st["url"] == "https://alex-pc.tail1234.ts.net/" and "8443" in ts["served"]
+    assert st["url"] == "https://alex-pc.tail1234.ts.net/" and "8443" not in ts["served"]
     remote.disable()
     assert ts["remembered"] == [True, False]
 
@@ -199,7 +193,7 @@ def test_startup_summary_lines(nova, capsys):
 
 
 def test_real_serve_status_and_fixing_a_wrong_mapping(ts, monkeypatch):
-    """Tailscale's real JSON: the address pointed at the globe (Vite said 'Blocked request') → Nova puts it back."""
+    """Tailscale's real JSON: the address pointed at another local app → Nova puts it back."""
     real = {"TCP": {"443": {"HTTPS": True}, "8443": {"HTTPS": True}},
             "Web": {"alex-pc.tail1234.ts.net:443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}},
                     "alex-pc.tail1234.ts.net:8443": {"Handlers": {"/": {"Proxy": "http://127.0.0.1:4173"}}}}}
@@ -219,6 +213,6 @@ def test_real_serve_status_and_fixing_a_wrong_mapping(ts, monkeypatch):
     monkeypatch.setattr(remote, "_serve", lambda args, wait=25: ("ok", run(args)[1]))
     remote._cache.update(t=0.0, status=None)
     st = remote.status(fresh=True)
-    assert not st["serving"] and st["globe_serving"] and "instead of Nova" in st["message"]
+    assert not st["serving"] and "instead of Nova" in st["message"]
     st = remote.ensure()
     assert fixed == ["http://127.0.0.1:8765"] and st["serving"] and st["url"] == "https://alex-pc.tail1234.ts.net/"

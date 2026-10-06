@@ -1,14 +1,17 @@
-"""Hybrid LLM router: local Ollama first, cloud models (Gemini, Groq, xAI Grok) as backup.
+"""Hybrid LLM router: local Ollama first, cloud models (Gemini, Groq, Cerebras, Mistral, GitHub Models, xAI Grok)
+as backup.
 
 They all speak the OpenAI chat-completions API, so one client class covers them.
 Cloud providers retire models regularly; when a model is gone, Nova picks the best
 available one from the provider's own model list automatically.
+Free tiers run out: a provider that says "rate limit" is rested for a while and the next one answers.
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import time
 import uuid
 from dataclasses import dataclass, field
 
@@ -19,6 +22,14 @@ DEFAULT_PROVIDERS = {
     "gemini": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
                "model": "gemini-2.5-flash", "key_env": "GEMINI_API_KEY", "timeout": 90},
     "groq": {"base_url": "https://api.groq.com/openai/v1", "model": "auto", "key_env": "GROQ_API_KEY", "timeout": 60},
+    "cerebras": {"base_url": "https://api.cerebras.ai/v1", "model": "auto", "key_env": "CEREBRAS_API_KEY",
+                 "timeout": 60},
+    "mistral": {"base_url": "https://api.mistral.ai/v1", "model": "mistral-small-latest",
+                "key_env": "MISTRAL_API_KEY", "timeout": 90},
+    # GitHub Models: a GitHub token with the "models" permission. Its model list lives at catalog_url.
+    "github": {"base_url": "https://models.github.ai/inference", "model": "openai/gpt-4o-mini",
+               "key_env": "GITHUB_MODELS_TOKEN", "timeout": 90,
+               "catalog_url": "https://models.github.ai/catalog/models"},
     "xai": {"base_url": "https://api.x.ai/v1", "model": "auto", "key_env": "XAI_API_KEY", "timeout": 90},
 }
 
@@ -28,9 +39,13 @@ MODEL_PREFERENCE = {
              "gpt-oss-20b", "llama"],
     "xai": ["grok-4-fast-non-reasoning", "grok-4-fast", "grok-4", "grok-3-mini", "grok-3", "grok"],
     "gemini": ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash", "flash"],
+    "cerebras": ["gpt-oss-120b", "llama-3.3-70b", "qwen-3", "llama-4", "llama", "qwen"],
+    "mistral": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest", "mistral-small", "mistral"],
+    "github": ["openai/gpt-4o-mini", "openai/gpt-4.1-mini", "openai/gpt-4.1-nano", "openai/gpt-4.1", "openai/gpt-4o",
+               "gpt-4", "mistral", "llama"],
 }
 NOT_CHAT = ("whisper", "guard", "tts", "embed", "image", "audio", "playai", "orpheus", "moderation",
-            "imagine", "vision-preview", "transcribe", "prompt-guard", "compound")
+            "imagine", "vision-preview", "transcribe", "prompt-guard", "compound", "ocr", "codestral", "voxtral")
 
 
 def pick_model(ids: list[str], provider: str, wanted: str = "") -> str:
@@ -52,6 +67,23 @@ def _model_missing(e: Exception) -> bool:
     t = str(e).lower()
     return "model" in t and any(k in t for k in ("not_found", "does not exist", "decommission", "not found",
                                                    "no longer supported", "deprecated", "invalid model"))
+
+
+def rest_seconds(e: Exception) -> int:
+    """How long to leave a provider alone after this error: 0 = it wasn't a limit. A free tier that is used up
+    for the day rests for half an hour; a per-minute limit for a minute (or what the provider asks for)."""
+    t = str(e).lower()
+    status = getattr(e, "status_code", None)
+    if status != 429 and not any(k in t for k in ("rate limit", "rate_limit", "ratelimit", "too many requests",
+                                                   "quota", "resource_exhausted", "tokens per", "requests per")):
+        return 0
+    try:
+        after = float((getattr(getattr(e, "response", None), "headers", None) or {}).get("retry-after") or 0)
+    except (TypeError, ValueError):
+        after = 0.0
+    if any(k in t for k in ("per day", "daily", "per_day", "tpd", "rpd", "quota", "month")):
+        return int(max(after, 1800))
+    return int(min(max(after, 60), 1800))
 
 
 def provider_config(cfg, name: str) -> dict | None:
@@ -78,8 +110,10 @@ class LLMReply:
 
 
 class Provider:
-    def __init__(self, name: str, base_url: str, model: str, api_key: str, timeout: int):
+    def __init__(self, name: str, base_url: str, model: str, api_key: str, timeout: int, catalog_url: str = ""):
         self.name, self.model = name, model
+        self.catalog_url, self._key = catalog_url, api_key
+        self.rest_until = 0.0            # a free tier ran out: skipped until then
         self.local = "localhost" in base_url or "127.0.0.1" in base_url
         self.client = OpenAI(base_url=base_url, api_key=api_key, timeout=timeout, max_retries=1)
         self.switched_from = ""          # set when a retired model was replaced automatically
@@ -87,7 +121,14 @@ class Provider:
 
     def resolve_model(self) -> str:
         """Swap a missing / 'auto' model for the best one this key can use."""
-        ids = [m.id for m in self.client.models.list()]
+        if self.catalog_url:                 # its model list isn't at the usual /models
+            import httpx
+            r = httpx.get(self.catalog_url, headers={"Authorization": f"Bearer {self._key}"}, timeout=20)
+            r.raise_for_status()
+            data = r.json()
+            ids = [str(m.get("id") or m.get("name")) for m in (data.get("data", data) if isinstance(data, dict) else data)]
+        else:
+            ids = [m.id for m in self.client.models.list()]
         new = pick_model(ids, self.name, self.model)
         if new != self.model:
             print(f"[llm] {self.name}: using model '{new}' (was '{self.model}')")
@@ -205,7 +246,8 @@ class LLM:
             key = os.environ.get(key_env, "").strip() if key_env else "local"
             if not key:
                 continue      # no API key -> provider skipped
-            self.providers[name] = Provider(name, p["base_url"], p["model"], key, p.get("timeout", 60))
+            self.providers[name] = Provider(name, p["base_url"], p["model"], key, p.get("timeout", 60),
+                                            p.get("catalog_url", ""))
         self.primary = c.primary
         self.smart = [n for n in c.get("smart", []) if n in self.providers]
         # a cloud key you've added but not listed still gets used, as the last backup
@@ -216,7 +258,7 @@ class LLM:
         self.escalate_keywords = [k.lower() for k in c.get("escalate_keywords", [])]
         self.keep_alive = str(c.get("keep_alive", "24h"))
         self.last_provider = ""
-        print(f"[llm] primary={self.primary} smart={self.smart or 'none (add a Gemini, Groq or xAI key in Settings)'}")
+        print(f"[llm] primary={self.primary} smart={self.smart or 'none (add a free Gemini, Groq, Cerebras or Mistral key in Settings)'}")
 
     def warm_up(self, quiet: bool = False) -> None:
         """Load the local models into memory now and keep them there, so the first command isn't slow."""
@@ -254,18 +296,42 @@ class LLM:
         return out
 
     def chat(self, messages, tools=None, prefer_smart=False, temperature=0.3, on_delta=None) -> LLMReply:
-        errors = []
+        errors, resting = [], []
         for p in self.order(prefer_smart):
-            try:
-                reply = p.chat(messages, tools, temperature, on_delta) if on_delta else p.chat(messages, tools, temperature)
-                if not reply.content and not reply.tool_calls:
-                    raise ValueError("empty reply")
-                self.last_provider = p.name
+            if not p.local and p.rest_until > time.time():
+                resting.append(p)                    # its free tier ran out a moment ago: the next one answers
+                continue
+            reply = self._try(p, messages, tools, temperature, on_delta, errors)
+            if reply:
                 return reply
-            except Exception as e:
-                errors.append(f"{p.name}: {e}")
-                print(f"[llm] {p.name} failed -> {e}")
+        for p in resting:                            # everything else failed: the limit may have lifted
+            reply = self._try(p, messages, tools, temperature, on_delta, errors)
+            if reply:
+                return reply
         raise RuntimeError("All models failed. " + " | ".join(errors))
+
+    def _try(self, p: Provider, messages, tools, temperature, on_delta, errors: list) -> LLMReply | None:
+        try:
+            reply = p.chat(messages, tools, temperature, on_delta) if on_delta else p.chat(messages, tools, temperature)
+            if not reply.content and not reply.tool_calls:
+                raise ValueError("empty reply")
+            self.last_provider = p.name
+            p.rest_until = 0.0
+            return reply
+        except Exception as e:
+            errors.append(f"{p.name}: {e}")
+            rest = 0 if p.local else rest_seconds(e)
+            if rest:
+                p.rest_until = time.time() + rest
+                print(f"[llm] {p.name} hit its limit -> resting it for {rest // 60 or 1} min, trying the next model")
+            else:
+                print(f"[llm] {p.name} failed -> {e}")
+            return None
+
+    def resting(self) -> dict[str, int]:
+        """Providers being rested after a rate limit: {name: seconds left}."""
+        now = time.time()
+        return {n: int(p.rest_until - now) for n, p in self.providers.items() if p.rest_until > now}
 
     def complete(self, prompt: str, system: str = "", prefer_smart=True, temperature=0.5) -> str:
         """Plain text generation (used by skills, e.g. website builder)."""

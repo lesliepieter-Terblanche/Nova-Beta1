@@ -76,7 +76,7 @@ one click in **Settings → Extensions → Add an MCP server** (then restart Nov
 | ⚙ [Fetch](https://github.com/modelcontextprotocol/servers/tree/main/src/fetch) | Any URL → clean Markdown | Local | `uvx mcp-server-fetch` |
 | ⚙ [Blender MCP](https://github.com/ahujasid/blender-mcp) | Build and render 3D scenes by voice | Local | Blender + its add-on, `uvx blender-mcp` |
 | ⚙ [Google Workspace MCP](https://github.com/taylorwilsdon/google_workspace_mcp) | Extra Google apps: Slides, Forms, Chat… | Local | Reuse your Google OAuth client |
-| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | Alternative browser automation | Local | `npx @playwright/mcp@latest` |
+| ⚙➕ [Playwright MCP](https://github.com/microsoft/playwright-mcp) (Microsoft) | A second, sturdier way to work websites: forms, logins, multi-step flows. Say "use Playwright to…" | Local (needs Node.js 18+) | `npx -y @playwright/mcp@latest` — Settings → Extensions → Add |
 | [Filesystem](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem) | Sandboxed file access to extra folders | Local | `npx -y @modelcontextprotocol/server-filesystem <folders>` |
 | [Obsidian](https://github.com/MarkusPfundstein/mcp-obsidian) | Search and edit an existing Obsidian vault | Local | Obsidian "Local REST API" plugin |
 | [n8n](https://n8n.io) (MCP Server Trigger) | Trigger your own self-hosted automations | Local (self-hosted) | Add an MCP Server Trigger node, use its URL |

@@ -24,7 +24,7 @@ FRESH_HOURS = 24                      # a failed command is listed as a bottlene
 
 # tools that only look something up — using one of these alone doesn't mean a project is being worked on
 READ_ONLY = re.compile(
-    r"^(get|list|read|recall|find|look|show|what|where|check|scrape|ask|recent|planes)_"
+    r"^(get|list|read|recall|find|look|show|what|where|check|scrape|ask|recent)_"
     r"|^(recall|spending|screen_time|time_spent_on|person_card|brain_structure|brain_digest|focus_now|held_actions|"
     r"last_dream|undo_list|calendar_events|web_search|set_status|work_status)$"
     r"|_(search|read|status|look|list|events|notifications|messages|missed|health|scheduled|report)$")

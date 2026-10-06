@@ -14,14 +14,15 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from .. import cinema, context, ffmpeg
+from .. import cinema, context, ffmpeg, upscale
 from ..tools import register_group, tool
 from .media import out_dir
 
 register_group("cinematic", ["cinematic", "cinema", "film look", "movie look", "colour grade", "color grade",
                              "grading", "teal and orange", "widescreen", "letterbox", "film grain", "brand kit",
                              "branding", "my brand", "logo", "3d photo", "parallax", "camera move", "reel", "reels",
-                             "intro sting", "outro", "lower third", "slow motion", "slow-mo", "premium video"])
+                             "intro sting", "outro", "lower third", "slow motion", "slow-mo", "premium video", "upscale", "sharpen", "enhance this photo",
+                             "enhance the photo", "low resolution", "low-res", "blurry photo", "real-esrgan"])
 
 LOOK_HELP = ", ".join(cinema.LOOKS)
 
@@ -117,12 +118,15 @@ def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: s
                                      min_total=voice_len + 0.9 if voice else 0.0)
         cta = call_to_action or (kit["call_to_action"] if branded else "")
         outro = bool(cta or (branded and (kit["handle"] or kit["logo"])))
-        depth_used = flat = 0
+        depth_used = flat = sharpened = 0
+        sharpen = str((context.cfg.get("media") or {}).get("upscale", "auto"))
         for i, (f, seen) in enumerate(zip(media, lengths)):
             last = i == len(media) - 1 and not outro
             d = seen + (0 if last else tdur)
             shot = work / f"shot{i}.mp4"
             if f.suffix.lower() in cinema.PHOTO:
+                f, did = upscale.for_frame(f, size, sharpen)        # a small photo is rebuilt sharper first
+                sharpened += did
                 info = cinema.photo_shot(f, shot, size, d, cinema.MOVES[i % len(cinema.MOVES)], look)
                 depth_used += info["depth"]
                 flat += not info["depth"]
@@ -166,6 +170,8 @@ def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: s
     bits = [f"{len(media)} shots", f"{cinema.LOOKS[look][0].split(' — ')[0]} look"]
     if depth_used:
         bits.append(f"{depth_used} photo{'s' if depth_used != 1 else ''} with 3D camera moves")
+    if sharpened:
+        bits.append(f"{sharpened} small photo{'s' if sharpened != 1 else ''} sharpened with Real-ESRGAN")
     if grid:
         bits.append(f"cuts on the beat ({60 / grid[0]:.0f} bpm)")
     if words:
@@ -236,12 +242,49 @@ def photo_to_3d_shot(photo: str, move: str = "push_in", seconds: float = 5.0, fo
     mv = mv if mv in cinema.MOVES else {"zoom_in": "push_in", "zoom_out": "pull_out", "left": "orbit_left",
                                         "right": "orbit_right", "up": "rise"}.get(mv, "push_in")
     out = out_dir() / f"{p.stem}_3d_{dt.datetime.now():%H%M%S}.mp4"
-    info = cinema.photo_shot(p, out, size, max(2.0, min(10.0, float(seconds or 5))), mv,
+    src, _ = upscale.for_frame(p, size, str((context.cfg.get("media") or {}).get("upscale", "auto")))
+    info = cinema.photo_shot(src, out, size, max(2.0, min(10.0, float(seconds or 5))), mv,
                              cinema.look_name(look) if look else "")
     context.record("video", out.stem, out, f"3D photo shot: {mv}")
     context.attach(out)
     how = "with real depth" if info["depth"] else "without the 3D depth (the depth model couldn't be downloaded)"
     return f"Shot ready ({mv.replace('_', ' ')}, {info['seconds']:.0f} s, {how}): {out}"
+
+
+@tool(group="cinematic")
+def upscale_photo(path: str, scale: float = 4.0) -> str:
+    """Make a small, soft or low-resolution photo bigger and sharper with Real-ESRGAN (free, runs on this PC's
+    graphics card). Use before printing, posting or putting a photo in a video. Works on one photo or every photo
+    in a folder.
+    Args:
+        path: the photo, or a folder of photos
+        scale: how much bigger, 2 to 4 (4 = four times the width and height)
+    """
+    from .files import safe
+    p = safe(path)
+    pics = sorted(f for f in p.iterdir() if f.suffix.lower() in cinema.PHOTO)[:40] if p.is_dir() else [p]
+    pics = [f for f in pics if f.exists() and f.suffix.lower() in cinema.PHOTO and "_sharp" not in f.stem]
+    if not pics:
+        return f"ERROR: I found no photo at {path}."
+    scale = max(2.0, min(4.0, float(scale or 4)))
+    done, plain, why = [], 0, ""
+    for f in pics:
+        out = f.with_name(f"{f.stem}_sharp.jpg")
+        try:
+            upscale.upscale(f, out, scale)
+        except Exception as e:
+            why = str(e)
+            upscale.plain_resize(f, out, min(scale, 2.0))
+            plain += 1
+        done.append(out)
+        context.record("image", out.name, out, f"upscaled {scale:g}x")
+    for o in done[:4]:
+        context.attach(o)
+    where = str(done[0]) if len(done) == 1 else f"{len(done)} photos in {done[0].parent} (names end in _sharp)"
+    if plain:
+        return (f"Real-ESRGAN couldn't run here ({why}), so I made a plain enlargement instead — bigger, but not "
+                f"more detailed: {where}")
+    return f"Sharpened {scale:g}× with Real-ESRGAN: {where}"
 
 
 @tool(group="cinematic")

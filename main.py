@@ -53,13 +53,15 @@ def build():
     books = load_playbooks()
     print(f"[nova] skills: {', '.join(skills)}" + (f" | plugins: {', '.join(plugins)}" if plugins else "")
           + (f" | playbooks: {len(books)}" if books else ""))
+    try:                                    # one time after an update: switch the new things on, clean the old out
+        from nova import activate
+        activate.run(cfg, resolve(cfg.brain.db_file).parent)
+    except Exception as e:
+        print(f"[activate] skipped: {e}")
     context.mcp = MCPManager(cfg)
     context.mcp.start(timeout=3)          # keeps connecting in the background; never delays start-up
     agent = Agent(cfg, context.llm)
     context.agent = agent
-    if (cfg.get("globe") or {}).get("auto_start"):
-        from nova.skills import globe
-        threading.Thread(target=lambda: print(f"[globe] {globe.start()}"), daemon=True, name="globe").start()
     # index any notes added/edited in the vault while Nova was off
     threading.Thread(target=lambda: context.store.sync_vault(resolve(b.vault_dir)), daemon=True).start()
     return cfg, agent

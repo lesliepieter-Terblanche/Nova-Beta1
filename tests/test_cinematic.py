@@ -17,6 +17,7 @@ def cine(nova, monkeypatch):
     cfg["media"]["brands_file"] = str(tmp / "brands.json")
     monkeypatch.setattr(cinema, "SIZES", SMALL)
     monkeypatch.setattr(cinema, "depth_model", lambda: None)        # no 66 MB download in tests
+    cfg["media"]["upscale"] = "off"                                 # nor the 45 MB Real-ESRGAN one
     return cfg, tmp
 
 

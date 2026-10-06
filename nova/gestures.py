@@ -21,7 +21,7 @@ Finger mode (gestures.style: finger — the older scheme):
   👉 point                move the mouse pointer — a label shows what's under it (folder, file, link, button…)
   🤏 pinch                click · 🤏🤏 two quick pinches = double-click (open a file / folder)
   🤏 pinch and hold       right-click (the menu for that file, link…)
-  🤏 pinch and move       drag (move files, spin the brain or the globe)
+  🤏 pinch and move       drag (move files, scroll bars, sliders)
   ✌️ two fingers up/down  scroll
   👍 on a file or folder  open it (when Nova isn't waiting for a yes)
 

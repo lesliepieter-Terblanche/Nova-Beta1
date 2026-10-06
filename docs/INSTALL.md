@@ -64,10 +64,16 @@ All keys are optional, but more keys means more abilities:
 | `ELEVENLABS_VOICE_ID` | Your chosen/cloned voice (blank = stock "George") | elevenlabs.io → Voices → ⋯ → Copy voice ID | — |
 | `GEMINI_API_KEY` | Smart model for hard tasks + vision (screen, photos, webcam, ads) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free tier |
 | `GROQ_API_KEY` | Backup smart model | [console.groq.com/keys](https://console.groq.com/keys) | Free tier |
+| `CEREBRAS_API_KEY` | Extra free smart model — the fastest replies | [cloud.cerebras.ai](https://cloud.cerebras.ai) | Free tier |
+| `MISTRAL_API_KEY` | Extra free smart model — large monthly allowance | [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys) | Free "Experiment" plan |
+| `GITHUB_MODELS_TOKEN` | Extra free smart model through your GitHub account | GitHub → Settings → Developer settings → Fine-grained token with the **Models** permission | Free tier |
 | `TELEGRAM_BOT_TOKEN` | Phone remote control | Telegram → @BotFather → `/newbot` | Free |
 | `PEXELS_API_KEY` | Stock footage behind video scenes | [pexels.com/api](https://www.pexels.com/api/) | Free |
 
 > A Gemini *app* subscription (Google AI Pro/Ultra) doesn't include API access. The AI Studio key is separate and free.
+
+> The more free model keys you add, the longer Nova goes before running out: when one provider says "rate limit"
+> she rests it (a minute, or half an hour when the day's allowance is gone) and the next one answers.
 
 Save `.env`. Never commit it (it's git-ignored).
 

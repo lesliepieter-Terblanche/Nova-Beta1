@@ -171,19 +171,6 @@ Offered to the model when you say things like: _weather, temperature, forecast, 
 |---|---|---|
 | `get_weather` | Get the live weather forecast, open the weather page on screen, and return what to say out loud. Use this for ANY weather question (never web_search). Read the returned sentence to the user as your answer. | `place`?, `day`?, `show`? |
 
-## globe
-
-Offered to the model when you say things like: _globe, god's eye, gods eye, god eye, earth view, satellite view, planes, plane, aircraft, flights, flight, overhead_
-
-| Tool | What it does | Parameters |
-|---|---|---|
-| `show_on_globe` | Open the God's Eye View 3D globe (live planes, ships, satellites, quakes, cameras) flying to a place. Starts the app if needed. Use for "show me X on the globe", "fly me to X", "God's eye view of X". | `place`?, `view`?, `style`?, `hud`? |
-| `planes_overhead` | List live aircraft near a place right now (public ADS-B data from adsb.lol, no key needed), and optionally show them on the 3D globe. | `place`?, `radius_km`?, `show`? |
-| `recent_earthquakes` | Recent earthquakes from USGS (free). Near a place, or worldwide if place is "world". | `place`?, `radius_km`?, `days`?, `min_magnitude`? |
-| `where_is_the_iss` | Where the International Space Station is right now (free live data), optionally shown on the globe. | `show`? |
-| `globe_app` | Manage the God's Eye View app: status, start, stop, open or update. | `action`? |
-| `install_globe` 🔒 | Download and install the God's Eye View 3D globe app (open source, a few hundred MB, needs Node.js 24). | — |
-
 ## gestures
 
 Offered to the model when you say things like: _gesture, gestures, hand control, hand tracking, hands, air mouse, wave, webcam control_
@@ -238,7 +225,7 @@ Offered to the model when you say things like: _tailscale, remote access, on my 
 
 | Tool | What it does | Parameters |
 |---|---|---|
-| `remote_access` | Tailscale remote access to Nova's dashboard (and the globe) from the user's phone. | `action`? |
+| `remote_access` | Tailscale remote access to Nova's dashboard from the user's phone. | `action`? |
 
 ## people
 
@@ -331,8 +318,28 @@ Offered to the model when you say things like: _cinematic, cinema, film look, mo
 | `cinematic_reel` | Make a cinematic reel from photos and video clips: every photo becomes a 3D camera move (push-in, orbit, pull-out with real depth), clips are graded with a film look, cuts land on the beat of the music, and the brand kit adds an intro sting, lower third, watermark and outro. Free, made on this PC. | `files`, `title`?, `subtitle`?, `narration`?, `music_path`?, `brand`?, `look`?, `format`?, `seconds_per_shot`?, `transition`?, `call_to_action`?, `widescreen_bars`? |
 | `cinematic_look` | Give any video the cinematic finish: a film colour grade, soft vignette, film grain and widescreen bars — optionally slowed down and steadied. Use for phone footage, AI clips, stock clips or a finished video. | `path`, `look`?, `widescreen_bars`?, `film_grain`?, `slow_motion`?, `steady`?, `brand`? |
 | `photo_to_3d_shot` | Turn one still photo into a moving cinematic shot: Nova works out what is near and far in the picture and moves the camera through it with real parallax (the "3D photo" effect). | `photo`, `move`?, `seconds`?, `format`?, `look`? |
+| `upscale_photo` | Make a small, soft or low-resolution photo bigger and sharper with Real-ESRGAN (free, runs on this PC's graphics card). Use before printing, posting or putting a photo in a video. Works on one photo or every photo in a folder. | `path`, `scale`? |
 | `save_brand_kit` | Save (or update) a brand kit, used for the intro sting, lower third, watermark, caption highlight and outro of cinematic reels. Only the fields you give are changed. | `name`, `handle`?, `tagline`?, `colour`?, `accent`?, `logo_path`?, `look`?, `call_to_action`?, `make_default`? |
 | `brand_kits` | List the saved brand kits and the cinematic looks available. | — |
+
+## social
+
+Offered to the model when you say things like: _postiz, social media, social post, schedule a post, schedule the post, schedule this, post to, post this, post it, post the, publish, linkedin post_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `social_channels` | List the social media accounts connected in Postiz that Nova can post to. | — |
+| `social_post` 🔒 | Publish or schedule a social media post through Postiz, with optional photos or a video. Always confirmed with the user first, because it is public. | `text`, `channels_to_post`?, `media`?, `when`?, `title`?, `draft`? |
+| `social_scheduled` | What is queued in Postiz: the posts scheduled over the next days. | `days`? |
+
+## library
+
+Offered to the model when you say things like: _skills library, skill library, library of skills, anthropic skills, install skills, install the skills, update the skills, library skills_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `install_skill_library` | Download (or update) the public skills library from github.com/anthropics/skills and turn its open-source skills into Nova playbooks: web design, internal comms, themes, posters, generative art, MCP servers and more. | — |
+| `skill_library_status` | Which skills from the public skills library are installed, and how to call one up. | — |
 
 ## web_agent
 

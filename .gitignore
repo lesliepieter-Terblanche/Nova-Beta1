@@ -26,6 +26,7 @@ tools/gods-eye-view/
 tools/browser-use/
 tools/platform-tools/
 tools/docling/
+tools/realesrgan/
 models/vad/
 models/depth/
 models/vision/
@@ -33,3 +34,5 @@ backups/
 restore/
 config.yaml.bak
 config.yaml.tmp
+# skills downloaded from github.com/anthropics/skills onto this PC (not ours to redistribute)
+playbooks/library/

@@ -9,7 +9,7 @@ register_group("remote", ["tailscale", "remote access", "on my phone", "from my 
 
 @tool(group="remote")
 def remote_access(action: str = "status") -> str:
-    """Tailscale remote access to Nova's dashboard (and the globe) from the user's phone.
+    """Tailscale remote access to Nova's dashboard from the user's phone.
     Args:
         action: status, on (set up) or off
     """
@@ -21,6 +21,5 @@ def remote_access(action: str = "status") -> str:
         return remote.disable()["message"]
     st = remote.status(fresh=True)
     if st["url"]:
-        extra = f" The globe is at {st['globe_url']}." if st["globe_url"] else ""
-        return f"Remote access is on: open {st['url']} on your phone (with Tailscale switched on).{extra}"
+        return f"Remote access is on: open {st['url']} on your phone (with Tailscale switched on)."
     return st["message"] or "Remote access is off."

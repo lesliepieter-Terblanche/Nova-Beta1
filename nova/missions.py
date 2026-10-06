@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS mission_runs(
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 PLAN_PROMPT = """You are planning a background mission for {owner}'s personal assistant, which has tools for web
 search and scraping, the browser, Google Workspace (Gmail, Calendar, Drive, Docs, Sheets), files, memory/notes,
-weather, the globe (flights, earthquakes) and more.
+weather and more.
 
 Mission: {goal}
 {previous}

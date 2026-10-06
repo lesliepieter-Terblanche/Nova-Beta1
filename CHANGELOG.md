@@ -4,6 +4,34 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.34.0] — 2026-10-06
+### Added
+- **More free AI use.** Three more free model providers join Gemini and Groq: **Cerebras** (the fastest),
+  **Mistral** (a large monthly allowance) and **GitHub Models** (through your GitHub account). Add the keys in
+  Settings → API keys (each has a Test button). When a provider says "rate limit", Nova now **rests it** — a minute,
+  or half an hour when the day's allowance is gone — and the next one answers, instead of asking the same
+  exhausted provider on every request.
+- **Playwright MCP** (Microsoft) as a one-click add-on in Settings → Extensions: a second, sturdier way to work
+  websites — forms, logins, multi-step flows. Say "use Playwright to…". Needs Node.js 18+.
+- **Real-ESRGAN photo sharpening.** "Upscale this photo" rebuilds a small or soft photo up to 4× with real detail,
+  on the graphics card (free, 45 MB download, once). Cinematic reels and 3D shots use it automatically for photos
+  too small for the frame (Settings → Files & web to switch that off). Falls back to a plain enlargement, and says
+  so, when the graphics driver has no Vulkan support.
+- **Social posting through Postiz.** "Post the reel to Instagram and TikTok tomorrow at 6pm": Nova uploads the video
+  and schedules it through your Postiz (open source; self-host it free or use their paid cloud). She always asks
+  for a yes first. Also "what social channels do I have?" and "what's scheduled this week?". Setup: docs/POSTIZ.md.
+- **Skills library.** The open-source skills from github.com/anthropics/skills become Nova playbooks (web design,
+  internal comms, themes, posters, generative art, MCP servers, web-app testing). The ones written for Claude's own
+  apps are installed switched off. The document skills (docx, pdf, pptx, xlsx) are not open source and are left out.
+- **Switched on for you.** On the first start after this update Nova downloads the skills library and Real-ESRGAN,
+  adds Playwright (when Node.js is installed) and tells you once what still needs a key.
+
+### Removed
+- **God's Eye View** (the 3D globe) and everything with it: the globe page and 🌐 button, the Settings section, the
+  phone share on port 8443, and the tools `show_on_globe`, `planes_overhead`, `recent_earthquakes`, `where_is_the_iss`,
+  `globe_app` and `install_globe`. On the first start after the update Nova deletes `tools/gods-eye-view` and the
+  `globe:` section of your config.
+
 ## [2.33.0] — 2026-10-06
 ### Added
 - **Cinematic mode** — film-look videos made on this PC, free (no cloud video model, no cost per clip):

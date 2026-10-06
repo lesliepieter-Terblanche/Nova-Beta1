@@ -160,7 +160,7 @@ def test_mcp_catalog_add(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "load_doc", lambda: YAML().load(cfg.read_text()))
     monkeypatch.setattr(settings, "save_doc", lambda d: YAML().dump(d, cfg.open("w")))
     inv = settings.extension_inventory(settings.load_doc())
-    assert {c["name"] for c in inv["mcp_catalog"]} == {"canva", "windows", "excel", "elevenlabs", "youtube"}
+    assert {c["name"] for c in inv["mcp_catalog"]} == {"canva", "windows", "excel", "elevenlabs", "playwright", "youtube"}
     assert inv["mcp_catalog"][0]["name"] == "canva"
     assert not any(c["added"] for c in inv["mcp_catalog"])
     r = settings.apply({"extensions": {"mcp_add": ["youtube", "elevenlabs", "nope"]}})

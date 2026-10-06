@@ -2,7 +2,7 @@
 # each item becomes a project with its status (todo → doing → done). Your own notes and pins are kept;
 # the status only changes when it changes here.
 - id: gesture-control
-  title: "Nova upgrade: Gesture control — steer Nova, the 3D brain and the globe with hand gestures via the webcam"
+  title: "Nova upgrade: Gesture control — steer Nova and the PC with hand gestures via the webcam"
   status: done
   version: "1.7.0"
 - id: presence-awareness

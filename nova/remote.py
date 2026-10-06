@@ -1,4 +1,4 @@
-"""Remote access with Tailscale: open Nova's dashboard (and the globe) from your phone, anywhere, privately.
+"""Remote access with Tailscale: open Nova's dashboard from your phone, anywhere, privately.
 
 Tailscale puts your PC and phone on a private network only your devices can join. "Tailscale Serve" then gives the
 PC an HTTPS address like https://your-pc.tail1234.ts.net that forwards to Nova on this PC. Nova itself still only
@@ -20,7 +20,7 @@ from pathlib import Path
 
 from . import context
 
-GLOBE_HTTPS_PORT = 8443
+OLD_GLOBE_PORT = 8443          # God's Eye View used to be shared here (removed in v2.34); still switched off on disable
 _cache: dict = {"t": 0.0, "status": None}
 
 
@@ -54,16 +54,12 @@ def _port() -> int:
     return int(((context.cfg or {}).get("dashboard") or {}).get("port", 8765)) if context.cfg else 8765
 
 
-def _globe_port() -> int:
-    return int(((context.cfg or {}).get("globe") or {}).get("port", 4173)) if context.cfg else 4173
-
-
 def status(fresh: bool = False) -> dict:
     """Is Tailscale installed, signed in, and is Nova being served? Cached for 30 s (it's called per request)."""
     if not fresh and _cache["status"] and time.time() - _cache["t"] < 30:
         return _cache["status"]
     out = {"installed": exe() is not None, "running": False, "dns_name": "", "ip": "", "serving": False,
-           "globe_serving": False, "url": "", "globe_url": "", "message": ""}
+           "url": "", "message": ""}
     if not out["installed"]:
         out["message"] = "Tailscale isn't installed on this PC — get it from tailscale.com/download."
     else:
@@ -88,13 +84,10 @@ def status(fresh: bool = False) -> dict:
             if m is not None:                    # exact: which local port each https port really forwards to
                 out["root_target"] = m.get("443", "")
                 out["serving"] = _points_to(m.get("443", ""), _port())
-                out["globe_serving"] = _points_to(m.get(str(GLOBE_HTTPS_PORT), ""), _globe_port())
             else:
                 out["serving"] = f"127.0.0.1:{_port()}" in served or f"localhost:{_port()}" in served
-                out["globe_serving"] = f":{_globe_port()}" in served
             if out["dns_name"]:
                 out["url"] = f"https://{out['dns_name']}/" if out["serving"] else ""
-                out["globe_url"] = f"https://{out['dns_name']}:{GLOBE_HTTPS_PORT}/" if out["globe_serving"] else ""
             if not out["serving"] and out.get("root_target"):
                 out["message"] = (f"Your Tailscale address points at {out['root_target']} instead of Nova — "
                                   "click Set up to fix it.")
@@ -179,7 +172,7 @@ def _serve(args: list[str], wait: float = 25) -> tuple[str, str]:
 _pending: dict = {}
 
 
-def enable(globe_too: bool = True) -> dict:
+def enable() -> dict:
     st = status(fresh=True)
     if not st["installed"] or not st["running"]:
         return {"ok": False, "message": st["message"] or "Tailscale isn't running."}
@@ -189,8 +182,6 @@ def enable(globe_too: bool = True) -> dict:
                 f"share Nova privately on your Tailscale network), then click Check again: {text}"}
     if state == "error":
         return {"ok": False, "message": f"Tailscale said: {text}"}
-    if globe_too:
-        _serve(["serve", "--bg", f"--https={GLOBE_HTTPS_PORT}", f"http://127.0.0.1:{_globe_port()}"], wait=20)
     st = status(fresh=True)
     if context.store:
         context.store.log("remote", "system", "📱 Remote access on (Tailscale)", st["url"], turn=0)
@@ -239,17 +230,13 @@ def ensure() -> dict:
 
 
 def finish_setup() -> dict:
-    """After you've approved the link: make sure the globe is shared too, and report the address."""
-    st = status(fresh=True)
-    if st["serving"] and not st["globe_serving"]:
-        _serve(["serve", "--bg", f"--https={GLOBE_HTTPS_PORT}", f"http://127.0.0.1:{_globe_port()}"], wait=15)
-        st = status(fresh=True)
-    return st
+    """After you've approved the link: report the address."""
+    return status(fresh=True)
 
 
 def disable() -> dict:
     _run(["serve", "--https=443", "off"])
-    _run(["serve", f"--https={GLOBE_HTTPS_PORT}", "off"])
+    _run(["serve", f"--https={OLD_GLOBE_PORT}", "off"])
     _remember(False)
     st = status(fresh=True)
     return {**st, "ok": True, "message": "Remote access is off. Nova only answers on this PC again."}

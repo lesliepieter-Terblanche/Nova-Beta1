@@ -284,7 +284,6 @@
   .right { display: flex; gap: 10px; align-items: flex-start; }
   .gear { display: grid; place-items: center; width: 52px; height: 52px; color: var(--text); text-decoration: none; transition: transform .3s; }
   .gear:hover { transform: rotate(40deg); color: #fff; }
-  .gear[href='/globe']:hover { transform: scale(1.08); }
   .no-labels .person-label { display: none !important; }
   .hub-label { font: 600 12.5px var(--display); letter-spacing: .06em; color: #fff; padding: 4px 10px; border-radius: 999px;
     background: rgba(6,8,20,.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); cursor: pointer;
@@ -1019,7 +1018,6 @@
     <button class="gear glass" id="focus-btn" title="Focus mode — one thing at a time (F)" aria-label="Focus mode" style="border:1px solid var(--line);cursor:pointer;font-size:20px;color:var(--text)">◎</button>
     <button class="gear glass" id="ph-open" hidden title="Your phone: battery, storage, ring, where, screenshot, routines" aria-label="Phone card" style="border:1px solid var(--line);cursor:pointer;font-size:18px;color:var(--text);position:relative">📱<span class="phpip" id="ph-pip"></span></button>
     <button class="gear glass" id="phone-btn" title="Open Nova on your phone (Tailscale)" aria-label="Open on phone" style="border:1px solid var(--line);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
-    <a class="gear glass" href="/globe" target="_blank" title="God's Eye View — live 3D globe" aria-label="God's Eye View"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></a>
     <a class="gear glass" href="/settings" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
   </div>
 </header>
@@ -2442,7 +2440,7 @@ async function showPhone(fresh = false) {
   let h = "";
   if (r.url) {
     h = `<div class="qr">${r.qr}</div><code>${esc(r.url)}</code>
-      <p class="muted">Scan with your phone camera (Tailscale switched on). Only your own devices can open this.${r.globe_url ? `<br>Globe: <b>${esc(r.globe_url)}</b>` : ""}</p>
+      <p class="muted">Scan with your phone camera (Tailscale switched on). Only your own devices can open this.</p>
       ${onPC ? `<button class="btn" data-remote="off">Turn remote access off</button>` : ""}`;
   } else if (!r.installed) {
     h = `<ol><li>Install <b>Tailscale</b> on this PC and on your phone — <a href="https://tailscale.com/download" target="_blank" style="color:var(--accent-2)">tailscale.com/download</a> (free).</li>

@@ -17,7 +17,7 @@ llm:
   # Hybrid: local Ollama for everyday requests. Hard tasks / failures go down the "smart" list.
   # Providers without an API key in .env are skipped automatically.
   primary: ollama
-  smart: [gemini, groq, xai] # tried in this order
+  smart: [gemini, groq, cerebras, mistral, github, xai]   # tried in this order; one that hits its free limit is rested and the next answers
   providers:
     ollama:
       base_url: http://localhost:11434/v1
@@ -33,6 +33,22 @@ llm:
       model: auto            # auto = best model your key can use; switches by itself when Groq retires one
       key_env: GROQ_API_KEY
       timeout: 60
+    cerebras:                # free API key: cloud.cerebras.ai  -> CEREBRAS_API_KEY in .env (very fast)
+      base_url: https://api.cerebras.ai/v1
+      model: auto
+      key_env: CEREBRAS_API_KEY
+      timeout: 60
+    mistral:                 # free "Experiment" plan: console.mistral.ai/api-keys  -> MISTRAL_API_KEY in .env
+      base_url: https://api.mistral.ai/v1
+      model: mistral-small-latest
+      key_env: MISTRAL_API_KEY
+      timeout: 90
+    github:                  # GitHub Models, free with a GitHub account: a token with the "Models" permission -> GITHUB_MODELS_TOKEN
+      base_url: https://models.github.ai/inference
+      model: openai/gpt-4o-mini
+      key_env: GITHUB_MODELS_TOKEN
+      catalog_url: https://models.github.ai/catalog/models
+      timeout: 90
     xai:                     # xAI Grok (paid): console.x.ai -> XAI_API_KEY in .env
       base_url: https://api.x.ai/v1
       model: auto
@@ -49,13 +65,6 @@ llm:
                       "compare", "summarise", "summarize", "draft", "explain why", "strategy"]
   max_tool_rounds: 6
   keep_alive: 24h            # keep the local model loaded so replies start instantly (uses ~2.5 GB VRAM)
-
-# God's Eye View — live 3D globe (planes, ships, satellites, quakes, weather, public cameras).
-# Open source (github.com/bilawalsidhu/gods-eye-view). Needs Node.js 24. Say "install God's Eye View".
-globe:
-  dir: tools/gods-eye-view    # where it's installed
-  port: 4173
-  auto_start: false           # start it together with Nova
 
 # Phone access with Tailscale (Settings → Remote access → Set up turns this on)
 remote:
@@ -260,12 +269,17 @@ web:
   sites_dir: workspace/sites
   searxng_url: ""            # your private search engine, e.g. http://localhost:8888 (docs/ENHANCEMENTS.md)
 
+# Social media posting through Postiz (open source: github.com/gitroomhq/postiz-app). Key: POSTIZ_API_KEY in .env.
+social:
+  postiz_url: https://api.postiz.com/public/v1   # your own Postiz: http://localhost:4007/api  (docs/POSTIZ.md)
+
 media:
   output_dir: workspace/videos
   # Optional local AI images (Stable Diffusion 1.5, ~3 GB VRAM). Needs requirements-imagegen.txt
   captions: true             # burn subtitles into videos
   broll: true                # stock footage behind scenes when PEXELS_API_KEY is set (free at pexels.com/api)
   look: ""                   # cinematic finish on narrated videos: teal_orange · warm_film · moody · golden_hour · noir · clean
+  upscale: auto              # auto = small photos in reels are rebuilt sharper with Real-ESRGAN (free, 45 MB once) · off
   image_gen_enabled: false
   image_model: runwayml/stable-diffusion-v1-5
   image_provider: auto       # auto = ComfyUI when it's running · comfyui · local (the Stable Diffusion above)
@@ -330,6 +344,14 @@ mcp_servers:
     args: ["elevenlabs-mcp"]
     env: { ELEVENLABS_API_KEY: "${ELEVENLABS_API_KEY}", ELEVENLABS_MCP_BASE_PATH: "C:/nova/workspace/audio" }
     keywords: [sound effect, voice design, clone voice, elevenlabs, design a voice]
+    confirm: auto
+
+  playwright:                # Microsoft's Playwright MCP: open pages, click, fill in forms, read them by structure (needs Node.js 18+)
+    enabled: false
+    command: npx
+    args: ["-y", "@playwright/mcp@latest", "--browser", "msedge", "--user-data-dir", "C:/nova/workspace/.playwright-profile"]
+    timeout: 300
+    keywords: [playwright, fill in the form, fill out the form, web form, log in to the site, sign in to the site]
     confirm: auto
 
   youtube:                   # any YouTube video's transcript — "summarise this video"

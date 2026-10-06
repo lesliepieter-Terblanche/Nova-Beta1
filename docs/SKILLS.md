@@ -113,7 +113,6 @@ In `nova/skills/`, loaded via the `SKILLS` list in `nova/skills/__init__.py`:
 | `media.py` | media | explainer videos, slideshows, voice-overs, transcription, trim, convert, images (ComfyUI or local SD) |
 | `camera_ads.py` | camera | webcam photo/look, product ads (+ video) |
 | `weather.py` | weather | live forecast, spoken + weather page (Open-Meteo, free) |
-| `globe.py` | globe | God's Eye View 3D globe: fly anywhere, styles, planes overhead, earthquakes, ISS, install 🔒/start/stop |
 | `gestures.py` | gestures | gesture control on/off/status/help (engine in `nova/gestures.py`, camera in `nova/camera.py`) |
 | `presence.py` | presence | presence on/off/status, lock the PC 🔒 (engine in `nova/presence.py`) |
 | `screen_watch.py` | watch | watch screen/window/program/Downloads, list, stop (engine in `nova/watcher.py`) |

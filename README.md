@@ -85,11 +85,14 @@ It remembers everything permanently and shows its whole second brain as a live m
 | 👀 **Screen watcher** | "Tell me when the render finishes / the download lands / *Export complete* appears" — local OCR, windows, programs, Downloads, vision; optional follow-up action |
 | 👤 **Presence awareness** | Greets you (and briefs you) when you sit down; pauses, holds messages and can lock the PC when you walk away |
 | ✋ **Gesture control** | Webcam hand control: move your hand = cursor (with labels for files, folders, links) · ✊ close = click / drag · 👈 swipe = back · 👉 swipe = dashboard · push/pull = zoom · 👍 Enter · 👎 Delete · ✌️ listen/scroll (MediaPipe, local) |
-| 🌐 **God's Eye View** | Live 3D globe with real planes, ships, satellites, quakes and weather — "show me Cape Town in night vision", "what planes are overhead?" ([gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view), needs Node 24) |
 | 🖐 **PC hands** | Opens apps, webcam and folders, manages windows, clicks and types in any app — "do it for me" step by step, stops before sending/paying/deleting, Esc to take over |
 | ◎ **Focus & wellbeing** | Made for ADHD and bipolar II: one thing at a time, "I'm stuck" first steps, brain dump, calm visuals, routine anchors, night guardrails, private encrypted check-ins and a summary for your doctor |
 | 📥 **Forward to file** | Forward links, PDFs, photos, business cards or voice notes to the Telegram bot — summarised and filed in your brain |
-| 👤 **People cards** | Everyone you deal with on one card — company, role, contact details, deals and every mention, linked in the globe |
+| 🎬 **Cinematic mode** | Film-look reels from your photos and clips, free on this PC: 3D camera moves on photos, colour grades, brand intro/outro, highlighted captions, cuts on the beat; small photos sharpened with Real-ESRGAN |
+| 📣 **Social posting** | Schedule or publish reels and posts to Instagram, TikTok, LinkedIn, X, YouTube… through [Postiz](docs/POSTIZ.md) — always asks first |
+| 📚 **Skills library** | The open-source skills from [anthropics/skills](https://github.com/anthropics/skills) as playbooks: web design, internal comms, themes, posters, MCP servers |
+| ♻ **More free AI** | Gemini, Groq, Cerebras, Mistral and GitHub Models in a chain — when one hits its free limit Nova rests it and the next answers |
+| 👤 **People cards** | Everyone you deal with on one card — company, role, contact details, deals and every mention, linked on the dashboard |
 | 🧠 **Ask the brain** | Answers only from your own brain, with clickable sources · weekly "what's new" digest · 🕘 timeline replay |
 | ⚡ **Load-shedding** | Your area's schedule and a heads-up 30 min before the power goes off (EskomSePush, free token) |
 | 💸 **Price watcher** | "Tell me when this drops below R8,000" — Takealot and most shops, checked every few hours |

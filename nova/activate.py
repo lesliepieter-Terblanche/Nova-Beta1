@@ -255,6 +255,13 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
                 said.append(f"The skills library is installed ({len(on)} skills ready: {', '.join(on)}).")
             except Exception as e:
                 print(f"[activate] skills library not installed yet: {e}")
+        if not done.get("embed_model"):           # v2.38.3: the second brain's meaning-index model
+            try:
+                name = str((cfg.get("brain") or {}).get("embed_model") or "nomic-embed-text")
+                if ensure_model(name) in ("there", "downloaded"):
+                    done["embed_model"] = True
+            except Exception as e:
+                print(f"[activate] {e}")
         if not done.get("deep_model"):
             try:
                 got = ensure_model()

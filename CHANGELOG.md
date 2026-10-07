@@ -4,6 +4,13 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.38.3] — 2026-10-07
+### Changed
+- **Second brain: nomic-embed-text wherever possible.** It was already the model that indexes notes, memories and
+  files by meaning. New: anything saved while it wasn't running (which fell back to keyword search and stayed that
+  way) is now indexed afterwards — at start and every few minutes when Nova is idle — and the model is downloaded
+  if it is missing. Items indexed by a different model are re-indexed too.
+
 ## [2.38.2] — 2026-10-07
 ### Changed
 - **Models: qwen2.5:3b every day, gemma3:4b for deeper thinking.** Set once at the next start (and left to you

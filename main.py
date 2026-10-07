@@ -75,7 +75,10 @@ def build():
     agent = Agent(cfg, context.llm)
     context.agent = agent
     # index any notes added/edited in the vault while Nova was off
-    threading.Thread(target=lambda: context.store.sync_vault(resolve(b.vault_dir)), daemon=True).start()
+    def _index():
+        context.store.sync_vault(resolve(b.vault_dir))
+        context.store.backfill()             # anything saved while the embedding model wasn't running
+    threading.Thread(target=_index, daemon=True, name="brain-index").start()
     return cfg, agent
 
 
@@ -130,6 +133,7 @@ def keep_warm() -> None:
         try:
             if context.store.status == "idle":
                 context.llm.warm_up(quiet=True)
+                context.store.backfill(100)
         except Exception:
             pass
 

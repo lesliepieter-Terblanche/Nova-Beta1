@@ -105,6 +105,33 @@ class Store:
     def _reenable(self):
         self._embed_ok = True
 
+    def backfill(self, limit: int = 300) -> int:
+        """Give a meaning-index entry (v2.38.3) to everything in the second brain that has none — saved while the
+        embedding model wasn't running — or that was indexed by a different model. Returns how many were done."""
+        probe = self.embed(["second brain"])[0]
+        if probe is None:
+            return 0
+        size, done = len(probe) * 4, 0
+        for table, text in (("memories", "text"), ("chunks", "text"), ("artifacts", "title || ' ' || COALESCE(detail, '')")):
+            while done < limit:
+                with self.lock:
+                    rows = self.db.execute(
+                        f"SELECT id, {text} AS t FROM {table} WHERE embedding IS NULL OR length(embedding) != ? LIMIT 32",
+                        (size,)).fetchall()
+                if not rows:
+                    break
+                vecs = self.embed([(r["t"] or " ")[:4000 if table != "artifacts" else 1000] for r in rows])
+                if any(v is None for v in vecs):
+                    return done                      # the model went away again: carry on next time
+                with self.lock:
+                    self.db.executemany(f"UPDATE {table} SET embedding=? WHERE id=?",
+                                        [(self._blob(v), r["id"]) for v, r in zip(vecs, rows)])
+                    self.db.commit()
+                done += len(rows)
+        if done:
+            print(f"[memory] {done} second-brain item(s) indexed with {self.embed_model}")
+        return done
+
     @staticmethod
     def _blob(v):
         return None if v is None else v.astype(np.float32).tobytes()

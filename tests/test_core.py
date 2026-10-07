@@ -62,3 +62,25 @@ def test_telegram_stale_messages_are_not_acted_on():
     assert not TelegramBot.is_stale(now - dt.timedelta(minutes=5))
     assert TelegramBot.is_stale(now - dt.timedelta(hours=2))
     assert not TelegramBot.is_stale((now - dt.timedelta(minutes=1)).replace(tzinfo=None))
+
+
+def test_second_brain_items_are_indexed_once_the_embedding_model_is_back(nova, monkeypatch):
+    """v2.38.3: what was saved without nomic-embed-text gets its meaning-index afterwards."""
+    import numpy as np
+    s = context.store
+    assert s.embed_model == "nomic-embed-text"
+    monkeypatch.setattr(s, "embed", lambda texts: [None] * len(texts))            # the model isn't running
+    s.add_memory("The boat is moored at Harbour Bay")
+    s.add_artifact("file", "Quote for Dune Realty", "workspace/quote.pdf", "listing package")
+    with s.lock:
+        s.db.execute("INSERT INTO chunks(path,idx,text,mtime,embedding) VALUES('n.md',0,'tide tables for the estuary',0,?)",
+                     (np.ones(3, dtype=np.float32).tobytes(),))                   # indexed by some other model
+        s.db.commit()
+    assert s.backfill() == 0                                                      # still not running: nothing lost
+    asked = []
+    monkeypatch.setattr(s, "embed", lambda texts: asked.extend(texts) or [np.ones(8, dtype=np.float32)] * len(texts))
+    assert s.backfill() == 3 and s.backfill() == 0
+    assert "The boat is moored at Harbour Bay" in asked and "Quote for Dune Realty listing package" in asked
+    with s.lock:
+        sizes = [r[0] for t in ("memories", "chunks", "artifacts") for r in s.db.execute(f"SELECT length(embedding) FROM {t}")]
+    assert sizes == [32, 32, 32]

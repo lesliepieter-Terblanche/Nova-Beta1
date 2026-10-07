@@ -28,6 +28,12 @@ def build():
     from nova import startup
     startup.mark("program loaded")
     cfg = load_config()
+    try:                                    # one time (v2.38.2): qwen2.5:3b every day, gemma3:4b for deeper thinking
+        from nova import activate as _activate
+        if _activate.set_local_models(resolve(cfg.brain.db_file).parent):
+            cfg = load_config()
+    except Exception as e:
+        print(f"[llm] local-model set-up skipped: {e}")
     try:                                    # one time: a fast cloud model for everyday use if a key is there
         from nova import settings as _settings
         if _settings.prefer_fast_model(resolve(cfg.brain.db_file).parent):

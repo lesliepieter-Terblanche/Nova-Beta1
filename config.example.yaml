@@ -14,10 +14,11 @@ assistant:
   swearing: true                # witty only: a mild swear word now and then (never in anything written for others)
 
 llm:
-  # Hybrid: local Ollama for everyday requests. Hard tasks / failures go down the "smart" list.
+  # Everyday requests: the local qwen2.5:3b. Deeper thinking goes down the "smart" list: the local gemma3:4b first
+  # (it thinks and writes; it can't call tools, so requests that need one go to the next in the list).
   # Providers without an API key in .env are skipped automatically.
   primary: ollama
-  smart: [gemini, groq, cerebras, mistral, github, xai]   # tried in this order; one that hits its free limit is rested and the next answers
+  smart: [ollama_deep, gemini, groq, cerebras, mistral, github, xai]   # tried in this order; one that hits its free limit is rested and the next answers
   providers:
     ollama:
       base_url: http://localhost:11434/v1
@@ -54,6 +55,10 @@ llm:
       model: auto
       key_env: XAI_API_KEY
       timeout: 90
+    ollama_deep:             # deeper thinking, fully local (`ollama pull gemma3:4b`, ~3.3 GB — setup offers it)
+      base_url: http://localhost:11434/v1
+      model: gemma3:4b
+      timeout: 180
     ollama_vision:           # fully local vision (setup offers to download it: `ollama pull gemma3:4b`, ~3.3 GB)
       base_url: http://localhost:11434/v1
       model: gemma3:4b

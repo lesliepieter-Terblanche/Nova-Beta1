@@ -128,6 +128,51 @@ def set_up_businesses() -> list[str]:
     return [name for name, _, _ in BUSINESSES]
 
 
+MODELS_MARK = ".local_models_set"
+DEEP_MODEL = "gemma3:4b"
+
+
+def set_local_models(mark_dir: Path) -> bool:
+    """One time (v2.38.2): the everyday model is the local qwen2.5:3b (Nova's 'nova-qwen' build of it) and deeper
+    thinking goes to the local gemma3:4b first; any cloud models already listed stay behind it as backups.
+    Run before the models are set up. After this the choice is yours in Settings → AI brain. True when it changed
+    something."""
+    from . import settings
+    mark = Path(mark_dir) / MODELS_MARK
+    if mark.exists():
+        return False
+    with settings._lock:
+        doc = settings.load_doc()
+        settings.set_path(doc, "llm.primary", "ollama")
+        if "qwen" not in str(settings.get_path(doc, "llm.providers.ollama.model", "nova-qwen")).lower():
+            settings.set_path(doc, "llm.providers.ollama.model", "nova-qwen")
+        smart = [str(x) for x in (settings.get_path(doc, "llm.smart", []) or []) if str(x) != "ollama_deep"]
+        settings.set_path(doc, "llm.smart", ["ollama_deep"] + smart)
+        settings.save_doc(doc)
+    mark.parent.mkdir(parents=True, exist_ok=True)
+    mark.write_text("everyday: ollama (qwen2.5:3b) | deeper thinking: ollama_deep (gemma3:4b)\n", encoding="utf-8")
+    fast = Path(mark_dir) / settings.FAST_MARK                  # and the old "switch to a cloud model" step stays off
+    if not fast.exists():
+        fast.write_text("the everyday model was chosen by hand\n", encoding="utf-8")
+    print("[llm] everyday model: local qwen2.5:3b | deeper thinking: local gemma3:4b (cloud models stay as backups)")
+    return True
+
+
+def ensure_model(name: str = DEEP_MODEL, base: str = "http://localhost:11434") -> str:
+    """Make sure Ollama has a model, downloading it when it is missing. Returns 'there', 'downloaded' or the reason
+    it couldn't."""
+    import httpx
+    try:
+        have = [m.get("name", "") for m in httpx.get(f"{base}/api/tags", timeout=10).json().get("models", [])]
+        if any(h == name or h.startswith(name + "-") or h.split(":")[0] == name for h in have):
+            return "there"
+        print(f"[llm] downloading {name} for deeper thinking (about 3.3 GB, once)…")
+        r = httpx.post(f"{base}/api/pull", json={"name": name, "stream": False}, timeout=3600)
+        return "downloaded" if r.status_code < 400 else f"Ollama answered {r.status_code}"
+    except Exception as e:
+        return f"couldn't reach Ollama: {e}"
+
+
 def switch_on_addon(cfg, name: str) -> bool:
     """Switch one of the catalogue's MCP add-ons on in config.yaml — adding it, or enabling the entry that is
     already there switched off. These run through uv (uvx). True when it is on."""
@@ -210,6 +255,17 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
                 said.append(f"The skills library is installed ({len(on)} skills ready: {', '.join(on)}).")
             except Exception as e:
                 print(f"[activate] skills library not installed yet: {e}")
+        if not done.get("deep_model"):
+            try:
+                got = ensure_model()
+                if got in ("there", "downloaded"):
+                    done["deep_model"] = True
+                    if got == "downloaded":
+                        said.append("gemma3:4b is downloaded — I use it for deeper thinking.")
+                else:
+                    print(f"[activate] gemma3:4b not ready yet: {got}")
+            except Exception as e:
+                print(f"[activate] gemma3:4b check skipped: {e}")
         if not done.get("upscaler"):
             try:
                 from . import upscale

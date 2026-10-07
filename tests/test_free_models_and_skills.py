@@ -5,6 +5,8 @@ import json
 import zipfile
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+
 from PIL import Image
 
 from nova import context, llm, settings, skill_library, upscale
@@ -23,7 +25,56 @@ def _llm(nova, monkeypatch, keys=("GROQ_API_KEY", "CEREBRAS_API_KEY", "MISTRAL_A
         monkeypatch.delenv(k, raising=False)
     for k in keys:
         monkeypatch.setenv(k, "test-key")
+    cfg["llm"]["smart"] = [n for n in cfg["llm"]["smart"] if n != "ollama_deep"]   # the cloud chain on its own
     return LLM(cfg)
+
+
+def test_qwen_every_day_and_gemma_for_deeper_thinking(nova, monkeypatch, tmp_path):
+    """v2.38.2: the local qwen2.5:3b answers everyday requests; deeper thinking goes to the local gemma3:4b first.
+    Gemma can't call tools, so a deeper request that needs one goes to the next model."""
+    cfg, _ = nova
+    for k in ("GEMINI_API_KEY", "GROQ_API_KEY", "CEREBRAS_API_KEY", "MISTRAL_API_KEY", "GITHUB_MODELS_TOKEN", "XAI_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    m = LLM(cfg)
+    assert m.primary == "ollama" and m.providers["ollama"].model == "nova-qwen"          # nova-qwen = qwen2.5:3b, 8k window
+    assert m.smart == ["ollama_deep", "groq"] and m.providers["ollama_deep"].model == "gemma3:4b"
+    assert "FROM qwen2.5:3b" in (ROOT / "Modelfile").read_text()
+    calls = []
+
+    def fake(name, result):
+        def chat(messages, tools=None, temperature=0.3, on_delta=None):
+            calls.append(name)
+            if tools and name == "ollama_deep":
+                raise RuntimeError("Error code: 400 - registry.ollama.ai/library/gemma3:4b does not support tools")
+            return LLMReply(result, provider=name)
+        return chat
+    for n in ("ollama", "ollama_deep", "groq"):
+        monkeypatch.setattr(m.providers[n], "chat", fake(n, f"from {n}"))
+    hi = [{"role": "user", "content": "hi"}]
+    assert m.chat(hi).content == "from ollama"                                           # everyday
+    assert m.complete("think hard about this") == "from ollama_deep"                     # deeper thinking and writing
+    assert m.chat(hi, prefer_smart=True).content == "from ollama_deep"
+    calls.clear()
+    tools = [{"type": "function", "function": {"name": "x", "parameters": {}}}]
+    assert m.chat(hi, tools=tools, prefer_smart=True).content == "from groq" and calls == ["ollama_deep", "groq"]
+    calls.clear()
+    assert m.chat(hi, tools=tools, prefer_smart=True).content == "from groq" and calls == ["groq"]   # learnt: not asked again
+    assert m.chat(hi, prefer_smart=True).content == "from ollama_deep"                   # still does the thinking
+    monkeypatch.delenv("GROQ_API_KEY")
+    only_local = LLM(cfg)
+    assert [p.name for p in only_local.order(True)] == ["ollama_deep", "ollama"]         # no cloud keys: both local
+
+    # the one-time switch on a PC whose everyday model had been moved to a cloud one
+    from nova import activate, settings
+    doc = {"llm": {"primary": "groq", "smart": ["gemini", "groq"], "providers": {"ollama": {"model": "nova-qwen"}}}}
+    monkeypatch.setattr(settings, "load_doc", lambda: doc)
+    monkeypatch.setattr(settings, "save_doc", lambda d: None)
+    assert activate.set_local_models(tmp_path) is True
+    assert doc["llm"]["primary"] == "ollama" and doc["llm"]["smart"] == ["ollama_deep", "gemini", "groq"]
+    assert (tmp_path / settings.FAST_MARK).exists()                                      # and it isn't switched back
+    doc["llm"]["primary"] = "gemini"                                                     # your own later choice…
+    assert activate.set_local_models(tmp_path) is False and doc["llm"]["primary"] == "gemini"   # …is left alone
 
 
 def test_new_free_providers_join_the_chain(nova, monkeypatch):

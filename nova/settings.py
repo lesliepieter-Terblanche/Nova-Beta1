@@ -146,10 +146,13 @@ SCHEMA = [
     ]},
     {"id": "brain", "title": "AI brain", "icon": "brain", "fields": [
         {"path": "llm.primary", "label": "Everyday model", "type": "select", "options": ["ollama", "gemini", "groq", "cerebras", "mistral", "github", "xai"],
-         "help": "ollama = private and free but slower on a 4 GB card; gemini/groq/cerebras = much faster replies"},
-        {"path": "llm.smart", "label": "Smart models (in order)", "type": "list",
-         "help": "One per line: gemini, groq, cerebras, mistral, github, xai. When one runs out of free use, the next answers"},
-        {"path": "llm.providers.ollama.model", "label": "Local model (Ollama)", "type": "text"},
+         "help": "ollama = the local qwen2.5:3b: private and free but slower on a 4 GB card; gemini/groq/cerebras = much faster replies"},
+        {"path": "llm.smart", "label": "Deeper-thinking models (in order)", "type": "list",
+         "help": "One per line. ollama_deep = the local gemma3:4b (thinks and writes, can't use tools). Then any of: "
+                 "gemini, groq, cerebras, mistral, github, xai — the next one answers when one can't"},
+        {"path": "llm.providers.ollama.model", "label": "Everyday local model (Ollama)", "type": "text",
+         "help": "nova-qwen = qwen2.5:3b with a larger memory window"},
+        {"path": "llm.providers.ollama_deep.model", "label": "Deeper-thinking local model (Ollama)", "type": "text", "default": "gemma3:4b"},
         {"path": "llm.providers.gemini.model", "label": "Gemini model", "type": "select",
          "options": ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"], "free": True},
         {"path": "llm.providers.groq.model", "label": "Groq model", "type": "text", "default": "auto",

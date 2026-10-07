@@ -106,7 +106,7 @@ def test_fast_everyday_model_is_chosen_once(cfgfiles, tmp_path, monkeypatch):
     env.write_text("GROQ_API_KEY=gsk_test\nGEMINI_API_KEY=\n")
     assert settings.prefer_fast_model(tmp_path) == "groq" and "Groq" in settings.notice
     assert settings.get_path(settings.load_doc(), "llm.primary") == "groq"
-    assert "# Hybrid" in cfg.read_text()                               # the file's comments survive
+    assert "# Everyday requests" in cfg.read_text()                               # the file's comments survive
     settings.apply({"values": {"llm.primary": "ollama"}})              # you switch back by hand…
     assert settings.prefer_fast_model(tmp_path) == ""                  # …and it stays your choice
     assert settings.get_path(settings.load_doc(), "llm.primary") == "ollama"
@@ -121,7 +121,7 @@ def test_local_model_is_last_resort_and_not_kept_loaded_with_a_cloud_everyday_mo
     c = load_config(ROOT / "config.example.yaml")
     c["llm"]["primary"] = "groq"
     llm = LLM(c)
-    assert [p.name for p in llm.order(False)] == ["groq", "ollama"]
+    assert [p.name for p in llm.order(False)] == ["groq", "ollama_deep", "ollama"]     # the local ones only as backups
     assert [p.name for p in llm.order(True)][-1] == "ollama"
     import httpx
     posted = []
@@ -130,7 +130,7 @@ def test_local_model_is_last_resort_and_not_kept_loaded_with_a_cloud_everyday_mo
     assert posted == []                                                # the graphics card stays free
     c["llm"]["primary"] = "ollama"
     LLM(c).warm_up(quiet=True)
-    assert len(posted) == 1
+    assert len(posted) == 1 and posted[0][0].endswith("/api/generate")   # only the everyday model is kept loaded
 
 
 def test_colour_themes(cfgfiles):

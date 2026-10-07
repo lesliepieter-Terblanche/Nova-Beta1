@@ -31,6 +31,9 @@ DEFAULT_PROVIDERS = {
                "key_env": "GITHUB_MODELS_TOKEN", "timeout": 90,
                "catalog_url": "https://models.github.ai/catalog/models"},
     "xai": {"base_url": "https://api.x.ai/v1", "model": "auto", "key_env": "XAI_API_KEY", "timeout": 90},
+    # v2.38.2: the local model for deeper thinking (first in the "smart" list). Gemma 3 can't call tools in Ollama,
+    # so it does the thinking and writing; requests that need a tool go to the next model in the list.
+    "ollama_deep": {"base_url": "http://localhost:11434/v1", "model": "gemma3:4b", "timeout": 180},
 }
 
 # When a model is "auto" or has been retired, prefer these (first match in the provider's list wins).
@@ -115,6 +118,7 @@ class Provider:
         self.catalog_url, self._key = catalog_url, api_key
         self.rest_until = 0.0            # a free tier ran out: skipped until then
         self.local = "localhost" in base_url or "127.0.0.1" in base_url
+        self.no_tools = False                      # learnt on the first try: this model can't call tools
         self.client = OpenAI(base_url=base_url, api_key=api_key, timeout=timeout, max_retries=1)
         self.switched_from = ""          # set when a retired model was replaced automatically
         self.no_stream = False           # set when this provider can't stream replies
@@ -298,6 +302,8 @@ class LLM:
     def chat(self, messages, tools=None, prefer_smart=False, temperature=0.3, on_delta=None) -> LLMReply:
         errors, resting = [], []
         for p in self.order(prefer_smart):
+            if tools and p.no_tools:
+                continue                             # it can think but not act: the next model takes this one
             if not p.local and p.rest_until > time.time():
                 resting.append(p)                    # its free tier ran out a moment ago: the next one answers
                 continue
@@ -320,6 +326,11 @@ class LLM:
             return reply
         except Exception as e:
             errors.append(f"{p.name}: {e}")
+            if tools and "does not support tools" in str(e).lower():
+                p.no_tools = True
+                print(f"[llm] {p.name} ({p.model}) can't use tools -> it answers thinking and writing requests; "
+                      "requests that need a tool go to the next model")
+                return None
             rest = 0 if p.local else rest_seconds(e)
             if rest:
                 p.rest_until = time.time() + rest

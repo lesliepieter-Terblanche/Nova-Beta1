@@ -4,6 +4,15 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.38.2] — 2026-10-07
+### Changed
+- **Models: qwen2.5:3b every day, gemma3:4b for deeper thinking.** Set once at the next start (and left to you
+  after that — Settings → AI brain): the everyday model is the local qwen2.5:3b (Nova's `nova-qwen` build of it),
+  and deeper thinking — "think hard", analyse, compare, plan, and everything Nova writes for you such as replies,
+  reviews and posts — goes to the local gemma3:4b first. Gemma can't call tools in Ollama, so a deeper request that
+  needs a tool (send, save, look something up) goes to the next model in the list: a cloud model if you have a key,
+  else qwen. gemma3:4b is downloaded if it isn't on the PC yet. Cloud models stay behind it as backups.
+
 ## [2.38.1] — 2026-10-07
 ### Added
 - **Start-up timing.** Nova now times each stage of starting up. The "Nova is ready" block in her window shows how

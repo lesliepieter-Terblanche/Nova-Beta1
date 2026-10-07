@@ -166,11 +166,58 @@ def ensure_model(name: str = DEEP_MODEL, base: str = "http://localhost:11434") -
         have = [m.get("name", "") for m in httpx.get(f"{base}/api/tags", timeout=10).json().get("models", [])]
         if any(h == name or h.startswith(name + "-") or h.split(":")[0] == name for h in have):
             return "there"
-        print(f"[llm] downloading {name} for deeper thinking (about 3.3 GB, once)…")
+        print(f"[llm] downloading {name} (once — this can take a while)…")
         r = httpx.post(f"{base}/api/pull", json={"name": name, "stream": False}, timeout=3600)
         return "downloaded" if r.status_code < 400 else f"Ollama answered {r.status_code}"
     except Exception as e:
         return f"couldn't reach Ollama: {e}"
+
+
+def ensure_everyday_model(cfg, base: str = "http://localhost:11434") -> str:
+    """Make sure the everyday local model exists in Ollama (v2.38.4). 'nova-qwen' is not something Ollama can
+    download: it is qwen2.5:3b with a larger memory window, built on this PC from the Modelfile — normally by
+    setup.bat. When it is missing, Nova downloads qwen2.5:3b if needed and builds it herself.
+    Returns 'there', 'built', 'downloaded' or the reason it couldn't."""
+    import re
+    import subprocess
+
+    import httpx
+    name = str((((cfg.get("llm") or {}).get("providers") or {}).get("ollama") or {}).get("model") or "nova-qwen")
+    try:
+        have = [m.get("name", "") for m in httpx.get(f"{base}/api/tags", timeout=10).json().get("models", [])]
+    except Exception as e:
+        return f"couldn't reach Ollama: {e}"
+    if any(h == name or h.split(":")[0] == name for h in have):
+        return "there"
+    if name.split(":")[0] != "nova-qwen":
+        return ensure_model(name, base)                        # an ordinary model: just download it
+    text = (ROOT / "Modelfile").read_text(encoding="utf-8") if (ROOT / "Modelfile").exists() else "FROM qwen2.5:3b\nPARAMETER num_ctx 8192"
+    source = (re.search(r"(?im)^FROM\s+(\S+)", text) or [None, "qwen2.5:3b"])[1]
+    got = ensure_model(source, base)
+    if got not in ("there", "downloaded"):
+        return f"couldn't get {source}: {got}"
+    params = {}
+    for k, v in re.findall(r"(?im)^PARAMETER\s+(\w+)\s+(\S+)", text):
+        params[k] = float(v) if "." in v else int(v) if v.lstrip("-").isdigit() else v
+    print(f"[llm] building {name} from {source} (a few seconds, once)…")
+    try:                                                       # newer Ollama takes from/parameters, older the Modelfile text
+        r = httpx.post(f"{base}/api/create", json={"model": name, "name": name, "from": source, "parameters": params,
+                                                    "modelfile": text, "stream": False}, timeout=600)
+        if r.status_code < 400:
+            return "built"
+        why = f"Ollama answered {r.status_code}: {r.text[:120]}"
+    except Exception as e:
+        why = str(e)
+    try:                                                       # last try: the same command setup.bat runs
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        done = subprocess.run(["ollama", "create", name, "-f", str(ROOT / "Modelfile")], capture_output=True, text=True,
+                              timeout=600, creationflags=flags)
+        if done.returncode == 0:
+            return "built"
+        why += " | " + (done.stderr or done.stdout)[-160:]
+    except (OSError, subprocess.SubprocessError) as e:
+        why += f" | {e}"
+    return f"couldn't build {name}: {why}"
 
 
 def switch_on_addon(cfg, name: str) -> bool:

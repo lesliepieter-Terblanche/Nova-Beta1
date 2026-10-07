@@ -4,6 +4,12 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.38.4] — 2026-10-07
+### Fixed
+- **"nova-qwen not found".** The everyday local model is qwen2.5:3b with a larger memory window, built on the PC
+  under the name `nova-qwen` — until now only by setup. Nova now checks at every start and, when it is missing,
+  downloads qwen2.5:3b if needed and builds `nova-qwen` herself.
+
 ## [2.38.3] — 2026-10-07
 ### Changed
 - **Second brain: nomic-embed-text wherever possible.** It was already the model that indexes notes, memories and

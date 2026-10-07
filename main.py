@@ -122,6 +122,15 @@ def keep_warm() -> None:
     import time
     from nova import startup
     startup.mark("", "warm")
+    try:                                    # the everyday local model must exist before it can be loaded
+        from nova import activate
+        got = activate.ensure_everyday_model(context.cfg)
+        if got in ("built", "downloaded"):
+            print(f"[llm] the everyday local model is ready ({got}).")
+        elif got != "there":
+            print(f"[llm] the everyday local model isn't ready: {got}")
+    except Exception as e:
+        print(f"[llm] everyday-model check skipped: {e}")
     context.llm.warm_up()
     context.store.embed(["warm up"])
     startup.mark("AI model loaded", "warm")

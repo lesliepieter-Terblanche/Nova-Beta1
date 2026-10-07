@@ -316,3 +316,33 @@ def test_gods_eye_view_is_gone(nova):
     assert not (root / "nova" / "skills" / "globe.py").exists() and not (root / "nova" / "dashboard" / "globe.html").exists()
     page = (root / "nova" / "dashboard" / "index.html").read_text(encoding="utf-8")
     assert "/globe" not in page and "God's Eye" not in page
+
+
+def test_the_everyday_model_is_built_when_it_is_missing(nova, monkeypatch):
+    """v2.38.4: 'nova-qwen not found' — Nova downloads qwen2.5:3b if needed and builds nova-qwen from the Modelfile."""
+    import httpx
+
+    from nova import activate
+    have, posts = ["gemma3:4b"], []
+
+    class R:
+        def __init__(self, data=None, code=200):
+            self.status_code, self._d, self.text = code, data or {}, ""
+
+        def json(self):
+            return self._d
+    monkeypatch.setattr(httpx, "get", lambda url, timeout=10: R({"models": [{"name": n} for n in have]}))
+
+    def post(url, json=None, timeout=60):
+        posts.append((url.rsplit("/", 1)[-1], json))
+        have.append(json["name"] if url.endswith("/pull") else json["model"] + ":latest")
+        return R()
+    monkeypatch.setattr(httpx, "post", post)
+    assert activate.ensure_everyday_model(nova[0]) == "built"
+    assert [p[0] for p in posts] == ["pull", "create"] and posts[0][1]["name"] == "qwen2.5:3b"
+    made = posts[1][1]
+    assert made["model"] == "nova-qwen" and made["from"] == "qwen2.5:3b" and made["parameters"] == {"num_ctx": 8192, "temperature": 0.3}
+    assert "FROM qwen2.5:3b" in made["modelfile"]
+    assert activate.ensure_everyday_model(nova[0]) == "there" and len(posts) == 2          # nothing is done twice
+    monkeypatch.setattr(httpx, "get", lambda url, timeout=10: (_ for _ in ()).throw(OSError("refused")))
+    assert activate.ensure_everyday_model(nova[0]).startswith("couldn't reach Ollama")

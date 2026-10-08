@@ -315,12 +315,23 @@ Offered to the model when you say things like: _cinematic, cinema, film look, mo
 
 | Tool | What it does | Parameters |
 |---|---|---|
-| `cinematic_reel` | Make a cinematic reel from photos and video clips: every photo becomes a 3D camera move (push-in, orbit, pull-out with real depth), clips are graded with a film look, cuts land on the beat of the music, and the brand kit adds an intro sting, lower third, watermark and outro. Free, made on this PC. | `files`, `title`?, `subtitle`?, `narration`?, `music_path`?, `brand`?, `look`?, `format`?, `seconds_per_shot`?, `transition`?, `call_to_action`?, `widescreen_bars`? |
+| `cinematic_reel` | Make a cinematic reel from photos and video clips: every photo becomes a 3D camera move (push-in, orbit, pull-out with real depth), clips are graded with a film look, cuts land on the beat of the music, and the brand kit adds an intro sting, lower third, watermark and outro. Free, made on this PC. | `files`, `title`?, `subtitle`?, `narration`?, `music_path`?, `brand`?, `look`?, `format`?, `seconds_per_shot`?, `transition`?, `call_to_action`?, `widescreen_bars`?, `motion`? |
 | `cinematic_look` | Give any video the cinematic finish: a film colour grade, soft vignette, film grain and widescreen bars — optionally slowed down and steadied. Use for phone footage, AI clips, stock clips or a finished video. | `path`, `look`?, `widescreen_bars`?, `film_grain`?, `slow_motion`?, `steady`?, `brand`? |
 | `photo_to_3d_shot` | Turn one still photo into a moving cinematic shot: Nova works out what is near and far in the picture and moves the camera through it with real parallax (the "3D photo" effect). | `photo`, `move`?, `seconds`?, `format`?, `look`? |
 | `upscale_photo` | Make a small, soft or low-resolution photo bigger and sharper with Real-ESRGAN (free, runs on this PC's graphics card). Use before printing, posting or putting a photo in a video. Works on one photo or every photo in a folder. | `path`, `scale`? |
 | `save_brand_kit` | Save (or update) a brand kit, used for the intro sting, lower third, watermark, caption highlight and outro of cinematic reels. Only the fields you give are changed. | `name`, `handle`?, `tagline`?, `colour`?, `accent`?, `logo_path`?, `look`?, `call_to_action`?, `make_default`? |
 | `brand_kits` | List the saved brand kits and the cinematic looks available. | — |
+| `ai_video_clip` | Make a short AI video clip on this PC, free: from a description ("a drone shot over a misty dam at sunrise"), or bring a photo to life (the photo becomes the first frame and starts moving). Uses Wan 2.2 in ComfyUI; takes a few minutes, so it runs in the background and is sent when ready. | `prompt`, `photo`?, `seconds`?, `format`?, `quality`?, `look`? |
+
+## hardware
+
+Offered to the model when you say things like: _graphics card, video card, gpu, new card, rtx, nvidia, vram, ai video, video ai, set up video, wan 2.2, comfyui_
+
+| Tool | What it does | Parameters |
+|---|---|---|
+| `check_graphics_card` | Check the graphics card (name, memory, driver), the PC's memory and disk, and what AI video it can run; then set up free local AI video for it in the background (ComfyUI + the Wan 2.2 models that fit). Use after a new graphics card is installed, or for "set up AI video". | `set_up`? |
+| `video_ai_status` | How far the AI video set-up is, or whether AI video is ready. | — |
+| `use_bigger_models` | Switch Nova's local thinking models to the bigger ones a 16 GB graphics card fits — qwen2.5:14b every day and gemma3:12b for deeper thinking — or back to the small ones (qwen2.5:3b and gemma3:4b). Downloads what's missing (about 17 GB for the big pair) in the background; the switch takes effect after a restart. | `back_to_small`? |
 
 ## library
 

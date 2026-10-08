@@ -14,7 +14,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from .. import cinema, context, ffmpeg, upscale
+import threading
+
+from .. import cinema, context, ffmpeg, upscale, videoai
 from ..tools import register_group, tool
 from .media import out_dir
 
@@ -22,7 +24,9 @@ register_group("cinematic", ["cinematic", "cinema", "film look", "movie look", "
                              "grading", "teal and orange", "widescreen", "letterbox", "film grain", "brand kit",
                              "branding", "my brand", "logo", "3d photo", "parallax", "camera move", "reel", "reels",
                              "intro sting", "outro", "lower third", "slow motion", "slow-mo", "premium video", "upscale", "sharpen", "enhance this photo",
-                             "enhance the photo", "low resolution", "low-res", "blurry photo", "real-esrgan"])
+                             "enhance the photo", "low resolution", "low-res", "blurry photo", "real-esrgan",
+                             "ai video", "ai clip", "video clip of", "text to video", "photo to video",
+                             "animate this photo", "bring this photo to life"])
 
 LOOK_HELP = ", ".join(cinema.LOOKS)
 
@@ -62,7 +66,8 @@ def _narration_words(text: str, wav: Path) -> list[tuple[float, float, str]]:
 @tool(group="cinematic")
 def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: str = "", music_path: str = "",
                    brand: str = "", look: str = "", format: str = "vertical", seconds_per_shot: float = 3.0,
-                   transition: str = "fade", call_to_action: str = "", widescreen_bars: bool = False) -> str:
+                   transition: str = "fade", call_to_action: str = "", widescreen_bars: bool = False,
+                   motion: str = "auto") -> str:
     """Make a cinematic reel from photos and video clips: every photo becomes a 3D camera move (push-in, orbit,
     pull-out with real depth), clips are graded with a film look, cuts land on the beat of the music, and the brand
     kit adds an intro sting, lower third, watermark and outro. Free, made on this PC.
@@ -79,10 +84,39 @@ def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: s
         transition: fade, dissolve, dip (to black), slide, wipe, zoom, circle or cut
         call_to_action: closing line on the outro, e.g. "Book a viewing today"
         widescreen_bars: black cinema bars top and bottom
+        motion: how photos move — ai (real AI-generated motion with Wan 2.2, needs AI video set up), 3d (camera
+            moves over the photo), or auto (ai when it's set up, else 3d)
     """
     media = _files(files)[:24]
     if not media:
         return "ERROR: I found no photos or videos there. Give me a folder, or files separated by semicolons."
+    use_ai = motion.lower() in ("ai", "auto") and videoai.ready()
+    if motion.lower() == "ai" and not use_ai:
+        return ("ERROR: AI video isn't set up yet — say \"check my graphics card\" to set it up, or use motion=3d "
+                "for camera moves over the photos.")
+    photos = [f for f in media if f.suffix.lower() in cinema.PHOTO]
+    args = (media, title, subtitle, narration, music_path, brand, look, format, seconds_per_shot, transition,
+            call_to_action, widescreen_bars, use_ai)
+    if use_ai and photos:                       # minutes per shot: made in the background, sent when it's done
+        mins = videoai.estimate_minutes(len(photos))
+
+        def run():
+            try:
+                said = _make_reel(*args)
+                context.push("🎬 " + said, [str(_last_out[0])] if _last_out else None)
+            except Exception as e:
+                context.push(f"🎬 The AI reel didn't finish: {e}")
+        threading.Thread(target=run, daemon=True, name="ai-reel").start()
+        return (f"Making it with AI motion: {len(photos)} photo{'s' if len(photos) != 1 else ''} become real moving "
+                f"shots with Wan 2.2 — about {mins} minutes. I'll send the reel when it's done.")
+    return _make_reel(*args)
+
+
+_last_out: list[Path] = []
+
+
+def _make_reel(media, title, subtitle, narration, music_path, brand, look, format, seconds_per_shot, transition,
+               call_to_action, widescreen_bars, use_ai) -> str:
     fmt = format if format in cinema.SIZES else "vertical"
     size = cinema.SIZES[fmt]
     kit = cinema.brand(brand)
@@ -118,7 +152,8 @@ def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: s
                                      min_total=voice_len + 0.9 if voice else 0.0)
         cta = call_to_action or (kit["call_to_action"] if branded else "")
         outro = bool(cta or (branded and (kit["handle"] or kit["logo"])))
-        depth_used = flat = sharpened = 0
+        depth_used = flat = sharpened = ai_shots = 0
+        ai_failed = ""
         sharpen = str((context.cfg.get("media") or {}).get("upscale", "auto"))
         for i, (f, seen) in enumerate(zip(media, lengths)):
             last = i == len(media) - 1 and not outro
@@ -127,7 +162,19 @@ def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: s
             if f.suffix.lower() in cinema.PHOTO:
                 f, did = upscale.for_frame(f, size, sharpen)        # a small photo is rebuilt sharper first
                 sharpened += did
-                info = cinema.photo_shot(f, shot, size, d, cinema.MOVES[i % len(cinema.MOVES)], look)
+                move = cinema.MOVES[i % len(cinema.MOVES)]
+                if use_ai and not ai_failed:
+                    try:                                            # the photo comes to life with Wan 2.2
+                        made = videoai.clip(videoai.scene_prompt(f, title, move), work / f"ai{i}.mp4", image=f,
+                                            seconds=max(3.0, d), fmt=fmt)
+                        cinema.video_shot(made["path"], shot, size, d, look)
+                        ai_shots += 1
+                        clips.append((shot, d))
+                        continue
+                    except Exception as e:                          # one failure: the rest use 3D moves
+                        ai_failed = str(e)[:200]
+                        print(f"[cinematic] AI motion failed, using 3D moves: {e}")
+                info = cinema.photo_shot(f, shot, size, d, move, look)
                 depth_used += info["depth"]
                 flat += not info["depth"]
             else:
@@ -168,6 +215,8 @@ def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: s
         shutil.rmtree(work, ignore_errors=True)
     photos = sum(f.suffix.lower() in cinema.PHOTO for f in media)
     bits = [f"{len(media)} shots", f"{cinema.LOOKS[look][0].split(' — ')[0]} look"]
+    if ai_shots:
+        bits.append(f"{ai_shots} photo{'s' if ai_shots != 1 else ''} brought to life with AI motion (Wan 2.2)")
     if depth_used:
         bits.append(f"{depth_used} photo{'s' if depth_used != 1 else ''} with 3D camera moves")
     if sharpened:
@@ -180,9 +229,12 @@ def cinematic_reel(files: str, title: str = "", subtitle: str = "", narration: s
         bits.append(f"{kit['name']} branding")
     context.record("video", title or kit["name"] or "Cinematic reel", out, ", ".join(bits))
     context.attach(out)
+    _last_out[:] = [out]
     note = ""
     if photos and flat:
         note = " The depth model couldn't be downloaded, so the photos moved without the 3D effect this time."
+    if ai_failed:
+        note += f" AI motion stopped part-way ({ai_failed}), so the remaining photos used 3D camera moves."
     if not branded and not brand:
         note += " No brand kit is saved yet — tell me your brand name, colours and logo and I'll add an intro and outro."
     return f"Cinematic reel ready: {out} ({total:.0f} seconds; {', '.join(bits)}).{note}"
@@ -328,3 +380,44 @@ def brand_kits() -> str:
             for key, k in data["kits"].items()]
     looks = "\n".join(f"- {k}: {v[0]}" for k, v in cinema.LOOKS.items())
     return ("Brand kits:\n" + ("\n".join(kits) if kits else "(none saved yet)")) + f"\n\nLooks:\n{looks}"
+
+
+@tool(group="cinematic")
+def ai_video_clip(prompt: str, photo: str = "", seconds: float = 5.0, format: str = "vertical",
+                  quality: str = "final", look: str = "") -> str:
+    """Make a short AI video clip on this PC, free: from a description ("a drone shot over a misty dam at sunrise"),
+    or bring a photo to life (the photo becomes the first frame and starts moving). Uses Wan 2.2 in ComfyUI; takes a
+    few minutes, so it runs in the background and is sent when ready.
+    Args:
+        prompt: what happens in the shot — subject, setting, light, camera move
+        photo: optional photo to start from
+        seconds: length (2-8)
+        format: vertical, landscape or square
+        quality: final (best, slower) or draft (quicker)
+        look: optional colour grade — teal_orange, warm_film, moody, golden_hour, noir or clean
+    """
+    if not videoai.ready():
+        return "ERROR: AI video isn't set up yet. Say \"check my graphics card\" and I'll set it up."
+    src = None
+    if photo:
+        from .files import safe
+        src = safe(photo)
+        if not src.exists():
+            return f"ERROR: I can't find the photo {photo}."
+    fmt = format if format in cinema.SIZES else "vertical"
+    secs = max(2.0, min(8.0, float(seconds or 5)))
+    name = re.sub(r"[^\w]+", "_", prompt)[:40].strip("_") or "ai_clip"
+    out = out_dir() / f"{name}_{dt.datetime.now():%Y%m%d_%H%M%S}.mp4"
+
+    def run():
+        try:
+            raw = out.with_name(out.stem + "_raw.mp4")
+            made = videoai.clip(prompt, raw, image=src, seconds=secs, fmt=fmt, quality=quality)
+            cinema.finish(raw, out, look=cinema.look_name(look) if look else "clean", bars=False, grain=bool(look))
+            raw.unlink(missing_ok=True)
+            context.record("video", prompt[:60], out, f"AI clip, {made['model']}")
+            context.push(f"🎬 AI clip ready ({made['model']}, {made['took'] / 60:.0f} min): {out.name}", [str(out)])
+        except Exception as e:
+            context.push(f"🎬 The AI clip didn't work: {e}")
+    threading.Thread(target=run, daemon=True, name="ai-clip").start()
+    return f"Making the clip with Wan 2.2 — about {videoai.estimate_minutes(1)} minutes. I'll send it when it's ready."

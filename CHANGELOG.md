@@ -4,6 +4,24 @@ All notable changes. Versions are Git tags; roll back with `rollback.bat` or "No
 
 ## [Unreleased]
 
+## [2.39.0] — 2026-10-08
+### Added
+- **Free AI video on your own graphics card (Wan 2.2).** Say *"check my graphics card"* after fitting a new card:
+  Nova reports the card, its driver, memory and free disk, then sets everything up in the background — the official
+  ComfyUI portable build for NVIDIA, the ComfyUI-Manager and VideoHelperSuite add-ons, and the Wan 2.2 models that
+  fit the card (16 GB: the 14B photo-to-video and text-to-video models with the 4-step speed-ups, plus the 5B for
+  drafts — about 80 GB; 8–15 GB: the 5B only). Downloads resume if interrupted; a test clip proves it works.
+  It stops and says what to do when the driver is too old (580 or newer is needed) or the disk is too full.
+- **Cinematic reels with real AI motion.** With AI video set up, every photo in a reel becomes a real moving shot
+  (Wan 2.2 14B, smoothed to 30 frames a second), then graded, cut on the beat, captioned and branded as before. It
+  takes a few minutes per photo, so the reel is made in the background and sent when it's done. `motion=3d` keeps
+  the old camera moves; if AI motion fails part-way, the remaining photos use them.
+- **AI video clips** — "make an AI video clip of a drone shot over a misty dam at sunrise", or "bring this photo to
+  life": a 2–8 second clip, final or draft quality, with an optional colour grade.
+- **"Use the bigger models"** — on a 16 GB card: qwen2.5:14b every day and gemma3:12b for deeper thinking (and back).
+- While a clip renders, Nova's own models step out of the graphics card and come back after.
+- When a card that can make AI video is seen for the first time, Nova says so once.
+
 ## [2.38.4] — 2026-10-07
 ### Fixed
 - **"nova-qwen not found".** The everyday local model is qwen2.5:3b with a larger memory window, built on the PC

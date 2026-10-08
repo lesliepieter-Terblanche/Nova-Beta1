@@ -309,6 +309,7 @@ media:
     url: http://127.0.0.1:8188
     checkpoint: ""           # part of a model name in ComfyUI/models/checkpoints ("" = the first one)
     start_command: ""        # e.g. C:\ComfyUI_windows_portable\run_nvidia_gpu.bat — Nova starts it when needed
+    dir: ""                  # the ComfyUI portable folder ("" = tools/ComfyUI_windows_portable, where "set up AI video" puts it)
     workflow: ""             # your own "Export (API)" workflow .json with {{prompt}} {{negative}} {{seed}} {{width}} {{height}}
 
 # Documents: markitdown reads Word/PowerPoint/Excel/PDF/.msg/EPUB. Docling (optional, ~2 GB) = better PDF tables & scans.

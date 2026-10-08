@@ -88,7 +88,7 @@ It remembers everything permanently and shows its whole second brain as a live m
 | 🖐 **PC hands** | Opens apps, webcam and folders, manages windows, clicks and types in any app — "do it for me" step by step, stops before sending/paying/deleting, Esc to take over |
 | ◎ **Focus & wellbeing** | Made for ADHD and bipolar II: one thing at a time, "I'm stuck" first steps, brain dump, calm visuals, routine anchors, night guardrails, private encrypted check-ins and a summary for your doctor |
 | 📥 **Forward to file** | Forward links, PDFs, photos, business cards or voice notes to the Telegram bot — summarised and filed in your brain |
-| 🎬 **Cinematic mode** | Film-look reels from your photos and clips, free on this PC: 3D camera moves on photos, colour grades, brand intro/outro, highlighted captions, cuts on the beat; small photos sharpened with Real-ESRGAN |
+| 🎬 **Cinematic mode** | Film-look reels from your photos and clips, free on this PC: 3D camera moves on photos, colour grades, brand intro/outro, highlighted captions, cuts on the beat; small photos sharpened with Real-ESRGAN · with an 8 GB+ NVIDIA card, real AI motion (Wan 2.2 in ComfyUI, set up by "check my graphics card") |
 | 📚 **Skills library** | The open-source skills from [anthropics/skills](https://github.com/anthropics/skills) as playbooks: web design, internal comms, themes, posters, MCP servers |
 | ♻ **More free AI** | Gemini, Groq, Cerebras, Mistral and GitHub Models in a chain — when one hits its free limit Nova rests it and the next answers |
 | 💼 **Business mode** | A separate Business dashboard per business: sales, enquiries, money owed, tasks and an **approval queue** — Nova drafts replies, follow-ups and payment reminders and nothing goes out without your yes. Plus an idea validator, launch kit, offer tester, standing instructions and a weekly business review |
@@ -157,6 +157,9 @@ Full walkthrough, including Telegram, Google and GitHub: **[docs/INSTALL.md](doc
 "Tell me when this drops below R8,000: <takealot link>"
 "Any news about Juniper this week?"
 "Summarise this YouTube video: <link>"                → YouTube MCP server (Settings → Extensions → Add)
+"Check my graphics card."                             → sets up free AI video (Wan 2.2) for it
+"Make a cinematic reel from Pictures/Harbour."         → photos become real moving shots
+"Make an AI video clip of a drone shot over a misty dam at sunrise."
 "Remind me at 4 to call Sam."
 "Thanks."                                             → ends the conversation
 ```

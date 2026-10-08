@@ -173,6 +173,11 @@ def ensure_model(name: str = DEEP_MODEL, base: str = "http://localhost:11434") -
         return f"couldn't reach Ollama: {e}"
 
 
+# Nova's own builds of a model with a larger memory window (v2.39: the 14B one for a 16 GB card)
+BUILDS = {"nova-qwen": "FROM qwen2.5:3b\nPARAMETER num_ctx 8192\nPARAMETER temperature 0.3",
+          "nova-qwen14": "FROM qwen2.5:14b\nPARAMETER num_ctx 8192\nPARAMETER temperature 0.3"}
+
+
 def ensure_everyday_model(cfg, base: str = "http://localhost:11434") -> str:
     """Make sure the everyday local model exists in Ollama (v2.38.4). 'nova-qwen' is not something Ollama can
     download: it is qwen2.5:3b with a larger memory window, built on this PC from the Modelfile — normally by
@@ -189,9 +194,12 @@ def ensure_everyday_model(cfg, base: str = "http://localhost:11434") -> str:
         return f"couldn't reach Ollama: {e}"
     if any(h == name or h.split(":")[0] == name for h in have):
         return "there"
-    if name.split(":")[0] != "nova-qwen":
+    if name.split(":")[0] not in BUILDS:
         return ensure_model(name, base)                        # an ordinary model: just download it
-    text = (ROOT / "Modelfile").read_text(encoding="utf-8") if (ROOT / "Modelfile").exists() else "FROM qwen2.5:3b\nPARAMETER num_ctx 8192"
+    if name.split(":")[0] == "nova-qwen":
+        text = (ROOT / "Modelfile").read_text(encoding="utf-8") if (ROOT / "Modelfile").exists() else BUILDS["nova-qwen"]
+    else:
+        text = BUILDS[name.split(":")[0]]
     source = (re.search(r"(?im)^FROM\s+(\S+)", text) or [None, "qwen2.5:3b"])[1]
     got = ensure_model(source, base)
     if got not in ("there", "downloaded"):
@@ -210,7 +218,12 @@ def ensure_everyday_model(cfg, base: str = "http://localhost:11434") -> str:
         why = str(e)
     try:                                                       # last try: the same command setup.bat runs
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        done = subprocess.run(["ollama", "create", name, "-f", str(ROOT / "Modelfile")], capture_output=True, text=True,
+        mf = ROOT / "Modelfile"
+        if name.split(":")[0] != "nova-qwen":
+            mf = resolve(f"data/{name.split(':')[0]}.Modelfile")
+            mf.parent.mkdir(parents=True, exist_ok=True)
+            mf.write_text(text, encoding="utf-8")
+        done = subprocess.run(["ollama", "create", name, "-f", str(mf)], capture_output=True, text=True,
                               timeout=600, creationflags=flags)
         if done.returncode == 0:
             return "built"
@@ -309,6 +322,16 @@ def run(cfg, mark_dir: Path, wait: float = 60.0, background: bool = True) -> dic
                     done["embed_model"] = True
             except Exception as e:
                 print(f"[activate] {e}")
+        if not done.get("new_card"):              # v2.39: a graphics card that can make AI video — say so once
+            try:
+                from . import videoai
+                card = videoai.gpu()
+                if card and videoai.tier(card) != "none" and not videoai.state():
+                    done["new_card"] = True
+                    said.append(f"I can see your {card['name']} ({card['vram_gb']:.0f} GB). Say \"check my graphics "
+                                "card\" and I'll set up free AI video for it.")
+            except Exception as e:
+                print(f"[activate] graphics card check skipped: {e}")
         if not done.get("deep_model"):
             try:
                 got = ensure_model()
